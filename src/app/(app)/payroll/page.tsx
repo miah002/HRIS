@@ -148,10 +148,13 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
                     <Td numeric className="text-[var(--text-secondary)]">{php(p.withholdingTax)}</Td>
                     <Td numeric className="font-semibold">{php(p.netPay)}</Td>
                     <Td>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <Badge variant={STATUS_BADGE[p.status] ?? "default"}>{p.status}</Badge>
-                        <Link href={`/payroll/${p.id}`} className="text-[var(--text-tertiary)] hover:text-[var(--brand)] transition-colors" title="View payslip">
-                          <FileText className="h-3.5 w-3.5" />
+                        <Link
+                          href={`/payroll/${p.id}`}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand)] hover:underline"
+                        >
+                          <FileText className="h-3 w-3" />Payslip
                         </Link>
                       </div>
                     </Td>

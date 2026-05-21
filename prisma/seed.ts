@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { computeSemiMonthlyPayroll } from "../src/lib/ph-payroll";
 
 const prisma = new PrismaClient();
 
@@ -97,6 +98,38 @@ async function main() {
     });
 
     employeeRecords.push({ id: emp.id, email: empEmail, firstName: first, lastName: last, i });
+  }
+
+  // Seed 3 months of payroll for all employees (current + 2 previous cutoffs)
+  const now = new Date();
+  const cutoffs = [
+    // Previous month 16–end
+    {
+      start: new Date(now.getFullYear(), now.getMonth() - 1, 16),
+      end:   new Date(now.getFullYear(), now.getMonth(), 0),
+    },
+    // Previous month 1–15
+    {
+      start: new Date(now.getFullYear(), now.getMonth() - 1, 1),
+      end:   new Date(now.getFullYear(), now.getMonth() - 1, 15),
+    },
+    // Current cutoff
+    now.getDate() <= 15
+      ? { start: new Date(now.getFullYear(), now.getMonth(), 1),  end: new Date(now.getFullYear(), now.getMonth(), 15) }
+      : { start: new Date(now.getFullYear(), now.getMonth(), 16), end: new Date(now.getFullYear(), now.getMonth() + 1, 0) },
+  ];
+
+  for (const emp of employeeRecords) {
+    const employee = await prisma.employee.findUnique({ where: { id: emp.id } });
+    if (!employee) continue;
+    for (const { start, end } of cutoffs) {
+      const calc = computeSemiMonthlyPayroll({ monthlyRate: employee.basicMonthlyRate, periodStart: start, periodEnd: end });
+      await prisma.payroll.upsert({
+        where: { employeeId_periodStart_periodEnd: { employeeId: emp.id, periodStart: start, periodEnd: end } },
+        update: { ...calc, status: "RELEASED" },
+        create: { employeeId: emp.id, periodStart: start, periodEnd: end, status: "RELEASED", ...calc },
+      });
+    }
   }
 
   // Create user accounts for first 3 employees so they can log in as employees

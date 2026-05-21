@@ -24,8 +24,7 @@ const OWNER_NAV = [
 ];
 
 const EMPLOYEE_NAV = [
-  { href: "/my",   label: "My Portal",  sub: "Dashboard",  icon: User },
-  { href: "/leave", label: "My Leaves", sub: "Bakasyon",   icon: CalendarCheck },
+  { href: "/my", label: "My Portal", sub: "Self-service", icon: User },
 ];
 
 function ThemeCycle() {

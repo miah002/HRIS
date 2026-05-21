@@ -190,3 +190,11 @@
     box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--brand-ring);
   }
 }
+
+@media print {
+  body { background: white !important; }
+  .print\:hidden { display: none !important; }
+  aside, nav { display: none !important; }
+  main { padding: 0 !important; }
+  #payslip { border: 1px solid #e5e5e5 !important; border-radius: 8px !important; }
+}

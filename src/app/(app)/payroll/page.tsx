@@ -8,7 +8,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Table, TableHeader, TableBody, TableRow, Th, Td, TableFooter } from "@/components/ui/table";
 import { php, phDate } from "@/lib/format";
 import { computeSemiMonthlyPayroll } from "@/lib/ph-payroll";
-import { PlayCircle, Wallet } from "lucide-react";
+import { PlayCircle, Wallet, FileText } from "lucide-react";
 
 function currentCutoff(now = new Date()) {
   const year = now.getFullYear();
@@ -148,7 +148,12 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
                     <Td numeric className="text-[var(--text-secondary)]">{php(p.withholdingTax)}</Td>
                     <Td numeric className="font-semibold">{php(p.netPay)}</Td>
                     <Td>
-                      <Badge variant={STATUS_BADGE[p.status] ?? "default"}>{p.status}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={STATUS_BADGE[p.status] ?? "default"}>{p.status}</Badge>
+                        <Link href={`/payroll/${p.id}`} className="text-[var(--text-tertiary)] hover:text-[var(--brand)] transition-colors" title="View payslip">
+                          <FileText className="h-3.5 w-3.5" />
+                        </Link>
+                      </div>
                     </Td>
                   </TableRow>
                 ))}

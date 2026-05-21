@@ -8,12 +8,12 @@ import { useTheme } from "next-themes";
 import {
   LayoutDashboard, Users, Clock, Wallet, CalendarCheck,
   ShieldCheck, BarChart3, LogOut, ChevronLeft, ChevronRight,
-  Sun, Moon, Monitor, Menu
+  Sun, Moon, Monitor, User
 } from "lucide-react";
 import { cn } from "@/lib/format";
 import { Avatar } from "@/components/ui/avatar";
 
-const NAV = [
+const OWNER_NAV = [
   { href: "/dashboard",  label: "Dashboard",  sub: "Overview",      icon: LayoutDashboard },
   { href: "/employees",  label: "Employees",  sub: "Mga Empleyado", icon: Users },
   { href: "/attendance", label: "Attendance", sub: "DTR",           icon: Clock },
@@ -23,8 +23,10 @@ const NAV = [
   { href: "/reports",    label: "Reports",    sub: "Analytics",     icon: BarChart3 },
 ];
 
-// Bottom nav shows only the 5 most-used items on mobile
-const BOTTOM_NAV = NAV.slice(0, 5);
+const EMPLOYEE_NAV = [
+  { href: "/my",   label: "My Portal",  sub: "Dashboard",  icon: User },
+  { href: "/leave", label: "My Leaves", sub: "Bakasyon",   icon: CalendarCheck },
+];
 
 function ThemeCycle() {
   const { theme, setTheme } = useTheme();
@@ -41,9 +43,11 @@ function ThemeCycle() {
   );
 }
 
-export function Sidebar({ userName = "Demo Owner" }: { userName?: string }) {
+export function Sidebar({ userName = "Demo Owner", role = "OWNER" }: { userName?: string; role?: string }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = React.useState(false);
+  const NAV = role === "EMPLOYEE" ? EMPLOYEE_NAV : OWNER_NAV;
+  const homeHref = role === "EMPLOYEE" ? "/my" : "/dashboard";
 
   return (
     <motion.aside
@@ -56,7 +60,7 @@ export function Sidebar({ userName = "Demo Owner" }: { userName?: string }) {
     >
       {/* Logo */}
       <div className="flex h-14 items-center px-4 gap-3 border-b border-[var(--border)] flex-shrink-0">
-        <Link href="/dashboard" className="flex items-center gap-3 flex-shrink-0">
+        <Link href={homeHref} className="flex items-center gap-3 flex-shrink-0">
           <div className="h-7 w-7 rounded-[var(--radius-sm)] bg-[var(--brand)] flex items-center justify-center flex-shrink-0">
             <span className="text-white text-xs font-bold">S</span>
           </div>
@@ -127,7 +131,7 @@ export function Sidebar({ userName = "Demo Owner" }: { userName?: string }) {
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <div className="text-xs font-medium text-[var(--text-primary)] truncate">{userName}</div>
-              <div className="text-[10px] text-[var(--text-tertiary)]">Owner</div>
+              <div className="text-[10px] text-[var(--text-tertiary)]">{role === "EMPLOYEE" ? "Employee" : "Owner"}</div>
             </div>
           )}
           {!collapsed && (
@@ -145,15 +149,16 @@ export function Sidebar({ userName = "Demo Owner" }: { userName?: string }) {
   );
 }
 
-export function BottomNav() {
+export function BottomNav({ role = "OWNER" }: { role?: string }) {
   const pathname = usePathname();
+  const NAV = role === "EMPLOYEE" ? EMPLOYEE_NAV : OWNER_NAV.slice(0, 5);
   return (
     <nav
       className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[var(--bg-elevated)] border-t border-[var(--border)]"
       style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0.25rem)" }}
     >
       <div className="flex justify-around pt-1">
-        {BOTTOM_NAV.map(({ href, label, icon: Icon }) => {
+        {NAV.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + "/");
           return (
             <Link

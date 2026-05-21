@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { php, phDate } from "@/lib/format";
 import { computeSemiMonthlyPayroll, STATUTORY_LEAVE } from "@/lib/ph-payroll";
-import { ChevronLeft, Mail, Phone, Building2 } from "lucide-react";
+import { ChevronLeft, Mail, Phone, Building2, Pencil } from "lucide-react";
 
 export default async function EmployeeDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -57,6 +57,9 @@ export default async function EmployeeDetail({ params }: { params: Promise<{ id:
           </div>
         </div>
         <div className="flex gap-2">
+          <Link href={`/employees/${e.id}/edit`}>
+            <Button variant="secondary" size="sm"><Pencil className="h-3.5 w-3.5" />Edit</Button>
+          </Link>
           <form action={archive}>
             <Button type="submit" variant="danger" size="sm">Archive</Button>
           </form>

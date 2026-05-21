@@ -22,6 +22,8 @@ model User {
   role          String    @default("OWNER") // OWNER | HR | EMPLOYEE
   companyId     String?
   company       Company?  @relation(fields: [companyId], references: [id])
+  employeeId    String?   @unique
+  employee      Employee? @relation(fields: [employeeId], references: [id])
   accounts      Account[]
   sessions      Session[]
   createdAt     DateTime  @default(now())
@@ -99,6 +101,7 @@ model Employee {
   payrolls         Payroll[]
   leaves           LeaveRequest[]
   documents        Document[]
+  user             User?
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 }
@@ -166,7 +169,7 @@ model LeaveRequest {
   leaveType  String   // SIL | MATERNITY | PATERNITY | SOLO_PARENT | MAGNA_CARTA | VAWC | BEREAVEMENT | OTHER
   startDate  DateTime
   endDate    DateTime
-  days       Int
+  days       Int      @default(1)
   reason     String?
   status     String   @default("PENDING") // PENDING | APPROVED | REJECTED
   approverId String?

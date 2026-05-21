@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { php, phDate } from "@/lib/format";
@@ -26,6 +27,13 @@ function upcomingDeadlines(now: Date) {
 
 export default async function DashboardPage() {
   const session = await auth();
+  if (!session) redirect("/login");
+
+  // Employees have their own portal — redirect them away from the owner dashboard
+  const { prisma: db } = await import("@/lib/prisma");
+  const user = await db.user.findUnique({ where: { email: session.user!.email! } });
+  if (user?.role === "EMPLOYEE") redirect("/my");
+
   const name = session?.user?.name?.split(" ")[0] ?? "Owner";
 
   const employees = await prisma.employee.findMany({ where: { archived: false } });

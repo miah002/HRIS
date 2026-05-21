@@ -24,21 +24,31 @@ function useCountUp(target: number, duration = 600) {
   return value;
 }
 
+// format is a string token (not a function) — functions can't cross the
+// server→client component boundary.
+type FormatKind = "number" | "currencyK" | "days";
+
 interface KpiCardProps {
   label: string;
   sublabel?: string;
   value: number;
-  format?: (n: number) => string;
+  format?: FormatKind;
   delta?: number;       // % change vs last period
   sparkData?: number[]; // 6–12 data points for sparkline
   className?: string;
   delay?: number;
 }
 
-const defaultFormat = (n: number) => n.toLocaleString("en-PH");
+function formatValue(n: number, kind: FormatKind) {
+  switch (kind) {
+    case "currencyK": return `₱${(n / 1000).toFixed(0)}k`;
+    case "days":      return n === 0 ? "Today" : `${n}d`;
+    default:          return n.toLocaleString("en-PH");
+  }
+}
 
 export function KpiCard({
-  label, sublabel, value, format = defaultFormat, delta, sparkData, className, delay = 0
+  label, sublabel, value, format = "number", delta, sparkData, className, delay = 0
 }: KpiCardProps) {
   const animated = useCountUp(value);
   const trendColor =
@@ -73,7 +83,7 @@ export function KpiCard({
       {/* Value */}
       <div className="mt-3">
         <div className="text-2xl font-semibold text-[var(--text-primary)] tabular leading-none">
-          {format(animated)}
+          {formatValue(animated, format)}
         </div>
         {delta !== undefined && (
           <div

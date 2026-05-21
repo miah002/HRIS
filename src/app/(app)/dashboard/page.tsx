@@ -90,7 +90,7 @@ export default async function DashboardPage() {
         <KpiCard
           label="Monthly payroll" sublabel="Gross"
           value={Math.round(monthlyPayroll)}
-          format={(n) => `₱${(n / 1000).toFixed(0)}k`}
+          format="currencyK"
           delta={1.8}
           sparkData={spark}
           delay={0.04}
@@ -104,7 +104,7 @@ export default async function DashboardPage() {
         <KpiCard
           label="Days to deadline" sublabel={deadlines[0]?.label ?? "All clear"}
           value={deadlines[0] ? Math.max(1, Math.ceil((+deadlines[0].date - +now) / 86400000)) : 0}
-          format={(n) => n === 0 ? "Today" : `${n}d`}
+          format="days"
           delay={0.12}
         />
       </div>

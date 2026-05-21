@@ -9,7 +9,7 @@ const inputBase =
   "flex w-full rounded-[var(--radius-sm)] border border-[var(--border)] " +
   "bg-[var(--bg-elevated)] text-sm text-[var(--text-primary)] " +
   "placeholder:text-[var(--text-tertiary)] " +
-  "transition-colors duration-[100ms] " +
+  "transition-colors duration-fast " +
   "focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)] focus:ring-offset-0 " +
   "disabled:bg-[var(--bg-subtle)] disabled:text-[var(--text-tertiary)] disabled:cursor-not-allowed " +
   "aria-[invalid=true]:border-[var(--error)] aria-[invalid=true]:ring-[var(--error-border)] ";

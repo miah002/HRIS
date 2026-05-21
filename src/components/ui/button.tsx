@@ -8,7 +8,7 @@ type Size = "sm" | "md" | "lg" | "icon-sm" | "icon-md";
 
 const base =
   "relative inline-flex items-center justify-center gap-2 font-medium leading-none select-none " +
-  "transition-all duration-[100ms] ease-out " +
+  "transition-all duration-fast ease-out " +
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--brand-ring)] " +
   "disabled:pointer-events-none disabled:opacity-40 " +
   "active:scale-[0.97] ";

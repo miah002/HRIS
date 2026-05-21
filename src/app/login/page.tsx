@@ -2,11 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { signIn } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input, Field } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
-export default function LoginPage() {
+export default function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   async function login(formData: FormData) {
     "use server";
     const email = String(formData.get("email") ?? "");
@@ -20,30 +19,46 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen grid place-items-center p-4 bg-muted/30">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Sign in to Sahod HR</CardTitle>
-          <CardDescription>Demo: <code>owner@demo.ph</code> / <code>demo1234</code></CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form action={login} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" required defaultValue="owner@demo.ph" />
+    <main className="min-h-screen gradient-mesh grid place-items-center p-4">
+      <div className="w-full max-w-sm space-y-4">
+        {/* Logo */}
+        <div className="flex justify-center mb-6">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-[var(--radius-sm)] bg-[var(--brand)] grid place-items-center">
+              <span className="text-white font-bold text-sm">S</span>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" name="password" type="password" required defaultValue="demo1234" />
-            </div>
-            <Button type="submit" className="w-full">Sign in</Button>
-          </form>
-          <p className="mt-4 text-sm text-center text-muted-foreground">
-            No account? <Link href="/register" className="text-primary underline">Create one</Link>
-          </p>
-          <p className="mt-2 text-sm text-center"><Link href="/" className="text-muted-foreground">← Back to home</Link></p>
-        </CardContent>
-      </Card>
+            <span className="font-semibold text-[var(--text-primary)]">Sahod HR</span>
+          </Link>
+        </div>
+
+        <Card variant="raised">
+          <CardHeader>
+            <CardTitle className="text-base">Sign in</CardTitle>
+            <CardDescription>
+              Demo: <code className="text-[10px] bg-[var(--neutral-bg)] px-1.5 py-0.5 rounded">owner@demo.ph</code> /{" "}
+              <code className="text-[10px] bg-[var(--neutral-bg)] px-1.5 py-0.5 rounded">demo1234</code>
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form action={login} className="space-y-4">
+              <Field label="Email address" name="email">
+                <Input id="email" name="email" type="email" required defaultValue="owner@demo.ph" autoComplete="email" />
+              </Field>
+              <Field label="Password" name="password">
+                <Input id="password" name="password" type="password" required defaultValue="demo1234" autoComplete="current-password" />
+              </Field>
+              <Button type="submit" className="w-full mt-2">Sign in</Button>
+            </form>
+            <p className="mt-5 text-xs text-center text-[var(--text-tertiary)]">
+              No account?{" "}
+              <Link href="/register" className="text-[var(--brand)] hover:underline">Create one free</Link>
+            </p>
+            <p className="mt-1 text-xs text-center">
+              <Link href="/" className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]">← Back to home</Link>
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </main>
   );
 }

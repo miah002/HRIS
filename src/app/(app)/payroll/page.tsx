@@ -3,11 +3,13 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Badge, STATUS_BADGE } from "@/components/ui/badge";
+import { Avatar } from "@/components/ui/avatar";
+import { Table, TableHeader, TableBody, TableRow, Th, Td, TableFooter } from "@/components/ui/table";
 import { php, phDate } from "@/lib/format";
 import { computeSemiMonthlyPayroll } from "@/lib/ph-payroll";
+import { PlayCircle, Wallet } from "lucide-react";
 
-// Determine current cutoff window (1–15 or 16–end of month) — standard PH semi-monthly cadence.
 function currentCutoff(now = new Date()) {
   const year = now.getFullYear();
   const month = now.getMonth();
@@ -19,9 +21,8 @@ function currentCutoff(now = new Date()) {
 async function runPayroll(formData: FormData) {
   "use server";
   const start = new Date(String(formData.get("start")));
-  const end = new Date(String(formData.get("end")));
+  const end   = new Date(String(formData.get("end")));
   const employees = await prisma.employee.findMany({ where: { archived: false } });
-
   for (const e of employees) {
     const calc = computeSemiMonthlyPayroll({ monthlyRate: e.basicMonthlyRate, periodStart: start, periodEnd: end });
     await prisma.payroll.upsert({
@@ -41,117 +42,155 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
     include: { employee: true },
     orderBy: { employee: { lastName: "asc" } },
   });
-  const totals = runs.reduce(
-    (acc, p) => ({
-      gross: acc.gross + p.grossPay,
-      net: acc.net + p.netPay,
-      sssEE: acc.sssEE + p.sssEE,
-      sssER: acc.sssER + p.sssER,
-      phicEE: acc.phicEE + p.philHealthEE,
-      phicER: acc.phicER + p.philHealthER,
-      hdmfEE: acc.hdmfEE + p.pagIbigEE,
-      hdmfER: acc.hdmfER + p.pagIbigER,
-      wht: acc.wht + p.withholdingTax,
+
+  const T = runs.reduce(
+    (a, p) => ({
+      gross: a.gross + p.grossPay, net: a.net + p.netPay,
+      sssEE: a.sssEE + p.sssEE,   sssER: a.sssER + p.sssER,
+      phicEE: a.phicEE + p.philHealthEE, phicER: a.phicER + p.philHealthER,
+      hdmfEE: a.hdmfEE + p.pagIbigEE,   hdmfER: a.hdmfER + p.pagIbigER,
+      wht: a.wht + p.withholdingTax,
     }),
     { gross: 0, net: 0, sssEE: 0, sssER: 0, phicEE: 0, phicER: 0, hdmfEE: 0, hdmfER: 0, wht: 0 }
   );
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-end justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Payroll</h1>
-          <p className="text-sm text-muted-foreground">Cutoff {cutoff.label} · {phDate(cutoff.start)} – {phDate(cutoff.end)}</p>
+          <div className="flex items-center gap-2">
+            <Wallet className="h-5 w-5 text-[var(--text-tertiary)]" />
+            <h1 className="text-2xl font-semibold tracking-tight">Payroll</h1>
+          </div>
+          <p className="text-sm text-[var(--text-secondary)] mt-0.5">
+            Cutoff {cutoff.label} · {phDate(cutoff.start)} – {phDate(cutoff.end)}
+          </p>
         </div>
         <form action={runPayroll}>
           <input type="hidden" name="start" value={cutoff.start.toISOString()} />
-          <input type="hidden" name="end" value={cutoff.end.toISOString()} />
-          <Button type="submit">{runs.length ? "Re-run payroll" : "Run payroll"}</Button>
+          <input type="hidden" name="end"   value={cutoff.end.toISOString()} />
+          <Button type="submit">
+            <PlayCircle className="h-4 w-4" />
+            {runs.length ? "Re-run payroll" : "Run payroll"}
+          </Button>
         </form>
       </div>
 
-      {ran && <div className="rounded-md bg-emerald-50 border border-emerald-200 text-emerald-900 p-3 text-sm">Payroll computed for all active employees. Review and release below.</div>}
+      {ran && (
+        <div className="rounded-[var(--radius-md)] bg-[var(--success-bg)] border border-[var(--success-border)] text-[var(--success)] px-4 py-3 text-sm">
+          ✓ Payroll computed for all active employees. Review and release below.
+        </div>
+      )}
 
+      {/* Summary KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Mini label="Gross pay" value={php(totals.gross)} />
-        <Mini label="Net pay" value={php(totals.net)} />
-        <Mini label="WHT (BIR 1601-C)" value={php(totals.wht)} />
-        <Mini label="Statutory (EE+ER)" value={php(totals.sssEE + totals.sssER + totals.phicEE + totals.phicER + totals.hdmfEE + totals.hdmfER)} />
+        {[
+          { label: "Gross pay",    value: T.gross },
+          { label: "Net pay",      value: T.net },
+          { label: "WHT (BIR)",    value: T.wht },
+          { label: "Statutory EE", value: T.sssEE + T.phicEE + T.hdmfEE },
+        ].map((k) => (
+          <Card key={k.label}>
+            <CardContent className="pt-4">
+              <div className="text-2xs text-[var(--text-tertiary)] uppercase tracking-wide">{k.label}</div>
+              <div className="text-lg font-semibold tabular mt-1">{php(k.value)}</div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
+      {/* Table */}
       {runs.length === 0 ? (
-        <Card><CardContent className="py-10 text-center text-muted-foreground">No payroll computed for this cutoff yet. Click <strong>Run payroll</strong> to compute.</CardContent></Card>
+        <Card>
+          <CardContent className="py-16 text-center">
+            <div className="h-10 w-10 rounded-[var(--radius-md)] bg-[var(--neutral-bg)] grid place-items-center mx-auto mb-3">
+              <Wallet className="h-5 w-5 text-[var(--text-tertiary)]" />
+            </div>
+            <p className="text-sm font-medium">No payroll computed yet</p>
+            <p className="text-xs text-[var(--text-tertiary)] mt-1">Click <strong>Run payroll</strong> to compute this cutoff.</p>
+          </CardContent>
+        </Card>
       ) : (
         <Card>
-          <CardContent className="p-0 overflow-x-auto">
-            <table className="w-full text-sm min-w-[700px]">
-              <thead className="bg-muted/50 text-left">
-                <tr>
-                  <th className="p-3">Employee</th>
-                  <th className="p-3 text-right">Gross</th>
-                  <th className="p-3 text-right">SSS</th>
-                  <th className="p-3 text-right">PHIC</th>
-                  <th className="p-3 text-right">HDMF</th>
-                  <th className="p-3 text-right">WHT</th>
-                  <th className="p-3 text-right">Net pay</th>
-                  <th className="p-3"></th>
-                </tr>
-              </thead>
-              <tbody>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <Th>Employee</Th>
+                  <Th>Gross</Th>
+                  <Th>SSS</Th>
+                  <Th>PHIC</Th>
+                  <Th>HDMF</Th>
+                  <Th>WHT</Th>
+                  <Th className="text-right">Net pay</Th>
+                  <Th></Th>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {runs.map((p) => (
-                  <tr key={p.id} className="border-t">
-                    <td className="p-3">
-                      <Link href={`/employees/${p.employeeId}`} className="font-medium hover:underline">{p.employee.lastName}, {p.employee.firstName}</Link>
-                      <div className="text-xs text-muted-foreground">{p.employee.employeeNumber}</div>
-                    </td>
-                    <td className="p-3 text-right">{php(p.grossPay)}</td>
-                    <td className="p-3 text-right">{php(p.sssEE)}</td>
-                    <td className="p-3 text-right">{php(p.philHealthEE)}</td>
-                    <td className="p-3 text-right">{php(p.pagIbigEE)}</td>
-                    <td className="p-3 text-right">{php(p.withholdingTax)}</td>
-                    <td className="p-3 text-right font-semibold">{php(p.netPay)}</td>
-                    <td className="p-3 text-right"><Badge variant={p.status === "RELEASED" ? "success" : "muted"}>{p.status}</Badge></td>
-                  </tr>
+                  <TableRow key={p.id}>
+                    <Td>
+                      <Link href={`/employees/${p.employeeId}`} className="flex items-center gap-3 group/link">
+                        <Avatar name={`${p.employee.firstName} ${p.employee.lastName}`} size="sm" />
+                        <div>
+                          <div className="text-sm font-medium group-hover/link:text-[var(--brand)] transition-colors">
+                            {p.employee.lastName}, {p.employee.firstName}
+                          </div>
+                          <div className="text-2xs text-[var(--text-tertiary)]">{p.employee.employeeNumber}</div>
+                        </div>
+                      </Link>
+                    </Td>
+                    <Td numeric>{php(p.grossPay)}</Td>
+                    <Td numeric className="text-[var(--text-secondary)]">{php(p.sssEE)}</Td>
+                    <Td numeric className="text-[var(--text-secondary)]">{php(p.philHealthEE)}</Td>
+                    <Td numeric className="text-[var(--text-secondary)]">{php(p.pagIbigEE)}</Td>
+                    <Td numeric className="text-[var(--text-secondary)]">{php(p.withholdingTax)}</Td>
+                    <Td numeric className="font-semibold">{php(p.netPay)}</Td>
+                    <Td>
+                      <Badge variant={STATUS_BADGE[p.status] ?? "default"}>{p.status}</Badge>
+                    </Td>
+                  </TableRow>
                 ))}
-              </tbody>
-              <tfoot className="bg-muted/30 font-medium">
-                <tr>
-                  <td className="p-3">Totals</td>
-                  <td className="p-3 text-right">{php(totals.gross)}</td>
-                  <td className="p-3 text-right">{php(totals.sssEE)}</td>
-                  <td className="p-3 text-right">{php(totals.phicEE)}</td>
-                  <td className="p-3 text-right">{php(totals.hdmfEE)}</td>
-                  <td className="p-3 text-right">{php(totals.wht)}</td>
-                  <td className="p-3 text-right">{php(totals.net)}</td>
-                  <td></td>
-                </tr>
-              </tfoot>
-            </table>
+              </TableBody>
+              <TableFooter>
+                <TableRow>
+                  <Td className="font-medium text-xs text-[var(--text-secondary)] uppercase tracking-wide">Totals</Td>
+                  <Td numeric>{php(T.gross)}</Td>
+                  <Td numeric>{php(T.sssEE)}</Td>
+                  <Td numeric>{php(T.phicEE)}</Td>
+                  <Td numeric>{php(T.hdmfEE)}</Td>
+                  <Td numeric>{php(T.wht)}</Td>
+                  <Td numeric className="font-semibold">{php(T.net)}</Td>
+                  <Td></Td>
+                </TableRow>
+              </TableFooter>
+            </Table>
           </CardContent>
         </Card>
       )}
 
+      {/* Employer counterpart */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Employer counterpart contributions (this cutoff)</CardTitle></CardHeader>
-        <CardContent className="grid sm:grid-cols-3 gap-3 text-sm">
-          <Mini label="SSS (employer)" value={php(totals.sssER)} />
-          <Mini label="PhilHealth (employer)" value={php(totals.phicER)} />
-          <Mini label="Pag-IBIG (employer)" value={php(totals.hdmfER)} />
+        <CardHeader><CardTitle>Employer counterpart (this cutoff)</CardTitle></CardHeader>
+        <CardContent className="pt-3 grid sm:grid-cols-3 gap-3">
+          {[
+            { label: "SSS (employer)",        value: T.sssER },
+            { label: "PhilHealth (employer)",  value: T.phicER },
+            { label: "Pag-IBIG (employer)",    value: T.hdmfER },
+          ].map((k) => (
+            <div key={k.label} className="rounded-[var(--radius-sm)] border border-[var(--border)] p-3">
+              <div className="text-2xs text-[var(--text-tertiary)]">{k.label}</div>
+              <div className="font-semibold tabular mt-1">{php(k.value)}</div>
+            </div>
+          ))}
         </CardContent>
       </Card>
 
-      <p className="text-xs text-muted-foreground">
-        Computations use TRAIN Law BIR tables (RR 11-2018), SSS 2025 schedule (RA 11199), PhilHealth 5% premium (RA 11223), and HDMF 2%/2% (Circular 460). See <code>src/lib/ph-payroll.ts</code>.
+      <p className="text-2xs text-[var(--text-tertiary)]">
+        Computed using TRAIN Law (BIR RR 11-2018), SSS 2025 schedule (RA 11199), PhilHealth 5% (RA 11223), HDMF 2%/2% (Circular 460).
+        See <code>src/lib/ph-payroll.ts</code>.
       </p>
     </div>
-  );
-}
-
-function Mini({ label, value }: { label: string; value: string }) {
-  return (
-    <Card><CardContent className="pt-4">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="font-semibold text-lg">{value}</div>
-    </CardContent></Card>
   );
 }

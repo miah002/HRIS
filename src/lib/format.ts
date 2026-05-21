@@ -7,6 +7,9 @@ export function phDate(d: Date | string) {
   return new Intl.DateTimeFormat("en-PH", { year: "numeric", month: "short", day: "2-digit" }).format(date);
 }
 
-export function cn(...classes: (string | false | null | undefined)[]) {
-  return classes.filter(Boolean).join(" ");
+// Lightweight cn — for a real project, swap with clsx + tailwind-merge
+import { clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+export function cn(...inputs: Parameters<typeof clsx>) {
+  return twMerge(clsx(inputs));
 }

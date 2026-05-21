@@ -2,16 +2,21 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Badge, STATUS_BADGE } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Avatar } from "@/components/ui/avatar";
 import { php, phDate } from "@/lib/format";
 import { computeSemiMonthlyPayroll, STATUTORY_LEAVE } from "@/lib/ph-payroll";
+import { ChevronLeft, Mail, Phone, Building2 } from "lucide-react";
 
 export default async function EmployeeDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const e = await prisma.employee.findUnique({
     where: { id },
-    include: { payrolls: { orderBy: { periodStart: "desc" }, take: 5 }, leaves: { orderBy: { startDate: "desc" }, take: 5 }, documents: true },
+    include: {
+      payrolls: { orderBy: { periodStart: "desc" }, take: 6 },
+      leaves: { orderBy: { startDate: "desc" }, take: 5 },
+    },
   });
   if (!e) notFound();
 
@@ -21,107 +26,141 @@ export default async function EmployeeDetail({ params }: { params: Promise<{ id:
     redirect("/employees");
   }
 
-  const projected = computeSemiMonthlyPayroll({
-    monthlyRate: e.basicMonthlyRate,
-    periodStart: new Date(),
-    periodEnd: new Date(),
-  });
-
+  const projected = computeSemiMonthlyPayroll({ monthlyRate: e.basicMonthlyRate, periodStart: new Date(), periodEnd: new Date() });
   const yearsOfService = (Date.now() - +e.dateHired) / (1000 * 60 * 60 * 24 * 365.25);
   const eligibleSIL = yearsOfService >= 1;
 
   return (
-    <div className="space-y-5 max-w-5xl">
-      <div>
-        <Link href="/employees" className="text-sm text-muted-foreground hover:underline">← Back to employees</Link>
-        <div className="flex items-center justify-between flex-wrap gap-2 mt-2">
+    <div className="space-y-6 max-w-5xl">
+      {/* Back link */}
+      <Link href="/employees" className="inline-flex items-center gap-1 text-xs text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors">
+        <ChevronLeft className="h-3 w-3" /> Back to employees
+      </Link>
+
+      {/* Profile header */}
+      <div className="flex items-start justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-4">
+          <Avatar name={`${e.firstName} ${e.lastName}`} size="xl" />
           <div>
-            <h1 className="text-2xl font-bold">{e.firstName} {e.middleName ?? ""} {e.lastName}</h1>
-            <div className="text-sm text-muted-foreground">{e.employeeNumber} · {e.position} · {e.department}</div>
+            <h1 className="text-xl font-semibold">{e.firstName} {e.middleName ?? ""} {e.lastName}</h1>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <span className="text-sm text-[var(--text-secondary)]">{e.position}</span>
+              <span className="text-[var(--border-strong)]">·</span>
+              <Badge variant="neutral">{e.department}</Badge>
+              <Badge variant={STATUS_BADGE[e.employmentStatus]}>{e.employmentStatus}</Badge>
+            </div>
+            <div className="flex items-center gap-4 mt-2 text-xs text-[var(--text-tertiary)]">
+              {e.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{e.email}</span>}
+              {e.mobile && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{e.mobile}</span>}
+              <span className="flex items-center gap-1"><Building2 className="h-3 w-3" />{e.employeeNumber}</span>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Badge variant="success">{e.employmentStatus}</Badge>
-            <form action={archive}><Button variant="outline" size="sm" type="submit">Archive</Button></form>
-          </div>
+        </div>
+        <div className="flex gap-2">
+          <form action={archive}>
+            <Button type="submit" variant="danger" size="sm">Archive</Button>
+          </form>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-4">
-        <Card className="md:col-span-2">
-          <CardHeader><CardTitle className="text-base">201 File</CardTitle></CardHeader>
-          <CardContent className="grid sm:grid-cols-2 gap-y-2 gap-x-6 text-sm">
-            <Info label="Email" value={e.email ?? "—"} />
-            <Info label="Mobile" value={e.mobile ?? "—"} />
+      <div className="grid lg:grid-cols-3 gap-4">
+        {/* 201 Info */}
+        <Card className="lg:col-span-2">
+          <CardHeader><CardTitle>201 File</CardTitle></CardHeader>
+          <CardContent className="pt-3 grid sm:grid-cols-2 gap-y-4 gap-x-8">
             <Info label="Date hired" value={phDate(e.dateHired)} />
-            <Info label="Years of service" value={yearsOfService.toFixed(1)} />
-            <Info label="Monthly rate" value={php(e.basicMonthlyRate)} />
-            <Info label="TIN" value={e.tin ?? "—"} />
-            <Info label="SSS" value={e.sssNumber ?? "—"} />
-            <Info label="PhilHealth" value={e.philHealthNumber ?? "—"} />
-            <Info label="Pag-IBIG" value={e.pagIbigNumber ?? "—"} />
+            <Info label="Years of service" value={`${yearsOfService.toFixed(1)} years`} />
+            <Info label="Basic monthly rate" value={php(e.basicMonthlyRate)} />
+            <Info label="TIN" value={e.tin ?? "—"} mono />
+            <Info label="SSS number" value={e.sssNumber ?? "—"} mono />
+            <Info label="PhilHealth number" value={e.philHealthNumber ?? "—"} mono />
+            <Info label="Pag-IBIG (HDMF)" value={e.pagIbigNumber ?? "—"} mono />
           </CardContent>
         </Card>
 
+        {/* Projected payslip */}
         <Card>
-          <CardHeader><CardTitle className="text-base">Projected semi-monthly payroll</CardTitle></CardHeader>
-          <CardContent className="text-sm space-y-1.5">
-            <Row label="Basic (½ month)" value={php(projected.basicPay)} />
-            <Row label="SSS (EE)" value={`-${php(projected.sssEE)}`} />
-            <Row label="PhilHealth (EE)" value={`-${php(projected.philHealthEE)}`} />
-            <Row label="Pag-IBIG (EE)" value={`-${php(projected.pagIbigEE)}`} />
-            <Row label="WHT (BIR)" value={`-${php(projected.withholdingTax)}`} />
-            <hr className="my-1.5" />
+          <CardHeader><CardTitle>Semi-monthly payslip</CardTitle></CardHeader>
+          <CardContent className="pt-3 space-y-2 text-sm">
+            <Row label="Basic (½ month)"    value={php(projected.basicPay)} />
+            <div className="my-2 border-t border-dashed border-[var(--border)]" />
+            <Row label="SSS (employee)"    value={`−${php(projected.sssEE)}`} muted />
+            <Row label="PhilHealth (EE)"   value={`−${php(projected.philHealthEE)}`} muted />
+            <Row label="Pag-IBIG (EE)"     value={`−${php(projected.pagIbigEE)}`} muted />
+            <Row label="WHT (BIR TRAIN)"   value={`−${php(projected.withholdingTax)}`} muted />
+            <div className="my-2 border-t border-[var(--border)]" />
             <Row label="Net pay" value={php(projected.netPay)} bold />
+            <div className="mt-3 pt-3 border-t border-dashed border-[var(--border)]">
+              <div className="text-2xs text-[var(--text-tertiary)]">Employer counterpart / cutoff</div>
+              <Row label="SSS (ER)"     value={php(projected.sssER)} muted />
+              <Row label="PHIC (ER)"    value={php(projected.philHealthER)} muted />
+              <Row label="Pag-IBIG (ER)" value={php(projected.pagIbigER)} muted />
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader><CardTitle className="text-base">Leave eligibility (PH statutory)</CardTitle></CardHeader>
-          <CardContent className="text-sm space-y-2">
-            {Object.entries(STATUTORY_LEAVE).map(([type, info]) => (
-              <div key={type} className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="font-medium">{type.replace("_", " ")}</div>
-                  <div className="text-xs text-muted-foreground">{info.ref}</div>
+      {/* Leave entitlement */}
+      <Card>
+        <CardHeader><CardTitle>Statutory leave entitlements</CardTitle></CardHeader>
+        <CardContent className="pt-3 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {Object.entries(STATUTORY_LEAVE).map(([type, info]) => {
+            const ineligible = type === "SIL" && !eligibleSIL;
+            return (
+              <div key={type} className="rounded-[var(--radius-sm)] border border-[var(--border)] p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium">{type.replace("_", " ")}</span>
+                  <Badge variant={ineligible ? "neutral" : "success"}>{info.days}d</Badge>
                 </div>
-                <Badge variant={type === "SIL" && !eligibleSIL ? "muted" : "outline"}>{info.days} days</Badge>
+                <p className="text-[10px] text-[var(--text-tertiary)] mt-1 leading-relaxed">{info.ref}</p>
+                {ineligible && (
+                  <p className="text-[10px] text-[var(--warning)] mt-1">Requires 1 year of service</p>
+                )}
               </div>
-            ))}
-          </CardContent>
-        </Card>
+            );
+          })}
+        </CardContent>
+      </Card>
 
+      {/* Recent payroll */}
+      {e.payrolls.length > 0 && (
         <Card>
-          <CardHeader><CardTitle className="text-base">Recent payroll</CardTitle></CardHeader>
-          <CardContent className="text-sm">
-            {e.payrolls.length === 0 && <p className="text-muted-foreground">No payroll runs yet.</p>}
-            {e.payrolls.map((p) => (
-              <div key={p.id} className="flex justify-between py-1.5 border-b last:border-0">
-                <span>{phDate(p.periodStart)} – {phDate(p.periodEnd)}</span>
-                <span className="font-medium">{php(p.netPay)}</span>
-              </div>
-            ))}
+          <CardHeader><CardTitle>Recent payroll history</CardTitle></CardHeader>
+          <CardContent className="pt-3">
+            <div className="space-y-2">
+              {e.payrolls.map((p) => (
+                <div key={p.id} className="flex items-center justify-between py-2 border-b border-[var(--border)] last:border-0">
+                  <div>
+                    <div className="text-sm">{phDate(p.periodStart)} – {phDate(p.periodEnd)}</div>
+                    <div className="text-xs text-[var(--text-tertiary)]">Gross {php(p.grossPay)}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-semibold tabular">{php(p.netPay)}</div>
+                    <Badge variant={p.status === "RELEASED" ? "success" : "neutral"}>{p.status}</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
-      </div>
+      )}
     </div>
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function Info({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div>
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="font-medium">{value}</div>
+      <div className="text-2xs font-medium text-[var(--text-tertiary)] uppercase tracking-wide">{label}</div>
+      <div className={`text-sm font-medium mt-0.5 ${mono ? "font-mono text-xs" : ""}`}>{value}</div>
     </div>
   );
 }
-function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+function Row({ label, value, bold, muted }: { label: string; value: string; bold?: boolean; muted?: boolean }) {
   return (
-    <div className={`flex justify-between ${bold ? "font-semibold" : ""}`}>
-      <span className="text-muted-foreground">{label}</span>
-      <span>{value}</span>
+    <div className={`flex justify-between gap-2 ${bold ? "font-semibold" : ""}`}>
+      <span className={muted ? "text-[var(--text-tertiary)]" : "text-[var(--text-secondary)]"}>{label}</span>
+      <span className="tabular">{value}</span>
     </div>
   );
 }

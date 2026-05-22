@@ -132,31 +132,49 @@ model Attendance {
 }
 
 model Payroll {
-  id              String   @id @default(cuid())
-  employeeId      String
-  employee        Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  periodStart     DateTime
-  periodEnd       DateTime
-  basicPay        Float
-  overtimePay     Float    @default(0)
-  nightDiffPay    Float    @default(0)
-  holidayPay      Float    @default(0)
-  allowances      Float    @default(0)
-  grossPay        Float
-  sssEE           Float    @default(0)
-  philHealthEE    Float    @default(0)
-  pagIbigEE       Float    @default(0)
-  withholdingTax  Float    @default(0)
-  loanDeductions  Float    @default(0)
-  otherDeductions Float    @default(0)
-  totalDeductions Float
-  netPay          Float
-  sssER           Float    @default(0)
-  philHealthER    Float    @default(0)
-  pagIbigER       Float    @default(0)
-  status          String   @default("DRAFT") // DRAFT | RELEASED
-  createdAt       DateTime @default(now())
+  id                    String             @id @default(cuid())
+  employeeId            String
+  employee              Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  periodStart           DateTime
+  periodEnd             DateTime
+  // Attendance-based tracking
+  daysWorked            Float              @default(0)
+  regularHours          Float              @default(0)
+  // Earnings
+  basicPay              Float
+  overtimePay           Float              @default(0)
+  nightDiffPay          Float              @default(0)
+  holidayPay            Float              @default(0)
+  allowances            Float              @default(0)
+  taxableAdjustments    Float              @default(0)
+  nonTaxableAdjustments Float              @default(0)
+  grossPay              Float
+  // Deductions
+  sssEE                 Float              @default(0)
+  philHealthEE          Float              @default(0)
+  pagIbigEE             Float              @default(0)
+  withholdingTax        Float              @default(0)
+  loanDeductions        Float              @default(0)
+  otherDeductions       Float              @default(0)
+  totalDeductions       Float
+  netPay                Float
+  sssER                 Float              @default(0)
+  philHealthER          Float              @default(0)
+  pagIbigER             Float              @default(0)
+  status                String             @default("DRAFT") // DRAFT | RELEASED
+  adjustments           PayrollAdjustment[]
+  createdAt             DateTime           @default(now())
   @@unique([employeeId, periodStart, periodEnd])
+}
+
+model PayrollAdjustment {
+  id          String   @id @default(cuid())
+  payrollId   String
+  payroll     Payroll  @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  type        String   // TAXABLE | NON_TAXABLE
+  description String
+  amount      Float
+  createdAt   DateTime @default(now())
 }
 
 model LeaveRequest {

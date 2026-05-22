@@ -5,8 +5,9 @@ import { auth } from "@/lib/auth";
 import { php, phDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, Printer } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { PrintButton } from "./print-button";
+import { computeSemiMonthlyPayroll } from "@/lib/ph-payroll";
 
 async function releasePayroll(id: string) {
   "use server";
@@ -14,6 +15,134 @@ async function releasePayroll(id: string) {
   if (!session) redirect("/login");
   await prisma.payroll.update({ where: { id }, data: { status: "RELEASED" } });
   redirect(`/payroll/${id}`);
+}
+
+async function updateHours(id: string, formData: FormData) {
+  "use server";
+  const session = await auth();
+  if (!session) redirect("/login");
+
+  const daysWorked = parseFloat(String(formData.get("daysWorked"))) || 0;
+  const otHours = parseFloat(String(formData.get("otHours"))) || 0;
+  const regularHours = daysWorked * 8;
+
+  const payroll = await prisma.payroll.findUnique({
+    where: { id },
+    include: { employee: true, adjustments: true },
+  });
+  if (!payroll) redirect("/payroll");
+
+  const taxableAdj = payroll.adjustments.filter(a => a.type === "TAXABLE").reduce((s, a) => s + a.amount, 0);
+  const nonTaxableAdj = payroll.adjustments.filter(a => a.type === "NON_TAXABLE").reduce((s, a) => s + a.amount, 0);
+
+  const calc = computeSemiMonthlyPayroll({
+    monthlyRate: payroll.employee.basicMonthlyRate,
+    periodStart: payroll.periodStart,
+    periodEnd: payroll.periodEnd,
+    daysWorked: daysWorked > 0 ? daysWorked : undefined,
+    regularHours,
+    otHours,
+    taxableAdjustments: taxableAdj,
+    nonTaxableAdjustments: nonTaxableAdj,
+  });
+
+  const loans = await prisma.loan.findMany({ where: { employeeId: payroll.employeeId, status: "ACTIVE" } });
+  let loanDeductions = 0;
+  for (const loan of loans) loanDeductions += Math.min(loan.monthlyDeduction / 2, loan.balance);
+  loanDeductions = Math.round(loanDeductions * 100) / 100;
+
+  const totalDeductions = Math.round((calc.totalDeductions + loanDeductions) * 100) / 100;
+  const netPay = Math.round((calc.grossPay - totalDeductions) * 100) / 100;
+
+  await prisma.payroll.update({
+    where: { id },
+    data: { ...calc, loanDeductions, totalDeductions, netPay },
+  });
+  redirect(`/payroll/${id}`);
+}
+
+async function addAdjustment(id: string, formData: FormData) {
+  "use server";
+  const session = await auth();
+  if (!session) redirect("/login");
+
+  const type = String(formData.get("type")); // TAXABLE | NON_TAXABLE
+  const description = String(formData.get("description")).trim();
+  const amount = parseFloat(String(formData.get("amount"))) || 0;
+  if (!description || amount === 0) redirect(`/payroll/${id}`);
+
+  await prisma.payrollAdjustment.create({ data: { payrollId: id, type, description, amount } });
+
+  // Recalculate payroll totals
+  const payroll = await prisma.payroll.findUnique({
+    where: { id },
+    include: { employee: true, adjustments: true },
+  });
+  if (!payroll) redirect("/payroll");
+
+  const taxableAdj = payroll.adjustments.filter(a => a.type === "TAXABLE").reduce((s, a) => s + a.amount, 0);
+  const nonTaxableAdj = payroll.adjustments.filter(a => a.type === "NON_TAXABLE").reduce((s, a) => s + a.amount, 0);
+
+  const calc = computeSemiMonthlyPayroll({
+    monthlyRate: payroll.employee.basicMonthlyRate,
+    periodStart: payroll.periodStart,
+    periodEnd: payroll.periodEnd,
+    daysWorked: payroll.daysWorked > 0 ? payroll.daysWorked : undefined,
+    regularHours: payroll.regularHours,
+    otHours: payroll.overtimePay / (payroll.employee.basicMonthlyRate * 12 / 313 / 8 * 1.25) || 0,
+    taxableAdjustments: taxableAdj,
+    nonTaxableAdjustments: nonTaxableAdj,
+  });
+
+  const loans = await prisma.loan.findMany({ where: { employeeId: payroll.employeeId, status: "ACTIVE" } });
+  let loanDeductions = 0;
+  for (const loan of loans) loanDeductions += Math.min(loan.monthlyDeduction / 2, loan.balance);
+  loanDeductions = Math.round(loanDeductions * 100) / 100;
+
+  const totalDeductions = Math.round((calc.totalDeductions + loanDeductions) * 100) / 100;
+  const netPay = Math.round((calc.grossPay - totalDeductions) * 100) / 100;
+
+  await prisma.payroll.update({ where: { id }, data: { ...calc, loanDeductions, totalDeductions, netPay } });
+  redirect(`/payroll/${id}`);
+}
+
+async function removeAdjustment(adjustmentId: string, payrollId: string) {
+  "use server";
+  const session = await auth();
+  if (!session) redirect("/login");
+
+  await prisma.payrollAdjustment.delete({ where: { id: adjustmentId } });
+
+  // Recalculate after removal
+  const payroll = await prisma.payroll.findUnique({
+    where: { id: payrollId },
+    include: { employee: true, adjustments: true },
+  });
+  if (!payroll) redirect("/payroll");
+
+  const taxableAdj = payroll.adjustments.filter(a => a.type === "TAXABLE").reduce((s, a) => s + a.amount, 0);
+  const nonTaxableAdj = payroll.adjustments.filter(a => a.type === "NON_TAXABLE").reduce((s, a) => s + a.amount, 0);
+
+  const calc = computeSemiMonthlyPayroll({
+    monthlyRate: payroll.employee.basicMonthlyRate,
+    periodStart: payroll.periodStart,
+    periodEnd: payroll.periodEnd,
+    daysWorked: payroll.daysWorked > 0 ? payroll.daysWorked : undefined,
+    regularHours: payroll.regularHours,
+    taxableAdjustments: taxableAdj,
+    nonTaxableAdjustments: nonTaxableAdj,
+  });
+
+  const loans = await prisma.loan.findMany({ where: { employeeId: payroll.employeeId, status: "ACTIVE" } });
+  let loanDeductions = 0;
+  for (const loan of loans) loanDeductions += Math.min(loan.monthlyDeduction / 2, loan.balance);
+  loanDeductions = Math.round(loanDeductions * 100) / 100;
+
+  const totalDeductions = Math.round((calc.totalDeductions + loanDeductions) * 100) / 100;
+  const netPay = Math.round((calc.grossPay - totalDeductions) * 100) / 100;
+
+  await prisma.payroll.update({ where: { id: payrollId }, data: { ...calc, loanDeductions, totalDeductions, netPay } });
+  redirect(`/payroll/${payrollId}`);
 }
 
 export default async function PayslipPage({ params }: { params: Promise<{ id: string }> }) {
@@ -24,9 +153,8 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
   const payroll = await prisma.payroll.findUnique({
     where: { id },
     include: {
-      employee: {
-        include: { company: true },
-      },
+      employee: { include: { company: true } },
+      adjustments: { orderBy: { createdAt: "asc" } },
     },
   });
   if (!payroll) notFound();
@@ -34,6 +162,8 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
   const e = payroll.employee;
   const co = e.company;
   const releaseFn = releasePayroll.bind(null, id);
+  const updateHoursFn = updateHours.bind(null, id);
+  const addAdjustmentFn = addAdjustment.bind(null, id);
 
   const deductions = [
     { label: "SSS contribution (EE)", ref: "RA 11199", amount: payroll.sssEE },
@@ -50,12 +180,26 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
   }
 
   const earnings = [
-    { label: "Basic pay (½ month)", amount: payroll.basicPay },
-    payroll.overtimePay > 0 && { label: "Overtime pay (×1.25)", amount: payroll.overtimePay },
+    {
+      label: payroll.daysWorked > 0
+        ? `Basic pay (${payroll.daysWorked}d × ${php((e.basicMonthlyRate * 12) / 313)})`
+        : "Basic pay (½ month)",
+      amount: payroll.basicPay,
+    },
+    payroll.overtimePay > 0 && { label: `Overtime pay (×1.25)`, amount: payroll.overtimePay },
     payroll.nightDiffPay > 0 && { label: "Night differential (+10%)", amount: payroll.nightDiffPay },
     payroll.holidayPay > 0 && { label: "Holiday pay", amount: payroll.holidayPay },
     payroll.allowances > 0 && { label: "Allowances", amount: payroll.allowances },
+    ...payroll.adjustments
+      .filter(a => a.type === "TAXABLE")
+      .map(a => ({ label: `${a.description} (taxable)`, amount: a.amount })),
+    ...payroll.adjustments
+      .filter(a => a.type === "NON_TAXABLE")
+      .map(a => ({ label: `${a.description} (non-taxable)`, amount: a.amount })),
   ].filter(Boolean) as { label: string; amount: number }[];
+
+  const dbUser = await prisma.user.findUnique({ where: { email: session.user!.email! } });
+  const isAdmin = (dbUser?.role ?? "OWNER") === "OWNER";
 
   return (
     <div className="max-w-2xl mx-auto space-y-5">
@@ -65,7 +209,7 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
           <ChevronLeft className="h-3 w-3" /> Back to payroll
         </Link>
         <div className="flex items-center gap-2">
-          {payroll.status === "DRAFT" && (
+          {payroll.status === "DRAFT" && isAdmin && (
             <form action={releaseFn}>
               <Button size="sm" type="submit">Release payslip</Button>
             </form>
@@ -93,6 +237,11 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
               <p className="text-xs opacity-75 mt-2">
                 Period: {phDate(payroll.periodStart)} – {phDate(payroll.periodEnd)}
               </p>
+              {payroll.daysWorked > 0 && (
+                <p className="text-xs opacity-75 mt-0.5">
+                  Days: {payroll.daysWorked} · OT: {payroll.overtimePay > 0 ? (payroll.overtimePay / ((e.basicMonthlyRate * 12 / 313 / 8) * 1.25)).toFixed(1) + "h" : "0h"}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -203,6 +352,110 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
           </p>
         </div>
       </div>
+
+      {/* Admin tools — hidden from print */}
+      {isAdmin && (
+        <div className="print:hidden space-y-4">
+
+          {/* Update hours */}
+          <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
+            <div className="text-sm font-semibold mb-3">Update attendance hours</div>
+            <form action={updateHoursFn} className="flex flex-wrap gap-3 items-end">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-[var(--text-secondary)]">Days worked</label>
+                <input
+                  type="number" name="daysWorked" min="0" max="31" step="0.5"
+                  defaultValue={payroll.daysWorked || ""}
+                  placeholder="e.g. 11"
+                  className="h-9 w-28 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg)] px-3 text-sm focus:outline-none focus:border-[var(--brand)]"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-[var(--text-secondary)]">OT hours</label>
+                <input
+                  type="number" name="otHours" min="0" step="0.5"
+                  defaultValue={payroll.overtimePay > 0
+                    ? (payroll.overtimePay / ((e.basicMonthlyRate * 12 / 313 / 8) * 1.25)).toFixed(1)
+                    : ""}
+                  placeholder="e.g. 4"
+                  className="h-9 w-28 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg)] px-3 text-sm focus:outline-none focus:border-[var(--brand)]"
+                />
+              </div>
+              <Button type="submit" size="sm" variant="outline">Recalculate</Button>
+            </form>
+            <p className="text-[10px] text-[var(--text-tertiary)] mt-2">
+              Daily rate: {php((e.basicMonthlyRate * 12) / 313)} · Hourly: {php((e.basicMonthlyRate * 12) / 313 / 8)} · OT rate (×1.25): {php((e.basicMonthlyRate * 12) / 313 / 8 * 1.25)}
+            </p>
+          </div>
+
+          {/* Adjustments */}
+          <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
+            <div className="text-sm font-semibold mb-1">Adjustments</div>
+            <p className="text-xs text-[var(--text-secondary)] mb-4">
+              Taxable adjustments (bonuses, commissions) increase WHT. Non-taxable (de minimis, meal/rice/clothing allowances) are excluded from tax.
+            </p>
+
+            {payroll.adjustments.length > 0 && (
+              <div className="mb-4 space-y-2">
+                {payroll.adjustments.map((adj) => {
+                  const removeFn = removeAdjustment.bind(null, adj.id, id);
+                  return (
+                    <div key={adj.id} className="flex items-center justify-between gap-3 text-sm py-2 border-b border-[var(--border)] last:border-0">
+                      <div>
+                        <span className="font-medium">{adj.description}</span>
+                        <Badge variant={adj.type === "TAXABLE" ? "warning" : "success"} className="ml-2 text-[10px]">
+                          {adj.type === "TAXABLE" ? "Taxable" : "Non-taxable"}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="tabular font-medium text-[var(--brand)]">+{php(adj.amount)}</span>
+                        <form action={removeFn}>
+                          <button type="submit" className="text-[10px] text-[var(--error)] hover:underline">Remove</button>
+                        </form>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <form action={addAdjustmentFn} className="flex flex-wrap gap-3 items-end">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-[var(--text-secondary)]">Type</label>
+                <select
+                  name="type"
+                  className="h-9 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg)] px-3 text-sm focus:outline-none focus:border-[var(--brand)]"
+                >
+                  <option value="TAXABLE">Taxable</option>
+                  <option value="NON_TAXABLE">Non-taxable</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1 flex-1 min-w-40">
+                <label className="text-xs text-[var(--text-secondary)]">Description</label>
+                <input
+                  type="text" name="description" required
+                  placeholder="e.g. Performance bonus"
+                  className="h-9 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg)] px-3 text-sm focus:outline-none focus:border-[var(--brand)]"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-[var(--text-secondary)]">Amount (₱)</label>
+                <input
+                  type="number" name="amount" required min="0.01" step="0.01"
+                  placeholder="0.00"
+                  className="h-9 w-32 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg)] px-3 text-sm focus:outline-none focus:border-[var(--brand)]"
+                />
+              </div>
+              <Button type="submit" size="sm">Add</Button>
+            </form>
+
+            <div className="mt-3 text-[10px] text-[var(--text-tertiary)] space-y-0.5">
+              <div>Non-taxable BIR limits (monthly): Meal ₱2,000 · Rice ₱2,000 · Clothing ₱500 (₱6k/yr) · Medical ₱833 (₱10k/yr) · Laundry ₱300</div>
+              <div>Taxable: Bonuses exceeding ₱90k/yr, commissions, excess productivity pay.</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

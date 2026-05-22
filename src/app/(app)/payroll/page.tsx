@@ -23,8 +23,34 @@ async function runPayroll(formData: FormData) {
   const start = new Date(String(formData.get("start")));
   const end   = new Date(String(formData.get("end")));
   const employees = await prisma.employee.findMany({ where: { archived: false } });
+
   for (const e of employees) {
-    const calc = computeSemiMonthlyPayroll({ monthlyRate: e.basicMonthlyRate, periodStart: start, periodEnd: end });
+    // Fetch attendance for this pay period
+    const attendance = await prisma.attendance.findMany({
+      where: { employeeId: e.id, date: { gte: start, lte: end } },
+    });
+    const daysWorked = attendance.filter((a) => a.hoursWorked > 0).length;
+    const regularHours = attendance.reduce((sum, a) => sum + Math.min(a.hoursWorked, 8), 0);
+    const otHours = attendance.reduce((sum, a) => sum + (a.otHours ?? 0), 0);
+
+    // Preserve existing adjustments if payroll already ran for this period
+    const existing = await prisma.payroll.findUnique({
+      where: { employeeId_periodStart_periodEnd: { employeeId: e.id, periodStart: start, periodEnd: end } },
+      include: { adjustments: true },
+    });
+    const taxableAdj = existing?.adjustments.filter(a => a.type === "TAXABLE").reduce((s, a) => s + a.amount, 0) ?? 0;
+    const nonTaxableAdj = existing?.adjustments.filter(a => a.type === "NON_TAXABLE").reduce((s, a) => s + a.amount, 0) ?? 0;
+
+    const calc = computeSemiMonthlyPayroll({
+      monthlyRate: e.basicMonthlyRate,
+      periodStart: start,
+      periodEnd: end,
+      daysWorked: daysWorked > 0 ? daysWorked : undefined,
+      regularHours,
+      otHours,
+      taxableAdjustments: taxableAdj,
+      nonTaxableAdjustments: nonTaxableAdj,
+    });
 
     // Active loan deductions, split semi-monthly (monthly deduction / 2), capped at balance
     const loans = await prisma.loan.findMany({ where: { employeeId: e.id, status: "ACTIVE" } });

@@ -98,21 +98,39 @@ export interface PayrollInput {
   monthlyRate: number;
   periodStart: Date;
   periodEnd: Date;
+  // If daysWorked is provided, basic pay is computed from actual attendance.
+  // Otherwise defaults to monthlyRate / 2 (fixed half-month).
+  daysWorked?: number;
+  regularHours?: number;
   otHours?: number;
   ndHours?: number;
   holidayPay?: number;
   allowances?: number;
+  // Taxable: bonuses, commissions, excess 13th month, etc.
+  taxableAdjustments?: number;
+  // Non-taxable: de minimis benefits, meal/rice/clothing allowances within BIR limits.
+  nonTaxableAdjustments?: number;
   otherDeductions?: number;
 }
 
 export function computeSemiMonthlyPayroll(i: PayrollInput) {
   const hr = hourlyRate(i.monthlyRate);
-  const basicPay = i.monthlyRate / 2; // half-month basic
+  // DOLE daily rate: (monthly * 12) / 313 for 6-day, use 261 for 5-day
+  const dailyRate = round2((i.monthlyRate * 12) / 313);
+
+  // Basic pay: from actual days worked if available, else fixed half-month
+  const basicPay = i.daysWorked != null && i.daysWorked > 0
+    ? round2(i.daysWorked * dailyRate)
+    : round2(i.monthlyRate / 2);
+
   const otPay = round2((i.otHours ?? 0) * hr * OT_MULTIPLIERS.regular);
   const ndPay = round2((i.ndHours ?? 0) * hr * OT_MULTIPLIERS.ndPremium);
   const holidayPay = i.holidayPay ?? 0;
   const allowances = i.allowances ?? 0;
-  const grossPay = round2(basicPay + otPay + ndPay + holidayPay + allowances);
+  const taxableAdj = i.taxableAdjustments ?? 0;
+  const nonTaxableAdj = i.nonTaxableAdjustments ?? 0;
+
+  const grossPay = round2(basicPay + otPay + ndPay + holidayPay + allowances + taxableAdj + nonTaxableAdj);
 
   // Monthly statutory contributions / 2 for semi-monthly split
   const sss = sssContribution(i.monthlyRate);
@@ -123,9 +141,11 @@ export function computeSemiMonthlyPayroll(i: PayrollInput) {
   const phicEE = round2(phic.employee / 2);
   const hdmfEE = round2(hdmf.employee / 2);
 
-  // Withholding tax: compute monthly, halve.
+  // WHT is computed on taxable earnings only (non-taxable adj excluded).
+  // Annualize semi-monthly taxable to get monthly equivalent, then halve WHT.
   const monthlyStatutory = sss.employee + phic.employee + hdmf.employee;
-  const taxableMonthly = Math.max(0, i.monthlyRate - monthlyStatutory);
+  const taxableSemi = basicPay + otPay + taxableAdj; // non-taxable excluded
+  const taxableMonthly = Math.max(0, taxableSemi * 2 - monthlyStatutory);
   const monthlyWHT = withholdingTaxMonthly(taxableMonthly);
   const whtSemi = round2(monthlyWHT / 2);
 
@@ -134,11 +154,15 @@ export function computeSemiMonthlyPayroll(i: PayrollInput) {
   const netPay = round2(grossPay - totalDeductions);
 
   return {
-    basicPay: round2(basicPay),
+    daysWorked: i.daysWorked ?? 0,
+    regularHours: i.regularHours ?? 0,
+    basicPay,
     overtimePay: otPay,
     nightDiffPay: ndPay,
     holidayPay,
     allowances,
+    taxableAdjustments: taxableAdj,
+    nonTaxableAdjustments: nonTaxableAdj,
     grossPay,
     sssEE,
     philHealthEE: phicEE,

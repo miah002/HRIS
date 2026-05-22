@@ -132,6 +132,58 @@ async function main() {
     }
   }
 
+  // Seed demo loans for a few employees
+  await prisma.loan.deleteMany();
+  const loanSeeds = [
+    { idx: 0, type: "SSS_SALARY", description: "SSS salary loan (24 mo)", total: 24000, monthly: 1000 },
+    { idx: 1, type: "PAGIBIG_MPL", description: "Pag-IBIG multi-purpose loan", total: 30000, monthly: 1250 },
+    { idx: 3, type: "CASH_ADVANCE", description: "Emergency cash advance", total: 8000, monthly: 2000 },
+  ];
+  for (const ls of loanSeeds) {
+    const rec = employeeRecords[ls.idx];
+    if (!rec) continue;
+    await prisma.loan.create({
+      data: {
+        employeeId: rec.id,
+        companyId: company.id,
+        type: ls.type,
+        description: ls.description,
+        totalAmount: ls.total,
+        balance: Math.round(ls.total * 0.6),
+        monthlyDeduction: ls.monthly,
+        startDate: new Date(now.getFullYear(), now.getMonth() - 2, 1),
+        status: "ACTIVE",
+      },
+    });
+  }
+
+  // Seed some approved leaves so balances show usage
+  await prisma.leaveRequest.deleteMany();
+  const leaveSeeds = [
+    { idx: 0, type: "SIL", daysAgo: 30, days: 2 },
+    { idx: 1, type: "SIL", daysAgo: 45, days: 1 },
+    { idx: 2, type: "PATERNITY", daysAgo: 60, days: 3 },
+  ];
+  for (const lv of leaveSeeds) {
+    const rec = employeeRecords[lv.idx];
+    if (!rec) continue;
+    const startDate = new Date(Date.now() - lv.daysAgo * 86400000);
+    const endDate = new Date(+startDate + (lv.days - 1) * 86400000);
+    await prisma.leaveRequest.create({
+      data: { employeeId: rec.id, leaveType: lv.type, startDate, endDate, days: lv.days, status: "APPROVED" },
+    });
+  }
+  // A couple of pending requests for the approval queue
+  for (const idx of [4, 5]) {
+    const rec = employeeRecords[idx];
+    if (!rec) continue;
+    const startDate = new Date(Date.now() + 7 * 86400000);
+    const endDate = new Date(+startDate + 86400000);
+    await prisma.leaveRequest.create({
+      data: { employeeId: rec.id, leaveType: "SIL", startDate, endDate, days: 2, status: "PENDING" },
+    });
+  }
+
   // Create user accounts for first 3 employees so they can log in as employees
   const demoEmployeeAccounts = employeeRecords.slice(0, 3);
   for (const rec of demoEmployeeAccounts) {

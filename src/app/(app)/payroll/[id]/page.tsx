@@ -42,6 +42,9 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
     { label: "Withholding tax (BIR TRAIN)", ref: "RR 11-2018", amount: payroll.withholdingTax },
   ].filter((d) => d.amount > 0);
 
+  if (payroll.loanDeductions > 0) {
+    deductions.push({ label: "Loan amortization", ref: "Salary/company loans", amount: payroll.loanDeductions });
+  }
   if (payroll.otherDeductions > 0) {
     deductions.push({ label: "Other deductions", ref: "", amount: payroll.otherDeductions });
   }

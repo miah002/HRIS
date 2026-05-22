@@ -1,6 +1,4 @@
 // HRIS Prisma schema. SQLite for portfolio demo; swap provider to "postgresql" for prod.
-// Models reflect Philippine compliance needs: SSS/PhilHealth/Pag-IBIG/BIR numbers on employee,
-// statutory leave types as an enum, and an Attendance model that supports DOLE OT/ND computation.
 
 generator client {
   provider = "prisma-client-js"
@@ -63,20 +61,22 @@ model VerificationToken {
 
 // --- Core HR ---
 model Company {
-  id        String     @id @default(cuid())
-  name      String
-  tin       String?
-  address   String?
-  users     User[]
-  employees Employee[]
-  createdAt DateTime   @default(now())
+  id                String             @id @default(cuid())
+  name              String
+  tin               String?
+  address           String?
+  users             User[]
+  employees         Employee[]
+  loans             Loan[]
+  complianceRecords ComplianceRecord[]
+  createdAt         DateTime           @default(now())
 }
 
 model Employee {
-  id               String       @id @default(cuid())
+  id               String         @id @default(cuid())
   companyId        String
-  company          Company      @relation(fields: [companyId], references: [id])
-  employeeNumber   String       @unique
+  company          Company        @relation(fields: [companyId], references: [id])
+  employeeNumber   String         @unique
   firstName        String
   middleName       String?
   lastName         String
@@ -86,34 +86,33 @@ model Employee {
   dateHired        DateTime
   position         String
   department       String
-  employmentStatus String       // REGULAR | PROBATIONARY | PROJECT | CASUAL | CONTRACTUAL
-  basicMonthlyRate Float        // PHP
-  // Government IDs (PH-mandated)
+  employmentStatus String         // REGULAR | PROBATIONARY | PROJECT | CASUAL | CONTRACTUAL
+  basicMonthlyRate Float
   tin              String?
   sssNumber        String?
   philHealthNumber String?
   pagIbigNumber    String?
-  // Status
-  archived         Boolean      @default(false)
+  archived         Boolean        @default(false)
   archivedAt       DateTime?
   notes            String?
   attendance       Attendance[]
   payrolls         Payroll[]
   leaves           LeaveRequest[]
   documents        Document[]
+  loans            Loan[]
   user             User?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 }
 
 model Document {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   employeeId String
-  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  name       String   // e.g. "Contract", "2316", "Government ID"
-  url        String   // storage URL (mocked for demo)
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  name       String
+  url        String
   expiresAt  DateTime?
-  uploadedAt DateTime @default(now())
+  uploadedAt DateTime  @default(now())
 }
 
 model Attendance {
@@ -124,8 +123,8 @@ model Attendance {
   timeIn      DateTime?
   timeOut     DateTime?
   hoursWorked Float     @default(0)
-  otHours     Float     @default(0) // regular OT in excess of 8h
-  ndHours     Float     @default(0) // night differential hours (22:00–06:00)
+  otHours     Float     @default(0)
+  ndHours     Float     @default(0)
   isRestDay   Boolean   @default(false)
   isHoliday   Boolean   @default(false)
   notes       String?
@@ -138,22 +137,20 @@ model Payroll {
   employee        Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   periodStart     DateTime
   periodEnd       DateTime
-  // Earnings
   basicPay        Float
   overtimePay     Float    @default(0)
   nightDiffPay    Float    @default(0)
   holidayPay      Float    @default(0)
   allowances      Float    @default(0)
   grossPay        Float
-  // Statutory deductions (PH)
   sssEE           Float    @default(0)
   philHealthEE    Float    @default(0)
   pagIbigEE       Float    @default(0)
   withholdingTax  Float    @default(0)
+  loanDeductions  Float    @default(0)
   otherDeductions Float    @default(0)
   totalDeductions Float
   netPay          Float
-  // Employer counterparts (tracked for remittance)
   sssER           Float    @default(0)
   philHealthER    Float    @default(0)
   pagIbigER       Float    @default(0)
@@ -166,7 +163,7 @@ model LeaveRequest {
   id         String   @id @default(cuid())
   employeeId String
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  leaveType  String   // SIL | MATERNITY | PATERNITY | SOLO_PARENT | MAGNA_CARTA | VAWC | BEREAVEMENT | OTHER
+  leaveType  String
   startDate  DateTime
   endDate    DateTime
   days       Int      @default(1)
@@ -174,4 +171,36 @@ model LeaveRequest {
   status     String   @default("PENDING") // PENDING | APPROVED | REJECTED
   approverId String?
   createdAt  DateTime @default(now())
+}
+
+model Loan {
+  id               String   @id @default(cuid())
+  employeeId       String
+  employee         Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  companyId        String
+  company          Company  @relation(fields: [companyId], references: [id])
+  type             String   // SSS_SALARY | PAGIBIG_MPL | CASH_ADVANCE | OTHER
+  description      String?
+  totalAmount      Float
+  balance          Float
+  monthlyDeduction Float
+  startDate        DateTime
+  status           String   @default("ACTIVE") // ACTIVE | PAID | CANCELLED
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model ComplianceRecord {
+  id        String    @id @default(cuid())
+  companyId String
+  company   Company   @relation(fields: [companyId], references: [id])
+  type      String    // BIR_1601C | BIR_2316 | BIR_1604C | SSS_R3 | PHIC_RF1 | HDMF_MCRF
+  period    String    // "2026-04" monthly, "2026" annual
+  dueDate   DateTime
+  filedAt   DateTime?
+  renewedAt DateTime?
+  status    String    @default("PENDING") // PENDING | FILED | OVERDUE
+  notes     String?
+  createdAt DateTime  @default(now())
+  @@unique([companyId, type, period])
 }

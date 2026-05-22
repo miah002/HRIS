@@ -25,10 +25,24 @@ async function runPayroll(formData: FormData) {
   const employees = await prisma.employee.findMany({ where: { archived: false } });
   for (const e of employees) {
     const calc = computeSemiMonthlyPayroll({ monthlyRate: e.basicMonthlyRate, periodStart: start, periodEnd: end });
+
+    // Active loan deductions, split semi-monthly (monthly deduction / 2), capped at balance
+    const loans = await prisma.loan.findMany({ where: { employeeId: e.id, status: "ACTIVE" } });
+    let loanDeductions = 0;
+    for (const loan of loans) {
+      const semi = Math.min(loan.monthlyDeduction / 2, loan.balance);
+      loanDeductions += semi;
+    }
+    loanDeductions = Math.round(loanDeductions * 100) / 100;
+
+    const totalDeductions = Math.round((calc.totalDeductions + loanDeductions) * 100) / 100;
+    const netPay = Math.round((calc.grossPay - totalDeductions) * 100) / 100;
+    const data = { ...calc, loanDeductions, totalDeductions, netPay };
+
     await prisma.payroll.upsert({
       where: { employeeId_periodStart_periodEnd: { employeeId: e.id, periodStart: start, periodEnd: end } },
-      update: { ...calc, status: "DRAFT" },
-      create: { employeeId: e.id, periodStart: start, periodEnd: end, status: "DRAFT", ...calc },
+      update: { ...data, status: "DRAFT" },
+      create: { employeeId: e.id, periodStart: start, periodEnd: end, status: "DRAFT", ...data },
     });
   }
   redirect(`/payroll?ran=1`);

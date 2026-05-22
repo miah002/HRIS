@@ -7,7 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { php, phDate } from "@/lib/format";
 import { computeSemiMonthlyPayroll, STATUTORY_LEAVE } from "@/lib/ph-payroll";
-import { ChevronLeft, Mail, Phone, Building2, Pencil } from "lucide-react";
+import { ChevronLeft, Mail, Phone, Building2, Pencil, FileText } from "lucide-react";
+
+const LOAN_LABELS: Record<string, string> = {
+  SSS_SALARY: "SSS Salary Loan",
+  PAGIBIG_MPL: "Pag-IBIG Multi-Purpose Loan",
+  CASH_ADVANCE: "Company Cash Advance",
+  OTHER: "Other",
+};
 
 export default async function EmployeeDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -29,6 +36,17 @@ export default async function EmployeeDetail({ params }: { params: Promise<{ id:
   const projected = computeSemiMonthlyPayroll({ monthlyRate: e.basicMonthlyRate, periodStart: new Date(), periodEnd: new Date() });
   const yearsOfService = (Date.now() - +e.dateHired) / (1000 * 60 * 60 * 24 * 365.25);
   const eligibleSIL = yearsOfService >= 1;
+
+  // Leave balances: compute used days per type this year
+  const yearStart = new Date(new Date().getFullYear(), 0, 1);
+  const usedLeaves = e.leaves.filter(l => l.status === "APPROVED" && l.startDate >= yearStart);
+  const leaveUsedMap: Record<string, number> = {};
+  for (const l of usedLeaves) leaveUsedMap[l.leaveType] = (leaveUsedMap[l.leaveType] ?? 0) + l.days;
+
+  // Active loans
+  const activeLoans = await prisma.loan.findMany({
+    where: { employeeId: id, status: "ACTIVE" },
+  });
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -56,7 +74,10 @@ export default async function EmployeeDetail({ params }: { params: Promise<{ id:
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Link href={`/employees/${e.id}/coe`}>
+            <Button variant="secondary" size="sm"><FileText className="h-3.5 w-3.5" />COE</Button>
+          </Link>
           <Link href={`/employees/${e.id}/edit`}>
             <Button variant="secondary" size="sm"><Pencil className="h-3.5 w-3.5" />Edit</Button>
           </Link>
@@ -103,27 +124,60 @@ export default async function EmployeeDetail({ params }: { params: Promise<{ id:
         </Card>
       </div>
 
-      {/* Leave entitlement */}
+      {/* Leave balances */}
       <Card>
-        <CardHeader><CardTitle>Statutory leave entitlements</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Leave balances — {new Date().getFullYear()}</CardTitle></CardHeader>
         <CardContent className="pt-3 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {Object.entries(STATUTORY_LEAVE).map(([type, info]) => {
             const ineligible = type === "SIL" && !eligibleSIL;
+            const entitled = ineligible ? 0 : info.days;
+            const used = leaveUsedMap[type] ?? 0;
+            const remaining = Math.max(0, entitled - used);
             return (
               <div key={type} className="rounded-[var(--radius-sm)] border border-[var(--border)] p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium">{type.replace("_", " ")}</span>
-                  <Badge variant={ineligible ? "neutral" : "success"}>{info.days}d</Badge>
+                  <span className="text-xs font-medium">{type.replace(/_/g, " ")}</span>
+                  <Badge variant={ineligible ? "neutral" : remaining === 0 ? "error" : remaining <= 2 ? "warning" : "success"}>
+                    {remaining}/{entitled}d
+                  </Badge>
                 </div>
-                <p className="text-[10px] text-[var(--text-tertiary)] mt-1 leading-relaxed">{info.ref}</p>
-                {ineligible && (
-                  <p className="text-[10px] text-[var(--warning)] mt-1">Requires 1 year of service</p>
-                )}
+                <div className="mt-2 h-1.5 rounded-full bg-[var(--bg-subtle)] overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-[var(--brand)] transition-all"
+                    style={{ width: entitled > 0 ? `${Math.max(0, (remaining / entitled) * 100)}%` : "0%" }}
+                  />
+                </div>
+                <div className="flex justify-between mt-1 text-[10px] text-[var(--text-tertiary)]">
+                  <span>{used}d used</span>
+                  <span>{remaining}d left</span>
+                </div>
+                {ineligible && <p className="text-[10px] text-[var(--warning)] mt-1">Requires 1 year of service</p>}
               </div>
             );
           })}
         </CardContent>
       </Card>
+
+      {/* Active loans */}
+      {activeLoans.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle>Active loans & deductions</CardTitle></CardHeader>
+          <CardContent className="pt-3 space-y-2">
+            {activeLoans.map((loan) => (
+              <div key={loan.id} className="flex items-center justify-between py-2 border-b border-[var(--border)] last:border-0">
+                <div>
+                  <div className="text-sm font-medium">{LOAN_LABELS[loan.type] ?? loan.type}</div>
+                  {loan.description && <div className="text-xs text-[var(--text-tertiary)]">{loan.description}</div>}
+                </div>
+                <div className="text-right">
+                  <div className="text-sm tabular">Balance: <span className="font-semibold">{php(loan.balance)}</span></div>
+                  <div className="text-xs text-[var(--text-tertiary)]">{php(loan.monthlyDeduction)}/mo deduction</div>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Recent payroll */}
       {e.payrolls.length > 0 && (

@@ -6,8 +6,28 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Table, TableHeader, TableBody, TableRow, Th, Td } from "@/components/ui/table";
-import { OT_MULTIPLIERS } from "@/lib/ph-payroll";
+import { OT_RATES } from "@/lib/ph-payroll";
 import { Clock, LogIn, LogOut, PlusCircle } from "lucide-react";
+
+const OT_RATE_OPTIONS: { value: string; label: string; group: string }[] = [
+  { value: "R_OT",     label: "R OT — Regular OT (×1.25)",                      group: "Regular OT" },
+  { value: "RD",       label: "RD — Rest Day (×1.30)",                           group: "Rest Day" },
+  { value: "RD_OT",    label: "RD OT — Rest Day OT (×1.69)",                     group: "Rest Day" },
+  { value: "SH",       label: "SH — Special Holiday (×1.30)",                    group: "Special Holiday" },
+  { value: "SH_OT",    label: "SH OT — Special Holiday OT (×1.69)",              group: "Special Holiday" },
+  { value: "SH_RD",    label: "SH RD — Special Holiday Rest Day (×1.50)",        group: "Special Holiday" },
+  { value: "SH_RD_OT", label: "SH RD OT — Special Holiday Rest Day OT (×1.95)", group: "Special Holiday" },
+  { value: "RH",       label: "RH — Regular Holiday (×2.00)",                    group: "Regular Holiday" },
+  { value: "RH_OT",    label: "RH OT — Regular Holiday OT (×2.60)",              group: "Regular Holiday" },
+  { value: "RH_RD",    label: "RH RD — Regular Holiday Rest Day (×2.60)",        group: "Regular Holiday" },
+  { value: "RH_RD_OT", label: "RH RD OT — Regular Holiday Rest Day OT (×3.38)", group: "Regular Holiday" },
+  { value: "ND",       label: "ND — Night Differential (×1.10)",                 group: "Night Differential" },
+  { value: "ND_OT",    label: "ND OT — Night Differential OT (×1.38)",           group: "Night Differential" },
+  { value: "ND_SH",    label: "ND SH — Night Diff on Special Holiday (×1.43)",   group: "Night Differential" },
+  { value: "ND_SH_OT", label: "ND SH OT — Night Diff Sp. Holiday OT (×1.86)",   group: "Night Differential" },
+  { value: "ND_RH",    label: "ND RH — Night Diff on Regular Holiday (×2.20)",   group: "Night Differential" },
+  { value: "ND_RH_OT", label: "ND RH OT — Night Diff Reg. Holiday OT (×2.86)",  group: "Night Differential" },
+];
 
 function todayPH() {
   const now = new Date();
@@ -82,7 +102,7 @@ async function logManual(formData: FormData) {
   const timeOutDt = new Date(date); timeOutDt.setHours(outH, outM, 0, 0);
   const hoursWorked = Math.max(0, (timeOutDt.getTime() - timeInDt.getTime()) / (1000 * 60 * 60));
   const otHours = Math.max(0, hoursWorked - 8);
-  const otherDeductions = formData.get("isHoliday") ? 1 : 0;
+  const otRateCode = formData.get("otRateCode") as string | null;
 
   await prisma.attendance.upsert({
     where: { employeeId_date: { employeeId, date } },
@@ -92,6 +112,7 @@ async function logManual(formData: FormData) {
       otHours: Math.round(otHours * 100) / 100,
       isRestDay: formData.get("isRestDay") === "on",
       isHoliday: formData.get("isHoliday") === "on",
+      otRateCode: otRateCode || null,
     },
     create: {
       employeeId, date,
@@ -101,6 +122,7 @@ async function logManual(formData: FormData) {
       ndHours: 0,
       isRestDay: formData.get("isRestDay") === "on",
       isHoliday: formData.get("isHoliday") === "on",
+      otRateCode: otRateCode || null,
     },
   });
   redirect("/attendance");
@@ -186,6 +208,7 @@ export default async function AttendancePage() {
                 <Th>Time out</Th>
                 <Th className="text-right">Hours</Th>
                 <Th className="text-right">OT</Th>
+                <Th>Rate</Th>
                 <Th></Th>
               </TableRow>
             </TableHeader>
@@ -217,6 +240,12 @@ export default async function AttendancePage() {
                   </Td>
                   <Td numeric className="text-[var(--text-secondary)]">
                     {rec?.otHours ? `${rec.otHours.toFixed(1)}h` : "—"}
+                  </Td>
+                  <Td>
+                    {rec?.otRateCode
+                      ? <Badge variant="neutral">{rec.otRateCode.replace(/_/g, " ")}</Badge>
+                      : <span className="text-[var(--text-tertiary)]">—</span>
+                    }
                   </Td>
                   <Td>
                     <div className="flex items-center gap-1.5 justify-end">
@@ -256,7 +285,7 @@ export default async function AttendancePage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-3">
-          <form action={logManual} className="grid sm:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
+          <form action={logManual} className="grid sm:grid-cols-3 lg:grid-cols-7 gap-3 items-end">
             <div className="flex flex-col gap-1.5 sm:col-span-2">
               <label className="text-xs font-medium text-[var(--text-secondary)]">Employee</label>
               <select
@@ -292,6 +321,22 @@ export default async function AttendancePage() {
               />
             </div>
             <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-[var(--text-secondary)]">Rate Code</label>
+              <select
+                name="otRateCode"
+                className="h-10 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)]"
+              >
+                <option value="">— None (regular day) —</option>
+                {["Regular OT", "Rest Day", "Special Holiday", "Regular Holiday", "Night Differential"].map((group) => (
+                  <optgroup key={group} label={group}>
+                    {OT_RATE_OPTIONS.filter((o) => o.group === group).map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-[var(--text-secondary)]">Flags</label>
               <div className="flex items-center gap-3 h-10">
                 <label className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] cursor-pointer">
@@ -302,7 +347,7 @@ export default async function AttendancePage() {
                 </label>
               </div>
             </div>
-            <div className="sm:col-span-3 lg:col-span-6 flex justify-end">
+            <div className="sm:col-span-3 lg:col-span-7 flex justify-end">
               <Button type="submit" size="sm">Save attendance</Button>
             </div>
           </form>
@@ -310,8 +355,8 @@ export default async function AttendancePage() {
       </Card>
 
       <p className="text-2xs text-[var(--text-tertiary)]">
-        OT computed automatically: hours beyond 8 = regular OT at ×{OT_MULTIPLIERS.regular} (Labor Code Art. 87).
-        Night differential (+{OT_MULTIPLIERS.ndPremium * 100}%, Art. 86) and rest-day/holiday premiums apply at payroll run.
+        OT computed automatically: hours beyond 8 = regular OT at ×{OT_RATES.R_OT} (Labor Code Art. 87).
+        Use manual entry to tag rest-day, holiday, or night differential rate codes — these flow into the correct payslip buckets at payroll run.
       </p>
     </div>
   );

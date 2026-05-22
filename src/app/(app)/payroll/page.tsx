@@ -8,7 +8,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Table, TableHeader, TableBody, TableRow, Th, Td, TableFooter } from "@/components/ui/table";
 import { php, phDate } from "@/lib/format";
 import { computeSemiMonthlyPayroll, OT_RATES, hourlyRate } from "@/lib/ph-payroll";
-import { PlayCircle, Wallet, FileText } from "lucide-react";
+import { PlayCircle, Wallet, FileText, Clock } from "lucide-react";
 
 function currentCutoff(now = new Date()) {
   const year = now.getFullYear();
@@ -94,6 +94,43 @@ async function runPayroll(formData: FormData) {
 export default async function PayrollPage({ searchParams }: { searchParams: Promise<{ ran?: string }> }) {
   const { ran } = await searchParams;
   const cutoff = currentCutoff();
+
+  // Fetch data for the hours preview card
+  const previewEmployees = await prisma.employee.findMany({
+    where: { archived: false },
+    orderBy: { lastName: "asc" },
+  });
+
+  const previewAttendance = await prisma.attendance.findMany({
+    where: { date: { gte: cutoff.start, lte: cutoff.end } },
+  });
+
+  // Group attendance rows by employeeId for the preview card
+  const attByEmployee = new Map<string, typeof previewAttendance>();
+  for (const row of previewAttendance) {
+    const list = attByEmployee.get(row.employeeId) ?? [];
+    list.push(row);
+    attByEmployee.set(row.employeeId, list);
+  }
+
+  const previewRows = previewEmployees.map((emp) => {
+    const rows = attByEmployee.get(emp.id) ?? [];
+    const days = rows.filter((r) => r.hoursWorked > 0).length;
+    const regHrs = rows.reduce((s, r) => s + Math.min(r.hoursWorked, 8), 0);
+    const hr = hourlyRate(emp.basicMonthlyRate);
+    let estOtPay = 0;
+    const codeSet = new Set<string>();
+    for (const row of rows) {
+      const hours = row.otHours ?? 0;
+      if (!hours) continue;
+      const code = row.otRateCode ?? "R_OT";
+      codeSet.add(code);
+      estOtPay += Math.round(hours * hr * (OT_RATES[code] ?? 1.25) * 100) / 100;
+    }
+    const otHrs = rows.reduce((s, r) => s + (r.otHours ?? 0), 0);
+    return { emp, days, regHrs, otHrs, estOtPay, codes: [...codeSet] };
+  });
+
   const runs = await prisma.payroll.findMany({
     where: { periodStart: cutoff.start, periodEnd: cutoff.end },
     include: { employee: true },
@@ -139,6 +176,66 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
           ✓ Payroll computed for all active employees. Review and release below.
         </div>
       )}
+
+      {/* Hours preview card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Clock className="h-4 w-4 text-[var(--brand)]" />
+            Attendance summary — {cutoff.label}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <Th>Employee</Th>
+                <Th className="text-right">Days</Th>
+                <Th className="text-right">Reg hrs</Th>
+                <Th className="text-right">OT hrs</Th>
+                <Th>Rate codes</Th>
+                <Th className="text-right">Est. OT pay</Th>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {previewRows.map(({ emp, days, regHrs, otHrs, estOtPay, codes }) => (
+                <TableRow key={emp.id}>
+                  <Td>
+                    <span className="text-sm font-medium">{emp.lastName}, {emp.firstName}</span>
+                  </Td>
+                  <Td numeric className="text-[var(--text-secondary)]">
+                    {days > 0 ? days : <span className="text-[var(--text-tertiary)]">—</span>}
+                  </Td>
+                  <Td numeric className="text-[var(--text-secondary)]">
+                    {regHrs > 0 ? `${regHrs.toFixed(1)}h` : <span className="text-[var(--text-tertiary)]">—</span>}
+                  </Td>
+                  <Td numeric className="text-[var(--text-secondary)]">
+                    {otHrs > 0 ? `${otHrs.toFixed(1)}h` : <span className="text-[var(--text-tertiary)]">—</span>}
+                  </Td>
+                  <Td>
+                    {codes.length > 0
+                      ? <div className="flex flex-wrap gap-1">
+                          {codes.map((c) => (
+                            <Badge key={c} variant="neutral" className="text-[10px]">{c.replace(/_/g, " ")}</Badge>
+                          ))}
+                        </div>
+                      : <span className="text-[var(--text-tertiary)] text-xs">—</span>
+                    }
+                  </Td>
+                  <Td numeric>
+                    {days === 0
+                      ? <span className="text-xs text-[var(--text-tertiary)]">fixed ½-month</span>
+                      : estOtPay > 0
+                        ? <span className="font-medium text-[var(--brand)]">{php(estOtPay)}</span>
+                        : <span className="text-[var(--text-tertiary)]">—</span>
+                    }
+                  </Td>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       {/* Summary KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

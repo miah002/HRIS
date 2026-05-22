@@ -75,20 +75,39 @@ export function withholdingTaxMonthly(taxableMonthlyIncome: number) {
 }
 
 // ---------- Overtime / Night differential premiums (Labor Code Art. 87, 86) ----------
-// Regular OT = 125% of hourly rate; Rest day/special day OT = 130%; Holiday OT = 200%+.
-// Night differential = +10% of hourly rate for work between 22:00–06:00.
+// Full DOLE rate matrix keyed by attendance rate code.
+export const OT_RATES: Record<string, number> = {
+  R_OT:      1.25,
+  RD:        1.30,
+  RD_OT:     1.69,
+  SH:        1.30,
+  SH_OT:     1.69,
+  SH_RD:     1.50,
+  SH_RD_OT:  1.95,
+  RH:        2.00,
+  RH_OT:     2.60,
+  RH_RD:     2.60,
+  RH_RD_OT:  3.38,
+  ND:        1.10,
+  ND_OT:     1.38,
+  ND_SH:     1.43,
+  ND_SH_OT:  1.86,
+  ND_RH:     2.20,
+  ND_RH_OT:  2.86,
+};
+
+// Deprecated alias — keeps existing imports working
 export const OT_MULTIPLIERS = {
-  regular: 1.25,        // Art. 87
-  restDay: 1.30,        // Art. 93
-  specialDay: 1.30,     // Special non-working
-  regularHoliday: 2.0,  // Art. 94 — 200% for holiday work; OT on holiday adds 30% on top
-  ndPremium: 0.10,      // Art. 86 — night differential
+  regular:        OT_RATES.R_OT,
+  restDay:        OT_RATES.RD,
+  specialDay:     OT_RATES.SH,
+  regularHoliday: OT_RATES.RH,
+  ndPremium:      0.10,
 };
 
 export function hourlyRate(monthlyRate: number) {
-  // DOLE convention: 313 paid days / 12 months ÷ 8 hours. (Use 261 for 5-day weeks, 313 for 6-day.)
-  const dailyRate = (monthlyRate * 12) / 313;
-  return dailyRate / 8;
+  // 21.75 = 261 working days / 12 months (5-day week DOLE standard)
+  return (monthlyRate / 21.75) / 8;
 }
 
 // ---------- Semi-monthly payroll (cutoffs 1–15 and 16–end) ----------
@@ -98,53 +117,61 @@ export interface PayrollInput {
   monthlyRate: number;
   periodStart: Date;
   periodEnd: Date;
-  // If daysWorked is provided, basic pay is computed from actual attendance.
-  // Otherwise defaults to monthlyRate / 2 (fixed half-month).
   daysWorked?: number;
   regularHours?: number;
   otHours?: number;
+  otRateCode?: string;          // rate code when otHours is a single-bucket value
   ndHours?: number;
   holidayPay?: number;
   allowances?: number;
-  // Taxable: bonuses, commissions, excess 13th month, etc.
   taxableAdjustments?: number;
-  // Non-taxable: de minimis benefits, meal/rice/clothing allowances within BIR limits.
   nonTaxableAdjustments?: number;
   otherDeductions?: number;
+  // Pre-computed overrides: when payroll run aggregates per-row rate codes,
+  // these bypass the otHours/ndHours calculation entirely.
+  overtimePayIn?: number;
+  nightDiffPayIn?: number;
+  holidayPayIn?: number;
 }
 
 export function computeSemiMonthlyPayroll(i: PayrollInput) {
   const hr = hourlyRate(i.monthlyRate);
-  // DOLE daily rate: (monthly * 12) / 313 for 6-day, use 261 for 5-day
-  const dailyRate = round2((i.monthlyRate * 12) / 313);
+  const dailyRate = round2(i.monthlyRate / 21.75);
 
-  // Basic pay: from actual days worked if available, else fixed half-month
   const basicPay = i.daysWorked != null && i.daysWorked > 0
     ? round2(i.daysWorked * dailyRate)
     : round2(i.monthlyRate / 2);
 
-  const otPay = round2((i.otHours ?? 0) * hr * OT_MULTIPLIERS.regular);
-  const ndPay = round2((i.ndHours ?? 0) * hr * OT_MULTIPLIERS.ndPremium);
-  const holidayPay = i.holidayPay ?? 0;
+  // Use pre-computed buckets when provided (payroll run with per-row rate codes),
+  // otherwise fall back to single-bucket otHours calculation.
+  const otPay = i.overtimePayIn != null
+    ? round2(i.overtimePayIn)
+    : round2((i.otHours ?? 0) * hr * (OT_RATES[i.otRateCode ?? "R_OT"] ?? 1.25));
+
+  const ndPay = i.nightDiffPayIn != null
+    ? round2(i.nightDiffPayIn)
+    : round2((i.ndHours ?? 0) * hr * OT_RATES.ND);
+
+  const holidayPay = i.holidayPayIn != null
+    ? round2(i.holidayPayIn)
+    : (i.holidayPay ?? 0);
+
   const allowances = i.allowances ?? 0;
   const taxableAdj = i.taxableAdjustments ?? 0;
   const nonTaxableAdj = i.nonTaxableAdjustments ?? 0;
 
   const grossPay = round2(basicPay + otPay + ndPay + holidayPay + allowances + taxableAdj + nonTaxableAdj);
 
-  // Monthly statutory contributions / 2 for semi-monthly split
-  const sss = sssContribution(i.monthlyRate);
+  const sss  = sssContribution(i.monthlyRate);
   const phic = philHealthContribution(i.monthlyRate);
   const hdmf = pagIbigContribution(i.monthlyRate);
 
-  const sssEE = round2(sss.employee / 2);
+  const sssEE  = round2(sss.employee / 2);
   const phicEE = round2(phic.employee / 2);
   const hdmfEE = round2(hdmf.employee / 2);
 
-  // WHT is computed on taxable earnings only (non-taxable adj excluded).
-  // Annualize semi-monthly taxable to get monthly equivalent, then halve WHT.
   const monthlyStatutory = sss.employee + phic.employee + hdmf.employee;
-  const taxableSemi = basicPay + otPay + taxableAdj; // non-taxable excluded
+  const taxableSemi = basicPay + otPay + taxableAdj;
   const taxableMonthly = Math.max(0, taxableSemi * 2 - monthlyStatutory);
   const monthlyWHT = withholdingTaxMonthly(taxableMonthly);
   const whtSemi = round2(monthlyWHT / 2);

@@ -127,6 +127,7 @@ model Attendance {
   ndHours     Float     @default(0)
   isRestDay   Boolean   @default(false)
   isHoliday   Boolean   @default(false)
+  otRateCode  String?
   notes       String?
   @@unique([employeeId, date])
 }

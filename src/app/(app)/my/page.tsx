@@ -8,8 +8,44 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { php, phDate } from "@/lib/format";
 import { computeSemiMonthlyPayroll, STATUTORY_LEAVE } from "@/lib/ph-payroll";
-import { Mail, Phone, Building2, CalendarCheck, Wallet } from "lucide-react";
+import { Mail, Phone, Building2, CalendarCheck, Wallet, Clock } from "lucide-react";
 import { Greeting } from "../dashboard/greeting";
+
+async function clockIn() {
+  "use server";
+  const session = await auth();
+  if (!session) redirect("/login");
+  const user = await prisma.user.findUnique({ where: { email: session.user!.email! }, include: { employee: true } });
+  if (!user?.employee) redirect("/my");
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const now = new Date();
+  await prisma.attendance.upsert({
+    where: { employeeId_date: { employeeId: user.employee.id, date: today } },
+    update: { timeIn: now },
+    create: { employeeId: user.employee.id, date: today, timeIn: now, hoursWorked: 0 },
+  });
+  redirect("/my");
+}
+
+async function clockOut() {
+  "use server";
+  const session = await auth();
+  if (!session) redirect("/login");
+  const user = await prisma.user.findUnique({ where: { email: session.user!.email! }, include: { employee: true } });
+  if (!user?.employee) redirect("/my");
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const now = new Date();
+  const rec = await prisma.attendance.findUnique({ where: { employeeId_date: { employeeId: user.employee.id, date: today } } });
+  const timeInDt = rec?.timeIn ?? now;
+  const hoursWorked = Math.max(0, (now.getTime() - timeInDt.getTime()) / (1000 * 60 * 60));
+  const otHours = Math.max(0, hoursWorked - 8);
+  await prisma.attendance.upsert({
+    where: { employeeId_date: { employeeId: user.employee.id, date: today } },
+    update: { timeOut: now, hoursWorked: Math.round(hoursWorked * 100) / 100, otHours: Math.round(otHours * 100) / 100 },
+    create: { employeeId: user.employee.id, date: today, timeIn: timeInDt, timeOut: now, hoursWorked: Math.round(hoursWorked * 100) / 100, otHours: Math.round(otHours * 100) / 100 },
+  });
+  redirect("/my");
+}
 
 async function requestLeave(formData: FormData) {
   "use server";
@@ -56,6 +92,13 @@ export default async function MyPortalPage() {
   }
 
   const e = user.employee;
+
+  // Today's attendance
+  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+  const todayAttendance = await prisma.attendance.findUnique({
+    where: { employeeId_date: { employeeId: e.id, date: todayStart } },
+  });
+
   const projected = computeSemiMonthlyPayroll({ monthlyRate: e.basicMonthlyRate, periodStart: new Date(), periodEnd: new Date() });
   const yearsOfService = (Date.now() - +e.dateHired) / (1000 * 60 * 60 * 24 * 365.25);
   const eligibleSIL = yearsOfService >= 1;
@@ -97,6 +140,58 @@ export default async function MyPortalPage() {
                 <span className="flex items-center gap-1.5"><Building2 className="h-3 w-3" />Hired {phDate(e.dateHired)} · {yearsOfService.toFixed(1)} years</span>
                 <span className="flex items-center gap-1.5"><Wallet className="h-3 w-3" />Basic: {php(e.basicMonthlyRate)}/mo</span>
               </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Today's Attendance */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-[var(--brand)]" /> Today&apos;s Attendance
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-3">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex gap-6 text-sm">
+              <div>
+                <div className="text-xs text-[var(--text-tertiary)] mb-0.5">Time In</div>
+                <div className="font-mono font-medium">
+                  {todayAttendance?.timeIn
+                    ? todayAttendance.timeIn.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" })
+                    : "—"}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-[var(--text-tertiary)] mb-0.5">Time Out</div>
+                <div className="font-mono font-medium">
+                  {todayAttendance?.timeOut
+                    ? todayAttendance.timeOut.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" })
+                    : "—"}
+                </div>
+              </div>
+              {todayAttendance?.hoursWorked ? (
+                <div>
+                  <div className="text-xs text-[var(--text-tertiary)] mb-0.5">Hours</div>
+                  <div className="font-mono font-medium">{todayAttendance.hoursWorked.toFixed(2)}h</div>
+                </div>
+              ) : null}
+            </div>
+            <div className="flex gap-2">
+              {!todayAttendance?.timeIn && (
+                <form action={clockIn}>
+                  <Button type="submit" size="sm">Clock In</Button>
+                </form>
+              )}
+              {todayAttendance?.timeIn && !todayAttendance?.timeOut && (
+                <form action={clockOut}>
+                  <Button type="submit" size="sm" variant="outline">Clock Out</Button>
+                </form>
+              )}
+              {todayAttendance?.timeIn && todayAttendance?.timeOut && (
+                <Badge variant="success">Done for today</Badge>
+              )}
             </div>
           </div>
         </CardContent>

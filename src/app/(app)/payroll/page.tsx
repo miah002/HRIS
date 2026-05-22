@@ -7,7 +7,7 @@ import { Badge, STATUS_BADGE } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Table, TableHeader, TableBody, TableRow, Th, Td, TableFooter } from "@/components/ui/table";
 import { php, phDate } from "@/lib/format";
-import { computeSemiMonthlyPayroll } from "@/lib/ph-payroll";
+import { computeSemiMonthlyPayroll, OT_RATES, hourlyRate } from "@/lib/ph-payroll";
 import { PlayCircle, Wallet, FileText } from "lucide-react";
 
 function currentCutoff(now = new Date()) {
@@ -31,7 +31,22 @@ async function runPayroll(formData: FormData) {
     });
     const daysWorked = attendance.filter((a) => a.hoursWorked > 0).length;
     const regularHours = attendance.reduce((sum, a) => sum + Math.min(a.hoursWorked, 8), 0);
-    const otHours = attendance.reduce((sum, a) => sum + (a.otHours ?? 0), 0);
+
+    const hr = hourlyRate(e.basicMonthlyRate);
+    let overtimePayIn = 0;
+    let nightDiffPayIn = 0;
+    let holidayPayIn   = 0;
+
+    for (const row of attendance) {
+      const hours = row.otHours ?? 0;
+      if (!hours) continue;
+      const code = row.otRateCode ?? "R_OT";
+      const mult = OT_RATES[code] ?? 1.25;
+      const pay  = Math.round(hours * hr * mult * 100) / 100;
+      if (code.startsWith("ND"))       nightDiffPayIn += pay;
+      else if (code.startsWith("RH"))  holidayPayIn   += pay;
+      else                             overtimePayIn  += pay;
+    }
 
     // Preserve existing adjustments if payroll already ran for this period
     const existing = await prisma.payroll.findUnique({
@@ -47,7 +62,9 @@ async function runPayroll(formData: FormData) {
       periodEnd: end,
       daysWorked: daysWorked > 0 ? daysWorked : undefined,
       regularHours,
-      otHours,
+      overtimePayIn,
+      nightDiffPayIn,
+      holidayPayIn,
       taxableAdjustments: taxableAdj,
       nonTaxableAdjustments: nonTaxableAdj,
     });

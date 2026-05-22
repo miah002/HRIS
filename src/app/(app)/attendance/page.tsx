@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
@@ -5,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
-import { Table, TableHeader, TableBody, TableRow, Th, Td } from "@/components/ui/table";
+import { Table, TableHeader, TableBody, TableRow, Th, Td, TableFooter } from "@/components/ui/table";
 import { OT_RATES } from "@/lib/ph-payroll";
 import { Clock, LogIn, LogOut, PlusCircle } from "lucide-react";
 
@@ -28,6 +29,18 @@ const OT_RATE_OPTIONS: { value: string; label: string; group: string }[] = [
   { value: "ND_RH",    label: "ND RH — Night Diff on Regular Holiday (×2.20)",   group: "Night Differential" },
   { value: "ND_RH_OT", label: "ND RH OT — Night Diff Reg. Holiday OT (×2.86)",  group: "Night Differential" },
 ];
+
+function currentCutoff(now = new Date()) {
+  const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
+  if (d <= 15) return { start: new Date(y, m, 1), end: new Date(y, m, 15), label: `${now.toLocaleString("en-PH", { month: "long" })} 1–15` };
+  return { start: new Date(y, m, 16), end: new Date(y, m + 1, 0), label: `${now.toLocaleString("en-PH", { month: "long" })} 16–end` };
+}
+
+function lastCutoff(now = new Date()) {
+  const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
+  if (d <= 15) return { start: new Date(y, m - 1, 16), end: new Date(y, m, 0) };
+  return { start: new Date(y, m, 1), end: new Date(y, m, 15) };
+}
 
 function todayPH() {
   const now = new Date();
@@ -128,13 +141,53 @@ async function logManual(formData: FormData) {
   redirect("/attendance");
 }
 
-export default async function AttendancePage() {
+export default async function AttendancePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string>>;
+}) {
   const session = await auth();
   if (!session) redirect("/login");
   const user = await prisma.user.findUnique({ where: { email: session.user!.email! } });
 
+  const companyId = user?.companyId ?? "";
+
+  const params = await searchParams;
+  const tab = params.tab ?? "today";
+
+  // History filter params
+  const period = params.period ?? "current";
+  const histEmployeeId = params.employeeId ?? "";
+  const now = new Date();
+  let histFrom: Date, histTo: Date, histLabel: string;
+  if (period === "last") {
+    const lc = lastCutoff(now);
+    histFrom = lc.start; histTo = lc.end;
+    histLabel = "Last cutoff";
+  } else if (period === "custom" && params.from && params.to) {
+    histFrom = new Date(params.from + "T00:00:00");
+    histTo   = new Date(params.to   + "T23:59:59");
+    histLabel = `${params.from} – ${params.to}`;
+  } else {
+    const cc = currentCutoff(now);
+    histFrom = cc.start; histTo = cc.end;
+    histLabel = `Current cutoff (${cc.label})`;
+  }
+
+  const histRecords = tab === "history"
+    ? await prisma.attendance.findMany({
+        where: {
+          employee: { companyId },
+          date: { gte: histFrom, lte: histTo },
+          ...(histEmployeeId ? { employeeId: histEmployeeId } : {}),
+        },
+        include: { employee: true },
+        orderBy: [{ employee: { lastName: "asc" } }, { date: "asc" }],
+      })
+    : [];
+
   const employees = await prisma.employee.findMany({
-    where: { companyId: user?.companyId ?? "", archived: false },
+    where: { companyId, archived: false },
     orderBy: { firstName: "asc" },
   });
 
@@ -142,7 +195,7 @@ export default async function AttendancePage() {
   const todayRecords = await prisma.attendance.findMany({
     where: {
       date: today,
-      employee: { companyId: user?.companyId ?? "" },
+      employee: { companyId },
     },
     include: { employee: true },
   });
@@ -168,6 +221,30 @@ export default async function AttendancePage() {
         </div>
         <p className="text-sm text-[var(--text-secondary)] mt-0.5">Daily Time Record · {todayLabel}</p>
       </div>
+
+      {/* Tab switcher */}
+      <div className="flex gap-0 border-b border-[var(--border)]">
+        {[
+          { label: "Today", value: "today" },
+          { label: "History", value: "history" },
+        ].map((t) => (
+          <Link
+            key={t.value}
+            href={`/attendance?tab=${t.value}`}
+            className={`px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              tab === t.value
+                ? "border-[var(--brand)] text-[var(--brand)]"
+                : "border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            }`}
+          >
+            {t.label}
+          </Link>
+        ))}
+      </div>
+
+      {/* ── TODAY TAB ── */}
+      {tab !== "history" && (
+      <>
 
       {/* Summary strip */}
       <div className="grid grid-cols-3 gap-3">
@@ -358,6 +435,175 @@ export default async function AttendancePage() {
         OT computed automatically: hours beyond 8 = regular OT at ×{OT_RATES.R_OT} (Labor Code Art. 87).
         Use manual entry to tag rest-day, holiday, or night differential rate codes — these flow into the correct payslip buckets at payroll run.
       </p>
+
+      </>
+      )}
+
+      {/* ── HISTORY TAB ── */}
+      {tab === "history" && (
+        <div className="space-y-5">
+          {/* Filter form */}
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <form method="GET" className="flex flex-wrap gap-3 items-end">
+                <input type="hidden" name="tab" value="history" />
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium text-[var(--text-secondary)]">Period</label>
+                  <select
+                    name="period"
+                    defaultValue={period}
+                    className="h-10 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)]"
+                  >
+                    <option value="current">Current cutoff</option>
+                    <option value="last">Last cutoff</option>
+                    <option value="custom">Custom range</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium text-[var(--text-secondary)]">From</label>
+                  <input
+                    type="date" name="from"
+                    defaultValue={params.from ?? histFrom.toISOString().split("T")[0]}
+                    className="h-10 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)]"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium text-[var(--text-secondary)]">To</label>
+                  <input
+                    type="date" name="to"
+                    defaultValue={params.to ?? histTo.toISOString().split("T")[0]}
+                    className="h-10 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)]"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium text-[var(--text-secondary)]">Employee</label>
+                  <select
+                    name="employeeId"
+                    defaultValue={histEmployeeId}
+                    className="h-10 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)]"
+                  >
+                    <option value="">All employees</option>
+                    {employees.map((e) => (
+                      <option key={e.id} value={e.id}>{e.lastName}, {e.firstName}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <Button type="submit" size="sm">View</Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Results */}
+          {histRecords.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <p className="text-sm font-medium">No attendance records found</p>
+                <p className="text-xs text-[var(--text-tertiary)] mt-1">
+                  {histLabel} · {histEmployeeId ? "Selected employee" : "All employees"}
+                </p>
+                <Link href="/attendance" className="mt-3 inline-block text-xs text-[var(--brand)] hover:underline">
+                  Log manual entry →
+                </Link>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">
+                  {histLabel} · {histRecords.length} record{histRecords.length !== 1 ? "s" : ""}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <Th>Employee</Th>
+                      <Th>Date</Th>
+                      <Th>Day</Th>
+                      <Th>Time in</Th>
+                      <Th>Time out</Th>
+                      <Th className="text-right">Hrs</Th>
+                      <Th className="text-right">OT</Th>
+                      <Th>Rate</Th>
+                      <Th>Status</Th>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {histRecords.map((rec) => {
+                      const status =
+                        !rec.timeIn ? "Absent"
+                        : !rec.timeOut ? "In progress"
+                        : rec.hoursWorked < 8 ? "Late / Short"
+                        : "Present";
+                      return (
+                        <TableRow key={rec.id}>
+                          <Td>
+                            <span className="text-sm font-medium">
+                              {rec.employee.lastName}, {rec.employee.firstName}
+                            </span>
+                          </Td>
+                          <Td className="text-[var(--text-secondary)]">
+                            {rec.date.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}
+                          </Td>
+                          <Td className="text-[var(--text-secondary)]">
+                            {rec.date.toLocaleDateString("en-PH", { weekday: "short" })}
+                          </Td>
+                          <Td className="tabular text-[var(--text-secondary)]">{fmt(rec.timeIn)}</Td>
+                          <Td className="tabular text-[var(--text-secondary)]">{fmt(rec.timeOut)}</Td>
+                          <Td numeric className="text-[var(--text-secondary)]">
+                            {rec.hoursWorked ? `${rec.hoursWorked.toFixed(1)}h` : "—"}
+                          </Td>
+                          <Td numeric className="text-[var(--text-secondary)]">
+                            {rec.otHours ? `${rec.otHours.toFixed(1)}h` : "—"}
+                          </Td>
+                          <Td>
+                            {rec.otRateCode
+                              ? <Badge variant="neutral">{rec.otRateCode.replace(/_/g, " ")}</Badge>
+                              : <span className="text-[var(--text-tertiary)]">—</span>
+                            }
+                          </Td>
+                          <Td>
+                            <Badge
+                              dot
+                              variant={
+                                status === "Present" ? "success"
+                                : status === "In progress" ? "brand"
+                                : status === "Late / Short" ? "warning"
+                                : "neutral"
+                              }
+                            >
+                              {status}
+                            </Badge>
+                          </Td>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                  <TableFooter>
+                    <TableRow>
+                      <Td colSpan={5} className="text-xs text-[var(--text-secondary)] font-medium">
+                        Totals
+                      </Td>
+                      <Td numeric className="font-semibold">
+                        {histRecords.reduce((s, r) => s + Math.min(r.hoursWorked, 8), 0).toFixed(1)}h
+                      </Td>
+                      <Td numeric className="font-semibold">
+                        {histRecords.reduce((s, r) => s + (r.otHours ?? 0), 0).toFixed(1)}h
+                      </Td>
+                      <Td colSpan={2} />
+                    </TableRow>
+                  </TableFooter>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
     </div>
   );
 }

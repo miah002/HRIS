@@ -138,9 +138,8 @@ export function computeSemiMonthlyPayroll(i: PayrollInput) {
   const hr = hourlyRate(i.monthlyRate);
   const dailyRate = round2(i.monthlyRate / 21.75);
 
-  const basicPay = i.daysWorked != null && i.daysWorked > 0
-    ? round2(i.daysWorked * dailyRate)
-    : round2(i.monthlyRate / 2);
+  // Fixed semi-monthly: always pay half-month rate. daysWorked is informational only.
+  const basicPay = round2(i.monthlyRate / 2);
 
   // Use pre-computed buckets when provided (payroll run with per-row rate codes),
   // otherwise fall back to single-bucket otHours calculation.

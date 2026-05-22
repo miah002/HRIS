@@ -202,7 +202,7 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
   const earnings = [
     {
       label: payroll.daysWorked > 0
-        ? `Basic pay (${payroll.daysWorked}d × ${php(e.basicMonthlyRate / 21.75)})`
+        ? `Basic pay (½ month — ${payroll.daysWorked}d worked)`
         : "Basic pay (½ month)",
       amount: payroll.basicPay,
     },

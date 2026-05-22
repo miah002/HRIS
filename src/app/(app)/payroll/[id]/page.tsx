@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft } from "lucide-react";
 import { PrintButton } from "./print-button";
-import { computeSemiMonthlyPayroll } from "@/lib/ph-payroll";
+import { computeSemiMonthlyPayroll, OT_RATES, hourlyRate } from "@/lib/ph-payroll";
+import { Table, TableHeader, TableBody, TableRow, Th, Td, TableFooter } from "@/components/ui/table";
 
 async function releasePayroll(id: string) {
   "use server";
@@ -159,8 +160,27 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
   });
   if (!payroll) notFound();
 
+  const attendanceRows = await prisma.attendance.findMany({
+    where: {
+      employeeId: payroll.employeeId,
+      date: { gte: payroll.periodStart, lte: payroll.periodEnd },
+    },
+    orderBy: { date: "asc" },
+  });
+
   const e = payroll.employee;
   const co = e.company;
+
+  const hr = hourlyRate(e.basicMonthlyRate);
+  const attTotalRegHrs = attendanceRows.reduce((s, r) => s + Math.min(r.hoursWorked, 8), 0);
+  const attTotalOtHrs  = attendanceRows.reduce((s, r) => s + (r.otHours ?? 0), 0);
+  const attTotalDays   = attendanceRows.filter((r) => r.hoursWorked > 0).length;
+  const attTotalOtPay  = attendanceRows.reduce((s, r) => {
+    const hours = r.otHours ?? 0;
+    if (!hours) return s;
+    const code = r.otRateCode ?? "R_OT";
+    return s + Math.round(hours * hr * (OT_RATES[code] ?? 1.25) * 100) / 100;
+  }, 0);
   const releaseFn = releasePayroll.bind(null, id);
   const updateHoursFn = updateHours.bind(null, id);
   const addAdjustmentFn = addAdjustment.bind(null, id);
@@ -182,7 +202,7 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
   const earnings = [
     {
       label: payroll.daysWorked > 0
-        ? `Basic pay (${payroll.daysWorked}d × ${php((e.basicMonthlyRate * 12) / 313)})`
+        ? `Basic pay (${payroll.daysWorked}d × ${php(e.basicMonthlyRate / 21.75)})`
         : "Basic pay (½ month)",
       amount: payroll.basicPay,
     },
@@ -239,7 +259,7 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
               </p>
               {payroll.daysWorked > 0 && (
                 <p className="text-xs opacity-75 mt-0.5">
-                  Days: {payroll.daysWorked} · OT: {payroll.overtimePay > 0 ? (payroll.overtimePay / ((e.basicMonthlyRate * 12 / 313 / 8) * 1.25)).toFixed(1) + "h" : "0h"}
+                  Days: {payroll.daysWorked} · OT hrs: {attTotalOtHrs > 0 ? `${attTotalOtHrs.toFixed(1)}h` : "0h"}
                 </p>
               )}
             </div>
@@ -353,6 +373,96 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
+      {/* Attendance detail — hidden on print */}
+      <div className="print:hidden rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-elevated)] overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-[var(--border)]">
+          <div className="text-sm font-semibold">Attendance records this period</div>
+          <div className="text-xs text-[var(--text-tertiary)] mt-0.5">
+            {phDate(payroll.periodStart)} – {phDate(payroll.periodEnd)}
+          </div>
+        </div>
+
+        {attendanceRows.length === 0 ? (
+          <div className="px-5 py-8 text-center">
+            <p className="text-sm text-[var(--text-secondary)]">No attendance recorded for this period.</p>
+            <p className="text-xs text-[var(--text-tertiary)] mt-1">
+              Basic pay computed as fixed half-month ({php(e.basicMonthlyRate / 2)}).
+            </p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <Th>Date</Th>
+                <Th>Day</Th>
+                <Th>Time in</Th>
+                <Th>Time out</Th>
+                <Th className="text-right">Reg hrs</Th>
+                <Th className="text-right">OT hrs</Th>
+                <Th>Rate code</Th>
+                <Th className="text-right">OT pay</Th>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {attendanceRows.map((row) => {
+                const hours = row.otHours ?? 0;
+                const code  = row.otRateCode ?? "R_OT";
+                const rowOtPay = hours > 0
+                  ? Math.round(hours * hr * (OT_RATES[code] ?? 1.25) * 100) / 100
+                  : 0;
+                return (
+                  <TableRow key={row.id}>
+                    <Td className="text-[var(--text-secondary)]">
+                      {row.date.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}
+                    </Td>
+                    <Td className="text-[var(--text-secondary)]">
+                      {row.date.toLocaleDateString("en-PH", { weekday: "short" })}
+                    </Td>
+                    <Td className="tabular text-[var(--text-secondary)]">
+                      {row.timeIn ? row.timeIn.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit", hour12: true }) : "—"}
+                    </Td>
+                    <Td className="tabular text-[var(--text-secondary)]">
+                      {row.timeOut ? row.timeOut.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit", hour12: true }) : "—"}
+                    </Td>
+                    <Td numeric className="text-[var(--text-secondary)]">
+                      {Math.min(row.hoursWorked, 8).toFixed(1)}h
+                    </Td>
+                    <Td numeric className="text-[var(--text-secondary)]">
+                      {hours > 0 ? `${hours.toFixed(1)}h` : "—"}
+                    </Td>
+                    <Td>
+                      {row.otRateCode
+                        ? <Badge variant="neutral" className="text-[10px]">{row.otRateCode.replace(/_/g, " ")}</Badge>
+                        : <span className="text-[var(--text-tertiary)]">—</span>
+                      }
+                    </Td>
+                    <Td numeric>
+                      {rowOtPay > 0
+                        ? <span className="font-medium text-[var(--brand)]">{php(rowOtPay)}</span>
+                        : <span className="text-[var(--text-tertiary)]">—</span>
+                      }
+                    </Td>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+            <TableFooter>
+              <TableRow>
+                <Td colSpan={4} className="text-xs font-medium text-[var(--text-secondary)]">
+                  Total · {attTotalDays} day{attTotalDays !== 1 ? "s" : ""}
+                </Td>
+                <Td numeric className="font-semibold">{attTotalRegHrs.toFixed(1)}h</Td>
+                <Td numeric className="font-semibold">{attTotalOtHrs > 0 ? `${attTotalOtHrs.toFixed(1)}h` : "—"}</Td>
+                <Td />
+                <Td numeric className="font-semibold text-[var(--brand)]">
+                  {attTotalOtPay > 0 ? php(attTotalOtPay) : "—"}
+                </Td>
+              </TableRow>
+            </TableFooter>
+          </Table>
+        )}
+      </div>
+
       {/* Admin tools — hidden from print */}
       {isAdmin && (
         <div className="print:hidden space-y-4">
@@ -374,9 +484,7 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
                 <label className="text-xs text-[var(--text-secondary)]">OT hours</label>
                 <input
                   type="number" name="otHours" min="0" step="0.5"
-                  defaultValue={payroll.overtimePay > 0
-                    ? (payroll.overtimePay / ((e.basicMonthlyRate * 12 / 313 / 8) * 1.25)).toFixed(1)
-                    : ""}
+                  defaultValue={attTotalOtHrs > 0 ? attTotalOtHrs.toFixed(1) : ""}
                   placeholder="e.g. 4"
                   className="h-9 w-28 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg)] px-3 text-sm focus:outline-none focus:border-[var(--brand)]"
                 />
@@ -384,7 +492,7 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
               <Button type="submit" size="sm" variant="outline">Recalculate</Button>
             </form>
             <p className="text-[10px] text-[var(--text-tertiary)] mt-2">
-              Daily rate: {php((e.basicMonthlyRate * 12) / 313)} · Hourly: {php((e.basicMonthlyRate * 12) / 313 / 8)} · OT rate (×1.25): {php((e.basicMonthlyRate * 12) / 313 / 8 * 1.25)}
+              Daily rate: {php(e.basicMonthlyRate / 21.75)} · Hourly: {php(e.basicMonthlyRate / 21.75 / 8)} · OT rate (×1.25): {php(e.basicMonthlyRate / 21.75 / 8 * 1.25)}
             </p>
           </div>
 

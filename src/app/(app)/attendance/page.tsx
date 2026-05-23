@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Table, TableHeader, TableBody, TableRow, Th, Td, TableFooter } from "@/components/ui/table";
 import { OT_RATES } from "@/lib/ph-payroll";
+import { getPHHoliday } from "@/lib/ph-holidays";
 import { Clock, LogIn, LogOut, PlusCircle } from "lucide-react";
 
 const OT_RATE_OPTIONS: { value: string; label: string; group: string }[] = [
@@ -42,6 +43,13 @@ function lastCutoff(now = new Date()) {
   return { start: new Date(y, m, 1), end: new Date(y, m, 15) };
 }
 
+function mondayOf(dateStr: string): Date {
+  const d = new Date(dateStr + "T00:00:00");
+  const day = d.getDay();
+  d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+  return d;
+}
+
 function todayPH() {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -50,6 +58,14 @@ function todayPH() {
 function fmt(d: Date | null): string {
   if (!d) return "—";
   return d.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit", hour12: true });
+}
+
+function computeNdHours(timeIn: Date, timeOut: Date): number {
+  const ndStart = new Date(timeIn); ndStart.setHours(22, 0, 0, 0);
+  const ndEnd   = new Date(timeIn); ndEnd.setDate(ndEnd.getDate() + 1); ndEnd.setHours(6, 0, 0, 0);
+  const overlapStart = Math.max(timeIn.getTime(), ndStart.getTime());
+  const overlapEnd   = Math.min(timeOut.getTime(), ndEnd.getTime());
+  return Math.round((Math.max(0, overlapEnd - overlapStart) / 3600000) * 100) / 100;
 }
 
 async function timeIn(formData: FormData) {
@@ -141,6 +157,41 @@ async function logManual(formData: FormData) {
   redirect("/attendance");
 }
 
+async function bulkEntry(formData: FormData) {
+  "use server";
+  const session = await auth();
+  if (!session) redirect("/login");
+  const employeeId = String(formData.get("employeeId"));
+  const weekStr    = String(formData.get("week"));
+
+  for (let i = 0; i < 7; i++) {
+    if (!formData.get(`day_${i}_checked`)) continue;
+    const dateStr    = String(formData.get(`day_${i}_date`));
+    const timeInStr  = String(formData.get(`day_${i}_timeIn`));
+    const timeOutStr = String(formData.get(`day_${i}_timeOut`));
+    const otRateCode = (formData.get(`day_${i}_otRateCode`) as string | null) || null;
+
+    const date = new Date(dateStr + "T00:00:00");
+    const [inH, inM]   = timeInStr.split(":").map(Number);
+    const [outH, outM] = timeOutStr.split(":").map(Number);
+    const timeInDt  = new Date(date); timeInDt.setHours(inH, inM, 0, 0);
+    const timeOutDt = new Date(date); timeOutDt.setHours(outH, outM, 0, 0);
+
+    const hoursWorked = Math.max(0, (timeOutDt.getTime() - timeInDt.getTime()) / 3600000);
+    const otHours     = Math.max(0, hoursWorked - 8);
+    const ndHours     = computeNdHours(timeInDt, timeOutDt);
+    const isRestDay   = !!otRateCode?.includes("RD");
+    const isHoliday   = !!(otRateCode?.startsWith("RH") || otRateCode?.startsWith("SH"));
+
+    await prisma.attendance.upsert({
+      where:  { employeeId_date: { employeeId, date } },
+      update: { timeIn: timeInDt, timeOut: timeOutDt, hoursWorked: Math.round(hoursWorked * 100) / 100, otHours: Math.round(otHours * 100) / 100, ndHours: Math.round(ndHours * 100) / 100, isRestDay, isHoliday, otRateCode },
+      create: { employeeId, date, timeIn: timeInDt, timeOut: timeOutDt, hoursWorked: Math.round(hoursWorked * 100) / 100, otHours: Math.round(otHours * 100) / 100, ndHours: Math.round(ndHours * 100) / 100, isRestDay, isHoliday, otRateCode },
+    });
+  }
+  redirect(`/attendance?tab=bulk&week=${weekStr}&bulkEmployeeId=${employeeId}&saved=1`);
+}
+
 export default async function AttendancePage({
   searchParams,
 }: {
@@ -186,6 +237,42 @@ export default async function AttendancePage({
       })
     : [];
 
+  // Bulk entry: resolve week to Monday
+  const rawWeek    = params.week ?? new Date().toISOString().split("T")[0];
+  const bulkMonday = mondayOf(rawWeek);
+  const bulkWeekStr    = bulkMonday.toISOString().split("T")[0];
+  const bulkEmployeeId = params.bulkEmployeeId ?? "";
+  const bulkSaved      = params.saved === "1";
+
+  const bulkDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(bulkMonday);
+    d.setDate(bulkMonday.getDate() + i);
+    const dow     = d.getDay();
+    const holiday = getPHHoliday(d);
+    let autoCode: string | null = null;
+    if      (holiday?.type === "RH") autoCode = "RH";
+    else if (holiday?.type === "SH") autoCode = "SH";
+    else if (dow === 0 || dow === 6) autoCode = "RD";
+    return {
+      date:           d,
+      dateStr:        d.toISOString().split("T")[0],
+      dayName:        d.toLocaleDateString("en-PH", { weekday: "short" }),
+      dateDisplay:    d.toLocaleDateString("en-PH", { month: "short", day: "numeric" }),
+      autoCode,
+      holidayName:    holiday?.name ?? null,
+      defaultChecked: dow !== 0,
+    };
+  });
+
+  const bulkWeekEnd = new Date(bulkMonday);
+  bulkWeekEnd.setDate(bulkMonday.getDate() + 6);
+  const bulkExisting = (tab === "bulk" && bulkEmployeeId)
+    ? await prisma.attendance.findMany({
+        where: { employeeId: bulkEmployeeId, date: { gte: bulkMonday, lte: bulkWeekEnd } },
+      })
+    : [];
+  const bulkExistingMap = new Map(bulkExisting.map((r) => [r.date.toISOString().split("T")[0], r]));
+
   const employees = await prisma.employee.findMany({
     where: { companyId, archived: false },
     orderBy: { firstName: "asc" },
@@ -227,6 +314,7 @@ export default async function AttendancePage({
         {[
           { label: "Today", value: "today" },
           { label: "History", value: "history" },
+          { label: "Bulk entry", value: "bulk" },
         ].map((t) => (
           <Link
             key={t.value}
@@ -243,7 +331,7 @@ export default async function AttendancePage({
       </div>
 
       {/* ── TODAY TAB ── */}
-      {tab !== "history" && (
+      {tab === "today" && (
       <>
 
       {/* Summary strip */}
@@ -602,6 +690,148 @@ export default async function AttendancePage({
               </CardContent>
             </Card>
           )}
+        </div>
+      )}
+      {/* ── BULK ENTRY TAB ── */}
+      {tab === "bulk" && (
+        <div className="space-y-5">
+          {bulkSaved && (
+            <div className="rounded-[var(--radius-md)] bg-[var(--success-bg)] border border-[var(--success-border)] text-[var(--success)] px-4 py-3 text-sm">
+              ✓ Attendance saved.
+            </div>
+          )}
+
+          {/* Week + employee selector (GET form) */}
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <form method="GET" className="flex flex-wrap gap-3 items-end">
+                <input type="hidden" name="tab" value="bulk" />
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium text-[var(--text-secondary)]">Employee</label>
+                  <select
+                    name="bulkEmployeeId"
+                    defaultValue={bulkEmployeeId}
+                    className="h-10 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)]"
+                  >
+                    <option value="">Select employee…</option>
+                    {employees.map((e) => (
+                      <option key={e.id} value={e.id}>{e.lastName}, {e.firstName}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium text-[var(--text-secondary)]">Week of (any date)</label>
+                  <input
+                    type="date" name="week" defaultValue={bulkWeekStr}
+                    className="h-10 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)]"
+                  />
+                </div>
+                <Button type="submit" size="sm" variant="secondary">Load week</Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Bulk entry form (POST) */}
+          <form action={bulkEntry}>
+            <input type="hidden" name="employeeId" value={bulkEmployeeId} />
+            <input type="hidden" name="week" value={bulkWeekStr} />
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">
+                  Week of {bulkMonday.toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" })}
+                  {bulkEmployeeId && (() => { const e = employees.find((x) => x.id === bulkEmployeeId); return e ? ` · ${e.lastName}, ${e.firstName}` : ""; })()}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <Th className="w-10"></Th>
+                      <Th>Day</Th>
+                      <Th>Date</Th>
+                      <Th>Time in</Th>
+                      <Th>Time out</Th>
+                      <Th>Rate code</Th>
+                      <Th className="text-right">Reg hrs</Th>
+                      <Th className="text-right">OT hrs</Th>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {bulkDays.map((day, i) => {
+                      const existing   = bulkExistingMap.get(day.dateStr);
+                      const defaultIn  = existing?.timeIn
+                        ? `${String(existing.timeIn.getHours()).padStart(2, "0")}:${String(existing.timeIn.getMinutes()).padStart(2, "0")}`
+                        : "08:00";
+                      const defaultOut = existing?.timeOut
+                        ? `${String(existing.timeOut.getHours()).padStart(2, "0")}:${String(existing.timeOut.getMinutes()).padStart(2, "0")}`
+                        : (day.autoCode === "RD" ? "12:00" : "17:00");
+                      const defaultCode = existing?.otRateCode ?? day.autoCode ?? "";
+                      const regHrs      = existing ? Math.min(existing.hoursWorked, 8) : null;
+                      const otHrs       = existing?.otHours ?? null;
+                      const isSun       = day.date.getDay() === 0;
+                      return (
+                        <TableRow key={day.dateStr} className={isSun ? "opacity-60" : ""}>
+                          <Td>
+                            <input
+                              type="checkbox"
+                              name={`day_${i}_checked`}
+                              value="1"
+                              defaultChecked={existing != null ? true : day.defaultChecked}
+                              className="rounded"
+                            />
+                            <input type="hidden" name={`day_${i}_date`} value={day.dateStr} />
+                          </Td>
+                          <Td className="text-sm font-medium">{day.dayName}</Td>
+                          <Td className="text-[var(--text-secondary)]">
+                            {day.dateDisplay}
+                            {day.holidayName && (
+                              <span className="ml-1.5 text-xs text-[var(--warning)]">{day.holidayName}</span>
+                            )}
+                          </Td>
+                          <Td>
+                            <input
+                              type="time" name={`day_${i}_timeIn`} defaultValue={defaultIn}
+                              className="h-8 w-28 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-2 text-sm focus:outline-none focus:border-[var(--brand)]"
+                            />
+                          </Td>
+                          <Td>
+                            <input
+                              type="time" name={`day_${i}_timeOut`} defaultValue={defaultOut}
+                              className="h-8 w-28 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-2 text-sm focus:outline-none focus:border-[var(--brand)]"
+                            />
+                          </Td>
+                          <Td>
+                            <select
+                              name={`day_${i}_otRateCode`} defaultValue={defaultCode}
+                              className="h-8 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-2 text-xs focus:outline-none focus:border-[var(--brand)]"
+                            >
+                              <option value="">— None —</option>
+                              {["Regular OT", "Rest Day", "Special Holiday", "Regular Holiday", "Night Differential"].map((group) => (
+                                <optgroup key={group} label={group}>
+                                  {OT_RATE_OPTIONS.filter((o) => o.group === group).map((o) => (
+                                    <option key={o.value} value={o.value}>{o.label}</option>
+                                  ))}
+                                </optgroup>
+                              ))}
+                            </select>
+                          </Td>
+                          <Td numeric className="text-xs text-[var(--text-secondary)]">
+                            {regHrs != null ? `${regHrs.toFixed(1)}h` : "—"}
+                          </Td>
+                          <Td numeric className="text-xs text-[var(--text-secondary)]">
+                            {otHrs != null && otHrs > 0 ? `${otHrs.toFixed(1)}h` : "—"}
+                          </Td>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+            <div className="flex justify-end mt-3">
+              <Button type="submit" size="sm">Save checked rows</Button>
+            </div>
+          </form>
         </div>
       )}
     </div>

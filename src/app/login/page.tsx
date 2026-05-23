@@ -24,10 +24,8 @@ export default function LoginPage({ searchParams }: { searchParams: Promise<{ er
         {/* Logo */}
         <div className="flex justify-center mb-6">
           <Link href="/" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-[var(--radius-sm)] bg-[var(--brand)] grid place-items-center">
-              <span className="text-white font-bold text-sm">S</span>
-            </div>
-            <span className="font-semibold text-[var(--text-primary)]">Sahod HR</span>
+            <img src="/mmtsi-logo.png" alt="MMTSI" className="h-8 w-auto object-contain" />
+            <span className="font-semibold text-[var(--text-primary)]">MMTSI HRIS</span>
           </Link>
         </div>
 

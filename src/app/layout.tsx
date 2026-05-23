@@ -15,11 +15,11 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: { default: "Sahod HR — DOLE-compliant HR for PH businesses", template: "%s · Sahod HR" },
-  description: "Semi-monthly payroll, DTR, SSS/PhilHealth/Pag-IBIG/BIR compliance, and statutory leaves — for Philippine SMEs.",
+  title: { default: "MMTSI HRIS", template: "%s · MMTSI HRIS" },
+  description: "MMTSI internal HR system — payroll, DTR, compliance, and leaves.",
   manifest: "/manifest.json",
-  appleWebApp: { capable: true, title: "Sahod HR", statusBarStyle: "black-translucent" },
-  openGraph: { title: "Sahod HR", description: "HR software built for the Filipino SME hustle.", type: "website" },
+  appleWebApp: { capable: true, title: "MMTSI HRIS", statusBarStyle: "black-translucent" },
+  openGraph: { title: "MMTSI HRIS", description: "MMTSI internal HR system.", type: "website" },
 };
 
 export const viewport: Viewport = {

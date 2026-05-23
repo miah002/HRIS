@@ -17,7 +17,7 @@ const OWNER_NAV = [
   { href: "/dashboard",  label: "Dashboard",  sub: "Overview",      icon: LayoutDashboard },
   { href: "/employees",  label: "Employees",  sub: "Mga Empleyado", icon: Users },
   { href: "/attendance", label: "Attendance", sub: "DTR",           icon: Clock },
-  { href: "/payroll",    label: "Payroll",    sub: "Sahod",         icon: Wallet },
+  { href: "/payroll",    label: "Payroll",    sub: "Sweldo",        icon: Wallet },
   { href: "/leave",      label: "Leave",      sub: "Bakasyon",      icon: CalendarCheck },
   { href: "/loans",      label: "Loans",      sub: "Salary loans",  icon: CreditCard },
   { href: "/compliance", label: "Compliance", sub: "DOLE/BIR",      icon: ShieldCheck },

@@ -1,7 +1,7 @@
 {
-  "name": "Sahod HR",
-  "short_name": "Sahod",
-  "description": "DOLE-compliant HR for Philippine SMEs",
+  "name": "MMTSI HRIS",
+  "short_name": "MMTSI",
+  "description": "MMTSI internal HR system",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#ffffff",

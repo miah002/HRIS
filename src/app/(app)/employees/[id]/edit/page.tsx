@@ -12,6 +12,11 @@ async function updateEmployee(id: string, formData: FormData) {
   "use server";
   const session = await auth();
   if (!session) redirect("/login");
+  const user = await prisma.user.findUnique({ where: { email: session.user!.email! } });
+  const companyId = user?.companyId ?? "";
+  if (!companyId) redirect("/dashboard");
+  const target = await prisma.employee.findUnique({ where: { id }, select: { companyId: true } });
+  if (!target || target.companyId !== companyId) redirect("/employees");
   await prisma.employee.update({
     where: { id },
     data: {

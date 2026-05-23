@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge, STATUS_BADGE } from "@/components/ui/badge";
@@ -20,9 +21,14 @@ function currentCutoff(now = new Date()) {
 
 async function runPayroll(formData: FormData) {
   "use server";
+  const session = await auth();
+  if (!session) redirect("/login");
+  const user = await prisma.user.findUnique({ where: { email: session.user!.email! } });
+  const companyId = user?.companyId ?? "";
+  if (!companyId) redirect("/dashboard");
   const start = new Date(String(formData.get("start")));
   const end   = new Date(String(formData.get("end")));
-  const employees = await prisma.employee.findMany({ where: { archived: false } });
+  const employees = await prisma.employee.findMany({ where: { companyId, archived: false } });
 
   for (const e of employees) {
     // Fetch attendance for this pay period

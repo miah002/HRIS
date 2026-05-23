@@ -61,16 +61,14 @@ export function Sidebar({ userName = "Demo Owner", role = "OWNER" }: { userName?
       {/* Logo */}
       <div className="flex h-14 items-center px-4 gap-3 border-b border-[var(--border)] flex-shrink-0">
         <Link href={homeHref} className="flex items-center gap-3 flex-shrink-0">
-          <div className="h-7 w-7 rounded-[var(--radius-sm)] bg-[var(--brand)] flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-xs font-bold">S</span>
-          </div>
+          <img src="/mmtsi-logo.png" alt="MMTSI" className="h-7 w-auto object-contain flex-shrink-0" />
           {!collapsed && (
             <motion.span
               initial={false}
               animate={{ opacity: 1 }}
               className="font-semibold text-sm text-[var(--text-primary)] whitespace-nowrap"
             >
-              Sahod HR
+              MMTSI
             </motion.span>
           )}
         </Link>
@@ -183,9 +181,7 @@ export function BottomNav({ role = "OWNER" }: { role?: string }) {
 export function TopBarMobile({ title }: { title?: string }) {
   return (
     <div className="md:hidden sticky top-0 z-30 h-14 flex items-center gap-3 px-4 bg-[var(--bg-overlay)] backdrop-blur-md border-b border-[var(--border)]">
-      <div className="h-6 w-6 rounded-[4px] bg-[var(--brand)] flex items-center justify-center">
-        <span className="text-white text-[10px] font-bold">S</span>
-      </div>
+      <img src="/mmtsi-logo.png" alt="MMTSI" className="h-6 w-auto object-contain" />
       {title && <span className="font-semibold text-sm text-[var(--text-primary)]">{title}</span>}
       <div className="ml-auto"><ThemeCycle /></div>
     </div>

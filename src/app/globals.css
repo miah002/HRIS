@@ -16,24 +16,24 @@
     --bg-overlay:  rgba(250, 250, 249, 0.85);
     --bg-inverted: #0A0A0A;
 
-    /* Brand signature — this teal appears in logo, primary CTAs, key data viz only */
-    --brand:        #0FA896;
-    --brand-dim:    #0C9082;
-    --brand-bright: #12C2AE;
-    --brand-subtle: rgba(15, 168, 150, 0.10);
-    --brand-ring:   rgba(15, 168, 150, 0.40);
+    /* Brand signature — MMTSI crimson */
+    --brand:        #8B1010;
+    --brand-dim:    #730C0C;
+    --brand-bright: #A61515;
+    --brand-subtle: rgba(139, 16, 16, 0.08);
+    --brand-ring:   rgba(139, 16, 16, 0.35);
 
     /* Text */
     --text-primary:   #0F0F0F;
     --text-secondary: #6B6B6B;
     --text-tertiary:  #A3A3A3;
     --text-inverse:   #FAFAF9;
-    --text-brand:     #0C9082;
+    --text-brand:     #730C0C;
 
     /* Borders — almost invisible; depth comes from spacing, not lines */
     --border:          rgba(0, 0, 0, 0.07);
     --border-strong:   rgba(0, 0, 0, 0.13);
-    --border-focus:    rgba(15, 168, 150, 0.45);
+    --border-focus:    rgba(139, 16, 16, 0.40);
 
     /* Status — muted, not Bootstrap-y */
     --success:         #059669;
@@ -90,21 +90,21 @@
     --bg-overlay:  rgba(10, 10, 10, 0.88);
     --bg-inverted: #FAFAF9;
 
-    --brand:        #11BDA9;
-    --brand-dim:    #0FA896;
-    --brand-bright: #14D4BD;
-    --brand-subtle: rgba(15, 168, 150, 0.12);
-    --brand-ring:   rgba(15, 168, 150, 0.35);
+    --brand:        #C41A1A;
+    --brand-dim:    #A61515;
+    --brand-bright: #E02020;
+    --brand-subtle: rgba(196, 26, 26, 0.12);
+    --brand-ring:   rgba(196, 26, 26, 0.35);
 
     --text-primary:   #F0EEE9;
     --text-secondary: #A3A3A3;
     --text-tertiary:  #666666;
     --text-inverse:   #0F0F0F;
-    --text-brand:     #11BDA9;
+    --text-brand:     #C41A1A;
 
     --border:         rgba(255, 255, 255, 0.07);
     --border-strong:  rgba(255, 255, 255, 0.13);
-    --border-focus:   rgba(15, 168, 150, 0.45);
+    --border-focus:   rgba(196, 26, 26, 0.45);
 
     --success:         #10B981;
     --success-bg:      rgba(16, 185, 129, 0.10);

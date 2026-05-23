@@ -109,6 +109,18 @@ export default async function DashboardPage() {
   const totalOtHrs = otRows.reduce((s, r) => s + r.otHrs, 0);
   const totalOtPay = otRows.reduce((s, r) => s + r.otPay, 0);
 
+  // RD and Holiday stats for the cutoff
+  const rdEmployeeIds = new Set<string>();
+  const holEmployeeIds = new Set<string>();
+  let rdHours = 0, holHours = 0;
+  for (const row of cutoffAttendance) {
+    if (row.hoursWorked <= 0) continue;
+    const isRD  = row.isRestDay || !!row.otRateCode?.includes("RD");
+    const isHol = row.isHoliday || !!row.otRateCode?.startsWith("RH") || !!row.otRateCode?.startsWith("SH");
+    if (isRD)  { rdEmployeeIds.add(row.employeeId);  rdHours  += row.hoursWorked; }
+    if (isHol) { holEmployeeIds.add(row.employeeId); holHours += row.hoursWorked; }
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -165,40 +177,59 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      {/* OT summary */}
+      {/* Premium hours summary */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-sm">
             <Clock className="h-4 w-4 text-[var(--brand)]" />
-            Overtime — {cutoff.label}
+            Premium hours — {cutoff.label}
           </CardTitle>
         </CardHeader>
-        <CardContent className="pt-3">
-          <div className="flex gap-8 mb-4">
-            <div>
-              <div className="text-2xs text-[var(--text-tertiary)] uppercase tracking-wide">Total OT hours</div>
-              <div className="text-xl font-semibold tabular mt-0.5">{totalOtHrs.toFixed(1)}h</div>
+        <CardContent className="pt-3 space-y-5">
+          {/* OT */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Overtime</span>
+              <span className="text-xs text-[var(--text-tertiary)]">({otRows.length} emp · {totalOtHrs.toFixed(1)}h · {php(totalOtPay)})</span>
             </div>
-            <div>
-              <div className="text-2xs text-[var(--text-tertiary)] uppercase tracking-wide">Est. OT pay</div>
-              <div className="text-xl font-semibold tabular mt-0.5 text-[var(--brand)]">{php(totalOtPay)}</div>
+            {otRows.length === 0 ? (
+              <p className="text-xs text-[var(--text-tertiary)]">None this cutoff.</p>
+            ) : (
+              <div className="space-y-0.5">
+                {otRows.map((r) => (
+                  <div key={r.name} className="flex items-center justify-between gap-3 py-1.5 border-b border-[var(--border)] last:border-0">
+                    <span className="text-sm">{r.name}</span>
+                    <div className="flex items-center gap-4 text-sm tabular text-[var(--text-secondary)] flex-shrink-0">
+                      <span>{r.otHrs.toFixed(1)}h</span>
+                      <span className="text-[var(--brand)] font-medium">{php(r.otPay)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Rest Day */}
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Rest Day work</span>
+              {rdEmployeeIds.size > 0
+                ? <span className="text-xs text-[var(--warning)] font-medium">{rdEmployeeIds.size} emp · {rdHours.toFixed(1)}h · ×1.30 premium</span>
+                : <span className="text-xs text-[var(--text-tertiary)]">None this cutoff</span>
+              }
             </div>
           </div>
-          {otRows.length === 0 ? (
-            <p className="text-xs text-[var(--text-tertiary)]">No overtime recorded for this cutoff.</p>
-          ) : (
-            <div className="space-y-1">
-              {otRows.map((r) => (
-                <div key={r.name} className="flex items-center justify-between gap-3 py-1.5 border-b border-[var(--border)] last:border-0">
-                  <span className="text-sm">{r.name}</span>
-                  <div className="flex items-center gap-4 text-sm tabular text-[var(--text-secondary)] flex-shrink-0">
-                    <span>{r.otHrs.toFixed(1)}h</span>
-                    <span className="text-[var(--brand)] font-medium">{php(r.otPay)}</span>
-                  </div>
-                </div>
-              ))}
+
+          {/* Holiday */}
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Holiday work</span>
+              {holEmployeeIds.size > 0
+                ? <span className="text-xs text-[var(--warning)] font-medium">{holEmployeeIds.size} emp · {holHours.toFixed(1)}h · ×2.00–×2.60 premium</span>
+                : <span className="text-xs text-[var(--text-tertiary)]">None this cutoff</span>
+              }
             </div>
-          )}
+          </div>
         </CardContent>
       </Card>
 

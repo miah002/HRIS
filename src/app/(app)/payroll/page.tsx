@@ -157,6 +157,17 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
     return { emp, days, regHrs, otHrs, estOtPay, codes: [...codeSet] };
   });
 
+  // RD/Holiday stats for current cutoff
+  const rdEmpIds = new Set<string>(); const holEmpIds = new Set<string>();
+  let rdHrs = 0, holHrs = 0;
+  for (const row of previewAttendance) {
+    if (row.hoursWorked <= 0) continue;
+    const isRD  = row.isRestDay || !!row.otRateCode?.includes("RD");
+    const isHol = row.isHoliday || !!row.otRateCode?.startsWith("RH") || !!row.otRateCode?.startsWith("SH");
+    if (isRD)  { rdEmpIds.add(row.employeeId);  rdHrs  += row.hoursWorked; }
+    if (isHol) { holEmpIds.add(row.employeeId); holHrs += row.hoursWorked; }
+  }
+
   // All distinct periods for the history section
   const allPeriods = await prisma.payroll.findMany({
     select: { periodStart: true, periodEnd: true, grossPay: true, netPay: true, id: true },
@@ -238,6 +249,20 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
             Attendance summary — {cutoff.label}
           </CardTitle>
         </CardHeader>
+        {(rdEmpIds.size > 0 || holEmpIds.size > 0) && (
+          <div className="px-4 py-2 border-b border-[var(--border)] flex flex-wrap gap-4">
+            {rdEmpIds.size > 0 && (
+              <span className="text-xs text-[var(--warning)] font-medium">
+                ⚠ Rest Day: {rdEmpIds.size} emp · {rdHrs.toFixed(1)}h (×1.30 premium)
+              </span>
+            )}
+            {holEmpIds.size > 0 && (
+              <span className="text-xs text-[var(--warning)] font-medium">
+                ⚠ Holiday: {holEmpIds.size} emp · {holHrs.toFixed(1)}h (×2.00+ premium)
+              </span>
+            )}
+          </div>
+        )}
         <CardContent className="p-0">
           <Table>
             <TableHeader>

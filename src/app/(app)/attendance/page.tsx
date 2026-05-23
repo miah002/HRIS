@@ -374,6 +374,8 @@ export default async function AttendancePage({
 
   const presentCount = rows.filter((r) => r.status === "Present" || r.status === "In progress").length;
   const absentCount = rows.filter((r) => r.status === "Absent").length;
+  const rdTodayCount = todayRecords.filter((r) => r.hoursWorked > 0 && (r.isRestDay || r.otRateCode?.includes("RD"))).length;
+  const holTodayCount = todayRecords.filter((r) => r.hoursWorked > 0 && (r.isHoliday || r.otRateCode?.startsWith("RH") || r.otRateCode?.startsWith("SH"))).length;
   const todayLabel = today.toLocaleDateString("en-PH", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
   // Build filter query string for use in edit/delete links
@@ -415,7 +417,7 @@ export default async function AttendancePage({
       <>
 
       {/* Summary strip */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Card>
           <CardContent className="pt-4 pb-4">
             <div className="text-2xs uppercase tracking-wide text-[var(--text-tertiary)]">Present today</div>
@@ -432,6 +434,24 @@ export default async function AttendancePage({
           <CardContent className="pt-4 pb-4">
             <div className="text-2xs uppercase tracking-wide text-[var(--text-tertiary)]">Total employees</div>
             <div className="text-2xl font-semibold mt-1">{employees.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="text-2xs uppercase tracking-wide text-[var(--text-tertiary)]">Working on RD</div>
+            <div className={`text-2xl font-semibold mt-1 ${rdTodayCount > 0 ? "text-[var(--warning)]" : "text-[var(--text-tertiary)]"}`}>
+              {rdTodayCount}
+            </div>
+            {rdTodayCount > 0 && <div className="text-[10px] text-[var(--text-tertiary)] mt-0.5">×1.30 premium</div>}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="text-2xs uppercase tracking-wide text-[var(--text-tertiary)]">Working on Holiday</div>
+            <div className={`text-2xl font-semibold mt-1 ${holTodayCount > 0 ? "text-[var(--warning)]" : "text-[var(--text-tertiary)]"}`}>
+              {holTodayCount}
+            </div>
+            {holTodayCount > 0 && <div className="text-[10px] text-[var(--text-tertiary)] mt-0.5">×2.00+ premium</div>}
           </CardContent>
         </Card>
       </div>
@@ -667,6 +687,31 @@ export default async function AttendancePage({
               <script dangerouslySetInnerHTML={{ __html: `(function(){var s=document.getElementById('history-period-select');if(s)s.addEventListener('change',function(){this.form.submit();});})();` }} />
             </CardContent>
           </Card>
+
+          {/* RD/Holiday summary for period */}
+          {histRecords.length > 0 && (() => {
+            const rdIds = new Set(histRecords.filter(r => r.hoursWorked > 0 && (r.isRestDay || r.otRateCode?.includes("RD"))).map(r => r.employeeId));
+            const holIds = new Set(histRecords.filter(r => r.hoursWorked > 0 && (r.isHoliday || r.otRateCode?.startsWith("RH") || r.otRateCode?.startsWith("SH"))).map(r => r.employeeId));
+            const rdHrsHist = histRecords.filter(r => r.isRestDay || r.otRateCode?.includes("RD")).reduce((s, r) => s + r.hoursWorked, 0);
+            const holHrsHist = histRecords.filter(r => r.isHoliday || r.otRateCode?.startsWith("RH") || r.otRateCode?.startsWith("SH")).reduce((s, r) => s + r.hoursWorked, 0);
+            if (!rdIds.size && !holIds.size) return null;
+            return (
+              <div className="flex flex-wrap gap-4 px-1">
+                {rdIds.size > 0 && (
+                  <div className="rounded-[var(--radius-sm)] border border-[var(--warning)] bg-[var(--warning-subtle,_#fff8e1)] px-3 py-2 text-xs">
+                    <span className="font-semibold text-[var(--warning)]">Rest Day work</span>
+                    <span className="text-[var(--text-secondary)] ml-2">{rdIds.size} employee{rdIds.size > 1 ? "s" : ""} · {rdHrsHist.toFixed(1)}h · ×1.30 premium</span>
+                  </div>
+                )}
+                {holIds.size > 0 && (
+                  <div className="rounded-[var(--radius-sm)] border border-[var(--warning)] bg-[var(--warning-subtle,_#fff8e1)] px-3 py-2 text-xs">
+                    <span className="font-semibold text-[var(--warning)]">Holiday work</span>
+                    <span className="text-[var(--text-secondary)] ml-2">{holIds.size} employee{holIds.size > 1 ? "s" : ""} · {holHrsHist.toFixed(1)}h · ×2.00+ premium</span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Results */}
           {histRecords.length === 0 ? (

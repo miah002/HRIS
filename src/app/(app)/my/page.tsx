@@ -75,7 +75,7 @@ export default async function MyPortalPage() {
     include: {
       employee: {
         include: {
-          payrolls: { orderBy: { periodStart: "desc" }, take: 6 },
+          payrolls: { orderBy: { periodStart: "desc" }, take: 24 },
           leaves: { orderBy: { startDate: "desc" }, take: 10 },
         },
       },
@@ -322,9 +322,19 @@ export default async function MyPortalPage() {
                   <div className="text-sm">{phDate(p.periodStart)} – {phDate(p.periodEnd)}</div>
                   <div className="text-xs text-[var(--text-tertiary)]">Gross {php(p.grossPay)}</div>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm font-semibold tabular">{php(p.netPay)}</div>
-                  <Badge variant={p.status === "RELEASED" ? "success" : "neutral"}>{p.status}</Badge>
+                <div className="text-right flex items-center gap-3">
+                  <div>
+                    <div className="text-sm font-semibold tabular">{php(p.netPay)}</div>
+                    <Badge variant={p.status === "RELEASED" ? "success" : "neutral"}>{p.status}</Badge>
+                  </div>
+                  {p.status === "RELEASED" && (
+                    <Link
+                      href={`/payroll/${p.id}`}
+                      className="text-xs font-medium text-[var(--brand)] hover:underline whitespace-nowrap"
+                    >
+                      View payslip
+                    </Link>
+                  )}
                 </div>
               </div>
             ))}

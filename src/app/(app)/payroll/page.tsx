@@ -104,9 +104,16 @@ async function runPayroll(formData: FormData) {
   redirect(`/payroll?ran=1`);
 }
 
-export default async function PayrollPage({ searchParams }: { searchParams: Promise<{ ran?: string }> }) {
-  const { ran } = await searchParams;
+export default async function PayrollPage({ searchParams }: { searchParams: Promise<{ ran?: string; period?: string }> }) {
+  const { ran, period } = await searchParams;
   const cutoff = currentCutoff();
+
+  // Resolve which period to display in the main table
+  const viewStart = period ? new Date(period) : cutoff.start;
+  const viewEnd = period
+    ? (await prisma.payroll.findFirst({ where: { periodStart: new Date(period) }, select: { periodEnd: true } }))?.periodEnd ?? cutoff.end
+    : cutoff.end;
+  const isCurrentCutoff = !period;
 
   // Fetch data for the hours preview card
   const previewEmployees = await prisma.employee.findMany({
@@ -144,8 +151,30 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
     return { emp, days, regHrs, otHrs, estOtPay, codes: [...codeSet] };
   });
 
+  // All distinct periods for the history section
+  const allPeriods = await prisma.payroll.findMany({
+    select: { periodStart: true, periodEnd: true, grossPay: true, netPay: true, id: true },
+    orderBy: { periodStart: "desc" },
+  });
+  // Deduplicate periods and compute per-period totals
+  const periodMap = new Map<string, { periodStart: Date; periodEnd: Date; grossPay: number; netPay: number; count: number }>();
+  for (const r of allPeriods) {
+    const key = r.periodStart.toISOString();
+    const existing = periodMap.get(key);
+    if (existing) {
+      existing.grossPay += r.grossPay;
+      existing.netPay += r.netPay;
+      existing.count++;
+    } else {
+      periodMap.set(key, { periodStart: r.periodStart, periodEnd: r.periodEnd, grossPay: r.grossPay, netPay: r.netPay, count: 1 });
+    }
+  }
+  const pastPeriods = [...periodMap.values()].filter(
+    (p) => p.periodStart.toISOString() !== cutoff.start.toISOString()
+  );
+
   const runs = await prisma.payroll.findMany({
-    where: { periodStart: cutoff.start, periodEnd: cutoff.end },
+    where: { periodStart: viewStart, periodEnd: viewEnd },
     include: { employee: true },
     orderBy: { employee: { lastName: "asc" } },
   });
@@ -171,17 +200,28 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
             <h1 className="text-2xl font-semibold tracking-tight">Payroll</h1>
           </div>
           <p className="text-sm text-[var(--text-secondary)] mt-0.5">
-            Cutoff {cutoff.label} · {phDate(cutoff.start)} – {phDate(cutoff.end)}
+            {isCurrentCutoff
+              ? `Current cutoff ${cutoff.label} · ${phDate(cutoff.start)} – ${phDate(cutoff.end)}`
+              : `History · ${phDate(viewStart)} – ${phDate(viewEnd)}`}
           </p>
         </div>
-        <form action={runPayroll}>
-          <input type="hidden" name="start" value={cutoff.start.toISOString()} />
-          <input type="hidden" name="end"   value={cutoff.end.toISOString()} />
-          <Button type="submit">
-            <PlayCircle className="h-4 w-4" />
-            {runs.length ? "Re-run payroll" : "Run payroll"}
-          </Button>
-        </form>
+        <div className="flex items-center gap-2">
+          {!isCurrentCutoff && (
+            <Link href="/payroll">
+              <Button variant="outline" size="sm">← Current cutoff</Button>
+            </Link>
+          )}
+          {isCurrentCutoff && (
+            <form action={runPayroll}>
+              <input type="hidden" name="start" value={cutoff.start.toISOString()} />
+              <input type="hidden" name="end"   value={cutoff.end.toISOString()} />
+              <Button type="submit">
+                <PlayCircle className="h-4 w-4" />
+                {runs.length ? "Re-run payroll" : "Run payroll"}
+              </Button>
+            </form>
+          )}
+        </div>
       </div>
 
       {ran && (
@@ -366,8 +406,51 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
 
       <p className="text-2xs text-[var(--text-tertiary)]">
         Computed using TRAIN Law (BIR RR 11-2018), SSS 2025 schedule (RA 11199), PhilHealth 5% (RA 11223), HDMF 2%/2% (Circular 460).
-        See <code>src/lib/ph-payroll.ts</code>.
       </p>
+
+      {/* Payroll history */}
+      {pastPeriods.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="flex items-center gap-2"><Clock className="h-4 w-4 text-[var(--brand)]" />Payroll history</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <Th>Period</Th>
+                  <Th className="text-right">Employees</Th>
+                  <Th className="text-right">Total gross</Th>
+                  <Th className="text-right">Total net</Th>
+                  <Th></Th>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pastPeriods.map((p) => {
+                  const key = p.periodStart.toISOString();
+                  const isSelected = period === key;
+                  return (
+                    <TableRow key={key} className={isSelected ? "bg-[var(--brand-bg)]" : undefined}>
+                      <Td>
+                        <div className="text-sm font-medium">{phDate(p.periodStart)} – {phDate(p.periodEnd)}</div>
+                      </Td>
+                      <Td numeric className="text-[var(--text-secondary)]">{p.count}</Td>
+                      <Td numeric>{php(p.grossPay)}</Td>
+                      <Td numeric className="font-semibold">{php(p.netPay)}</Td>
+                      <Td>
+                        <Link
+                          href={isSelected ? "/payroll" : `/payroll?period=${encodeURIComponent(key)}`}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand)] hover:underline"
+                        >
+                          <FileText className="h-3 w-3" />{isSelected ? "Hide" : "View payslips"}
+                        </Link>
+                      </Td>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -82,6 +82,8 @@ model Employee {
   lastName         String
   email            String?
   mobile           String?
+  sex              String?   // MALE | FEMALE
+  civilStatus      String?   // SINGLE | MARRIED | WIDOWED | SEPARATED
   birthDate        DateTime?
   dateHired        DateTime
   position         String

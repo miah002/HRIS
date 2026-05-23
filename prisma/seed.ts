@@ -208,7 +208,8 @@ async function main() {
   function attData(date: Date, inH: number, inM: number, outH: number, outM: number, rateCode: string | null) {
     const timeIn  = new Date(date); timeIn.setHours(inH, inM, 0, 0);
     const timeOut = new Date(date); timeOut.setHours(outH, outM, 0, 0);
-    const hoursWorked = (timeOut.getTime() - timeIn.getTime()) / 3600000;
+    const rawHours    = (timeOut.getTime() - timeIn.getTime()) / 3600000;
+    const hoursWorked = rawHours >= 5 ? rawHours - 1 : rawHours; // 1h lunch deduction
     const otHours     = Math.max(0, hoursWorked - 8);
     return {
       timeIn, timeOut,
@@ -295,11 +296,11 @@ async function main() {
     });
   }
 
-  // Employee 4 (Espanola): Saturday May 23, 9h → RD_OT (1h OT)
+  // Employee 4 (Espanola): Saturday May 23, 10h clock (08:00-18:00) → 9h after lunch → 1h RD_OT
   {
     const { id: empId } = created[4];
     const date = new Date(2026, 4, 23);
-    const d = attData(date, 8, 0, 17, 0, "RD_OT");
+    const d = attData(date, 8, 0, 18, 0, "RD_OT");
     await prisma.attendance.upsert({
       where:  { employeeId_date: { employeeId: empId, date } },
       update: d, create: { employeeId: empId, date, ...d },

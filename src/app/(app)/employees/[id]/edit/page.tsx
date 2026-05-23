@@ -29,6 +29,8 @@ async function updateEmployee(id: string, formData: FormData) {
       sssNumber: (formData.get("sssNumber") as string) || null,
       philHealthNumber: (formData.get("philHealthNumber") as string) || null,
       pagIbigNumber: (formData.get("pagIbigNumber") as string) || null,
+      sex:          (formData.get("sex")          as string) || null,
+      civilStatus:  (formData.get("civilStatus")  as string) || null,
     },
   });
   redirect(`/employees/${id}`);
@@ -68,6 +70,28 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
             <F label="Last name" name="lastName" required defaultValue={e.lastName} />
             <F label="Email address" name="email" type="email" className="md:col-span-2" defaultValue={e.email ?? ""} />
             <F label="Mobile (+63)" name="mobile" placeholder="+639..." defaultValue={e.mobile ?? ""} />
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="sex">Sex</Label>
+              <select id="sex" name="sex" defaultValue={e.sex ?? ""}
+                className="h-10 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)]"
+              >
+                <option value="">— Not specified —</option>
+                <option value="MALE">Male</option>
+                <option value="FEMALE">Female</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="civilStatus">Civil status</Label>
+              <select id="civilStatus" name="civilStatus" defaultValue={e.civilStatus ?? ""}
+                className="h-10 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)]"
+              >
+                <option value="">— Not specified —</option>
+                <option value="SINGLE">Single</option>
+                <option value="MARRIED">Married</option>
+                <option value="WIDOWED">Widowed</option>
+                <option value="SEPARATED">Separated</option>
+              </select>
+            </div>
             <F label="Date hired" name="dateHired" type="date" required defaultValue={dateHiredValue} />
           </CardContent>
         </Card>

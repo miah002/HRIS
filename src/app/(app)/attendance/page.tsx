@@ -55,6 +55,16 @@ function todayPH() {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
+/** Format local date as YYYY-MM-DD without UTC conversion */
+function toLocalDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Deduct 1h lunch break for shifts >= 5h (PH Labor Code standard) */
+function applyLunchBreak(rawHours: number): number {
+  return rawHours >= 5 ? rawHours - 1 : rawHours;
+}
+
 function fmt(d: Date | null): string {
   if (!d) return "—";
   return d.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit", hour12: true });
@@ -66,6 +76,14 @@ function computeNdHours(timeIn: Date, timeOut: Date): number {
   const overlapStart = Math.max(timeIn.getTime(), ndStart.getTime());
   const overlapEnd   = Math.min(timeOut.getTime(), ndEnd.getTime());
   return Math.round((Math.max(0, overlapEnd - overlapStart) / 3600000) * 100) / 100;
+}
+
+function buildFilterQs(period: string, employeeId: string, from: string, to: string) {
+  const qs = new URLSearchParams({ tab: "history", period });
+  if (employeeId) qs.set("employeeId", employeeId);
+  if (period === "custom" && from) qs.set("from", from);
+  if (period === "custom" && to)   qs.set("to", to);
+  return qs.toString();
 }
 
 async function timeIn(formData: FormData) {
@@ -98,7 +116,8 @@ async function timeOut(formData: FormData) {
     where: { employeeId_date: { employeeId, date } },
   });
   const timeInDt = existing?.timeIn ?? now;
-  const hoursWorked = Math.max(0, (now.getTime() - timeInDt.getTime()) / (1000 * 60 * 60));
+  const rawHours = Math.max(0, (now.getTime() - timeInDt.getTime()) / (1000 * 60 * 60));
+  const hoursWorked = applyLunchBreak(rawHours);
   const otHours = Math.max(0, hoursWorked - 8);
   await prisma.attendance.upsert({
     where: { employeeId_date: { employeeId, date } },
@@ -129,7 +148,8 @@ async function logManual(formData: FormData) {
 
   const timeInDt = new Date(date); timeInDt.setHours(inH, inM, 0, 0);
   const timeOutDt = new Date(date); timeOutDt.setHours(outH, outM, 0, 0);
-  const hoursWorked = Math.max(0, (timeOutDt.getTime() - timeInDt.getTime()) / (1000 * 60 * 60));
+  const rawHours = Math.max(0, (timeOutDt.getTime() - timeInDt.getTime()) / (1000 * 60 * 60));
+  const hoursWorked = applyLunchBreak(rawHours);
   const otHours = Math.max(0, hoursWorked - 8);
   const otRateCode = formData.get("otRateCode") as string | null;
 
@@ -177,7 +197,8 @@ async function bulkEntry(formData: FormData) {
     const timeInDt  = new Date(date); timeInDt.setHours(inH, inM, 0, 0);
     const timeOutDt = new Date(date); timeOutDt.setHours(outH, outM, 0, 0);
 
-    const hoursWorked = Math.max(0, (timeOutDt.getTime() - timeInDt.getTime()) / 3600000);
+    const rawHours = Math.max(0, (timeOutDt.getTime() - timeInDt.getTime()) / 3600000);
+    const hoursWorked = applyLunchBreak(rawHours);
     const otHours     = Math.max(0, hoursWorked - 8);
     const ndHours     = computeNdHours(timeInDt, timeOutDt);
     const isRestDay   = !!otRateCode?.includes("RD");
@@ -200,16 +221,21 @@ async function editAttendance(formData: FormData) {
   const timeInStr  = String(formData.get("timeIn"));
   const timeOutStr = String(formData.get("timeOut"));
   const otRateCode = (formData.get("otRateCode") as string | null) || null;
+  const filterPeriod     = (formData.get("filterPeriod")     as string) || "current";
+  const filterEmployeeId = (formData.get("filterEmployeeId") as string) || "";
+  const filterFrom       = (formData.get("filterFrom")       as string) || "";
+  const filterTo         = (formData.get("filterTo")         as string) || "";
 
   const existing = await prisma.attendance.findUnique({ where: { id } });
-  if (!existing) redirect("/attendance?tab=history&period=current");
+  if (!existing) redirect(`/attendance?${buildFilterQs(filterPeriod, filterEmployeeId, filterFrom, filterTo)}`);
 
   const [inH, inM]   = timeInStr.split(":").map(Number);
   const [outH, outM] = timeOutStr.split(":").map(Number);
   const timeInDt  = new Date(existing.date); timeInDt.setHours(inH, inM, 0, 0);
   const timeOutDt = new Date(existing.date); timeOutDt.setHours(outH, outM, 0, 0);
 
-  const hoursWorked = Math.max(0, (timeOutDt.getTime() - timeInDt.getTime()) / 3600000);
+  const rawHours = Math.max(0, (timeOutDt.getTime() - timeInDt.getTime()) / 3600000);
+  const hoursWorked = applyLunchBreak(rawHours);
   const otHours     = Math.max(0, hoursWorked - 8);
   const ndHours     = computeNdHours(timeInDt, timeOutDt);
 
@@ -223,16 +249,20 @@ async function editAttendance(formData: FormData) {
       otRateCode,
     },
   });
-  redirect("/attendance?tab=history&period=current");
+  redirect(`/attendance?${buildFilterQs(filterPeriod, filterEmployeeId, filterFrom, filterTo)}`);
 }
 
 async function deleteAttendance(formData: FormData) {
   "use server";
   const session = await auth();
   if (!session) redirect("/login");
-  const id = String(formData.get("id"));
+  const id               = String(formData.get("id"));
+  const filterPeriod     = (formData.get("filterPeriod")     as string) || "current";
+  const filterEmployeeId = (formData.get("filterEmployeeId") as string) || "";
+  const filterFrom       = (formData.get("filterFrom")       as string) || "";
+  const filterTo         = (formData.get("filterTo")         as string) || "";
   await prisma.attendance.delete({ where: { id } });
-  redirect("/attendance?tab=history&period=current");
+  redirect(`/attendance?${buildFilterQs(filterPeriod, filterEmployeeId, filterFrom, filterTo)}`);
 }
 
 export default async function AttendancePage({
@@ -282,9 +312,9 @@ export default async function AttendancePage({
     : [];
 
   // Bulk entry: resolve week to Monday
-  const rawWeek    = params.week ?? new Date().toISOString().split("T")[0];
+  const rawWeek    = params.week ?? toLocalDateStr(new Date());
   const bulkMonday = mondayOf(rawWeek);
-  const bulkWeekStr    = bulkMonday.toISOString().split("T")[0];
+  const bulkWeekStr    = toLocalDateStr(bulkMonday);
   const bulkEmployeeId = params.bulkEmployeeId ?? "";
   const bulkSaved      = params.saved === "1";
 
@@ -299,7 +329,7 @@ export default async function AttendancePage({
     else if (dow === 0 || dow === 6) autoCode = "RD";
     return {
       date:           d,
-      dateStr:        d.toISOString().split("T")[0],
+      dateStr:        toLocalDateStr(d),
       dayName:        d.toLocaleDateString("en-PH", { weekday: "short" }),
       dateDisplay:    d.toLocaleDateString("en-PH", { month: "short", day: "numeric" }),
       autoCode,
@@ -315,7 +345,7 @@ export default async function AttendancePage({
         where: { employeeId: bulkEmployeeId, date: { gte: bulkMonday, lte: bulkWeekEnd } },
       })
     : [];
-  const bulkExistingMap = new Map(bulkExisting.map((r) => [r.date.toISOString().split("T")[0], r]));
+  const bulkExistingMap = new Map(bulkExisting.map((r) => [toLocalDateStr(r.date), r]));
 
   const employees = await prisma.employee.findMany({
     where: { companyId, archived: false },
@@ -342,6 +372,9 @@ export default async function AttendancePage({
   const presentCount = rows.filter((r) => r.status === "Present" || r.status === "In progress").length;
   const absentCount = rows.filter((r) => r.status === "Absent").length;
   const todayLabel = today.toLocaleDateString("en-PH", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+
+  // Build filter query string for use in edit/delete links
+  const filterQs = buildFilterQs(period, histEmployeeId, params.from ?? "", params.to ?? "");
 
   return (
     <div className="space-y-6">
@@ -511,7 +544,7 @@ export default async function AttendancePage({
               <label className="text-xs font-medium text-[var(--text-secondary)]">Date</label>
               <input
                 type="date" name="date" required
-                defaultValue={today.toISOString().split("T")[0]}
+                defaultValue={toLocalDateStr(today)}
                 className="h-10 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)]"
               />
             </div>
@@ -583,6 +616,7 @@ export default async function AttendancePage({
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-medium text-[var(--text-secondary)]">Period</label>
                   <select
+                    id="history-period-select"
                     name="period"
                     defaultValue={period}
                     className="h-10 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)]"
@@ -597,7 +631,7 @@ export default async function AttendancePage({
                   <label className="text-xs font-medium text-[var(--text-secondary)]">From</label>
                   <input
                     type="date" name="from"
-                    defaultValue={params.from ?? histFrom.toISOString().split("T")[0]}
+                    defaultValue={toLocalDateStr(histFrom)}
                     className="h-10 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)]"
                   />
                 </div>
@@ -606,7 +640,7 @@ export default async function AttendancePage({
                   <label className="text-xs font-medium text-[var(--text-secondary)]">To</label>
                   <input
                     type="date" name="to"
-                    defaultValue={params.to ?? histTo.toISOString().split("T")[0]}
+                    defaultValue={toLocalDateStr(histTo)}
                     className="h-10 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)]"
                   />
                 </div>
@@ -627,6 +661,7 @@ export default async function AttendancePage({
 
                 <Button type="submit" size="sm">View</Button>
               </form>
+              <script dangerouslySetInnerHTML={{ __html: `(function(){var s=document.getElementById('history-period-select');if(s)s.addEventListener('change',function(){this.form.submit();});})();` }} />
             </CardContent>
           </Card>
 
@@ -684,6 +719,10 @@ export default async function AttendancePage({
                           <Td colSpan={7}>
                             <form action={editAttendance} className="flex flex-wrap gap-2 items-center">
                               <input type="hidden" name="id" value={rec.id} />
+                              <input type="hidden" name="filterPeriod"     value={period} />
+                              <input type="hidden" name="filterEmployeeId" value={histEmployeeId} />
+                              <input type="hidden" name="filterFrom"       value={params.from ?? ""} />
+                              <input type="hidden" name="filterTo"         value={params.to   ?? ""} />
                               <input
                                 type="time" name="timeIn"
                                 defaultValue={rec.timeIn ? `${String(rec.timeIn.getHours()).padStart(2,"0")}:${String(rec.timeIn.getMinutes()).padStart(2,"0")}` : "08:00"}
@@ -710,7 +749,7 @@ export default async function AttendancePage({
                               </select>
                               <Button type="submit" size="sm">Save</Button>
                               <Link
-                                href="/attendance?tab=history&period=current"
+                                href={`/attendance?${filterQs}`}
                                 className="text-xs text-[var(--text-secondary)] hover:underline ml-1"
                               >
                                 Cancel
@@ -762,13 +801,17 @@ export default async function AttendancePage({
                             <Td>
                               <div className="flex items-center gap-2">
                                 <Link
-                                  href={`/attendance?tab=history&period=current&editing=${rec.id}`}
+                                  href={`/attendance?${filterQs}&editing=${rec.id}`}
                                   className="text-xs font-medium text-[var(--brand)] hover:underline"
                                 >
                                   Edit
                                 </Link>
                                 <form action={deleteAttendance} className="inline">
-                                  <input type="hidden" name="id" value={rec.id} />
+                                  <input type="hidden" name="id"               value={rec.id} />
+                                  <input type="hidden" name="filterPeriod"     value={period} />
+                                  <input type="hidden" name="filterEmployeeId" value={histEmployeeId} />
+                                  <input type="hidden" name="filterFrom"       value={params.from ?? ""} />
+                                  <input type="hidden" name="filterTo"         value={params.to   ?? ""} />
                                   <button type="submit" className="text-xs font-medium text-[var(--error)] hover:underline">
                                     Delete
                                   </button>
@@ -840,7 +883,7 @@ export default async function AttendancePage({
           </Card>
 
           {/* Bulk entry form (POST) */}
-          <form action={bulkEntry}>
+          <form id="bulk-entry-form" action={bulkEntry}>
             <input type="hidden" name="employeeId" value={bulkEmployeeId} />
             <input type="hidden" name="week" value={bulkWeekStr} />
             <Card>
@@ -887,7 +930,8 @@ export default async function AttendancePage({
                               defaultChecked={existing != null ? true : day.defaultChecked}
                               className="rounded"
                             />
-                            <input type="hidden" name={`day_${i}_date`} value={day.dateStr} />
+                            <input type="hidden" name={`day_${i}_date`}        value={day.dateStr} />
+                            <input type="hidden" name={`day_${i}_hasExisting`} value={existing ? "1" : "0"} />
                           </Td>
                           <Td className="text-sm font-medium">{day.dayName}</Td>
                           <Td className="text-[var(--text-secondary)]">
@@ -940,6 +984,27 @@ export default async function AttendancePage({
               <Button type="submit" size="sm">Save checked rows</Button>
             </div>
           </form>
+
+          <script dangerouslySetInnerHTML={{ __html: `
+(function() {
+  var form = document.getElementById('bulk-entry-form');
+  if (!form) return;
+  form.addEventListener('submit', function(e) {
+    var overrideCount = 0;
+    for (var i = 0; i < 7; i++) {
+      var chk = form.querySelector('[name="day_' + i + '_checked"]');
+      var has = form.querySelector('[name="day_' + i + '_hasExisting"]');
+      if (chk && chk.checked && has && has.value === '1') overrideCount++;
+    }
+    if (overrideCount > 0) {
+      var msg = overrideCount === 1
+        ? '1 day already has attendance data. Override it?'
+        : overrideCount + ' days already have attendance data. Override them?';
+      if (!window.confirm(msg)) e.preventDefault();
+    }
+  });
+})();
+          ` }} />
         </div>
       )}
     </div>

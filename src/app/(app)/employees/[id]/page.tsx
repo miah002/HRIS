@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { php, phDate } from "@/lib/format";
 import { computeSemiMonthlyPayroll, STATUTORY_LEAVE } from "@/lib/ph-payroll";
+import { auth } from "@/lib/auth";
 import { ChevronLeft, Mail, Phone, Building2, Pencil, FileText } from "lucide-react";
 
 const LOAN_LABELS: Record<string, string> = {
@@ -15,6 +16,22 @@ const LOAN_LABELS: Record<string, string> = {
   CASH_ADVANCE: "Company Cash Advance",
   OTHER: "Other",
 };
+
+async function editLoan(formData: FormData) {
+  "use server";
+  const session = await auth();
+  if (!session) redirect("/login");
+  const loanId        = String(formData.get("loanId"));
+  const empId         = String(formData.get("empId"));
+  const balance       = Number(formData.get("balance"));
+  const monthlyDeduction = Number(formData.get("monthlyDeduction"));
+  const status        = String(formData.get("status"));
+  await prisma.loan.update({
+    where: { id: loanId },
+    data: { balance, monthlyDeduction, status },
+  });
+  redirect(`/employees/${empId}`);
+}
 
 export default async function EmployeeDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -95,6 +112,8 @@ export default async function EmployeeDetail({ params }: { params: Promise<{ id:
             <Info label="Date hired" value={phDate(e.dateHired)} />
             <Info label="Years of service" value={`${yearsOfService.toFixed(1)} years`} />
             <Info label="Basic monthly rate" value={php(e.basicMonthlyRate)} />
+            <Info label="Sex" value={e.sex ? e.sex.charAt(0) + e.sex.slice(1).toLowerCase() : "—"} />
+            <Info label="Civil status" value={e.civilStatus ? e.civilStatus.charAt(0) + e.civilStatus.slice(1).toLowerCase() : "—"} />
             <Info label="TIN" value={e.tin ?? "—"} mono />
             <Info label="SSS number" value={e.sssNumber ?? "—"} mono />
             <Info label="PhilHealth number" value={e.philHealthNumber ?? "—"} mono />
@@ -129,6 +148,13 @@ export default async function EmployeeDetail({ params }: { params: Promise<{ id:
         <CardHeader><CardTitle>Leave balances — {new Date().getFullYear()}</CardTitle></CardHeader>
         <CardContent className="pt-3 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {Object.entries(STATUTORY_LEAVE).map(([type, info]) => {
+            const isMale   = e.sex === "MALE";
+            const isFemale = e.sex === "FEMALE";
+            // Paternity: MALE + MARRIED only; Maternity/Magna Carta/VAWC: FEMALE only
+            if (type === "PATERNITY"   && !(isMale   && e.civilStatus === "MARRIED")) return null;
+            if (type === "MATERNITY"   && !isFemale)  return null;
+            if (type === "MAGNA_CARTA" && !isFemale)  return null;
+            if (type === "VAWC"        && !isFemale)  return null;
             const ineligible = type === "SIL" && !eligibleSIL;
             const entitled = ineligible ? 0 : info.days;
             const used = leaveUsedMap[type] ?? 0;
@@ -162,17 +188,46 @@ export default async function EmployeeDetail({ params }: { params: Promise<{ id:
       {activeLoans.length > 0 && (
         <Card>
           <CardHeader><CardTitle>Active loans & deductions</CardTitle></CardHeader>
-          <CardContent className="pt-3 space-y-2">
+          <CardContent className="pt-3 space-y-3">
             {activeLoans.map((loan) => (
-              <div key={loan.id} className="flex items-center justify-between py-2 border-b border-[var(--border)] last:border-0">
-                <div>
-                  <div className="text-sm font-medium">{LOAN_LABELS[loan.type] ?? loan.type}</div>
-                  {loan.description && <div className="text-xs text-[var(--text-tertiary)]">{loan.description}</div>}
+              <div key={loan.id} className="border border-[var(--border)] rounded-[var(--radius-sm)] p-3 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-medium">{LOAN_LABELS[loan.type] ?? loan.type}</div>
+                    {loan.description && <div className="text-xs text-[var(--text-tertiary)]">{loan.description}</div>}
+                  </div>
+                  <div className="text-right text-sm">
+                    <div className="tabular">Balance: <span className="font-semibold">{php(loan.balance)}</span></div>
+                    <div className="text-xs text-[var(--text-tertiary)]">{php(loan.monthlyDeduction)}/mo deduction</div>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm tabular">Balance: <span className="font-semibold">{php(loan.balance)}</span></div>
-                  <div className="text-xs text-[var(--text-tertiary)]">{php(loan.monthlyDeduction)}/mo deduction</div>
-                </div>
+                <form action={editLoan} className="flex flex-wrap gap-2 items-end border-t border-dashed border-[var(--border)] pt-2">
+                  <input type="hidden" name="loanId" value={loan.id} />
+                  <input type="hidden" name="empId"  value={e.id} />
+                  <div className="flex flex-col gap-1 text-xs">
+                    <span className="text-[var(--text-tertiary)]">Balance</span>
+                    <input type="number" name="balance" defaultValue={loan.balance} min="0" step="0.01"
+                      className="h-8 w-32 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-2 text-sm tabular focus:outline-none focus:border-[var(--brand)]"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1 text-xs">
+                    <span className="text-[var(--text-tertiary)]">Monthly deduction</span>
+                    <input type="number" name="monthlyDeduction" defaultValue={loan.monthlyDeduction} min="0" step="0.01"
+                      className="h-8 w-32 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-2 text-sm tabular focus:outline-none focus:border-[var(--brand)]"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1 text-xs">
+                    <span className="text-[var(--text-tertiary)]">Status</span>
+                    <select name="status" defaultValue={loan.status}
+                      className="h-8 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-2 text-sm focus:outline-none focus:border-[var(--brand)]"
+                    >
+                      <option value="ACTIVE">Active</option>
+                      <option value="PAID">Paid</option>
+                      <option value="CANCELLED">Cancelled</option>
+                    </select>
+                  </div>
+                  <Button type="submit" size="sm">Update loan</Button>
+                </form>
               </div>
             ))}
           </CardContent>

@@ -7,7 +7,7 @@ import { php } from "@/lib/format";
 import { computeSemiMonthlyPayroll } from "@/lib/ph-payroll";
 import { ReportsCharts } from "./charts";
 import { ComplianceDownloads } from "./compliance-downloads";
-import { FileSpreadsheet, Table2, Gift } from "lucide-react";
+import { FileSpreadsheet, Table2, Gift, FileText, CalendarCheck } from "lucide-react";
 
 export default async function ReportsPage() {
   const session = await auth();
@@ -54,10 +54,12 @@ export default async function ReportsPage() {
       </div>
 
       {/* Quick links to report pages */}
-      <div className="grid sm:grid-cols-2 gap-3">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { href: "/reports/pay-register", icon: Table2, title: "Pay Register", desc: "Full payroll run detail — all employees, all line items" },
           { href: "/reports/13th-month", icon: Gift, title: "13th Month Pay", desc: "Annual computation per employee, DOLE-compliant" },
+          { href: "/reports/2316", icon: FileText, title: "BIR Form 2316", desc: "Annual certificate of compensation per employee for BIR filing" },
+          { href: "/reports/leave", icon: CalendarCheck, title: "Leave Summary", desc: "VL / SL / SIL balances and approved leave log by year" },
         ].map(({ href, icon: Icon, title, desc }) => (
           <Link key={href} href={href}>
             <Card className="hover:border-[var(--brand)] transition-colors cursor-pointer h-full">

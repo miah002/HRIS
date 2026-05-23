@@ -95,6 +95,9 @@ export default async function EmployeeDetail({ params }: { params: Promise<{ id:
           <Link href={`/employees/${e.id}/coe`}>
             <Button variant="secondary" size="sm"><FileText className="h-3.5 w-3.5" />COE</Button>
           </Link>
+          <Link href={`/employees/${e.id}/2316`}>
+            <Button variant="secondary" size="sm"><FileText className="h-3.5 w-3.5" />BIR 2316</Button>
+          </Link>
           <Link href={`/employees/${e.id}/edit`}>
             <Button variant="secondary" size="sm"><Pencil className="h-3.5 w-3.5" />Edit</Button>
           </Link>

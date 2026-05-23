@@ -192,6 +192,49 @@ async function bulkEntry(formData: FormData) {
   redirect(`/attendance?tab=bulk&week=${weekStr}&bulkEmployeeId=${employeeId}&saved=1`);
 }
 
+async function editAttendance(formData: FormData) {
+  "use server";
+  const session = await auth();
+  if (!session) redirect("/login");
+  const id         = String(formData.get("id"));
+  const timeInStr  = String(formData.get("timeIn"));
+  const timeOutStr = String(formData.get("timeOut"));
+  const otRateCode = (formData.get("otRateCode") as string | null) || null;
+
+  const existing = await prisma.attendance.findUnique({ where: { id } });
+  if (!existing) redirect("/attendance?tab=history&period=current");
+
+  const [inH, inM]   = timeInStr.split(":").map(Number);
+  const [outH, outM] = timeOutStr.split(":").map(Number);
+  const timeInDt  = new Date(existing.date); timeInDt.setHours(inH, inM, 0, 0);
+  const timeOutDt = new Date(existing.date); timeOutDt.setHours(outH, outM, 0, 0);
+
+  const hoursWorked = Math.max(0, (timeOutDt.getTime() - timeInDt.getTime()) / 3600000);
+  const otHours     = Math.max(0, hoursWorked - 8);
+  const ndHours     = computeNdHours(timeInDt, timeOutDt);
+
+  await prisma.attendance.update({
+    where: { id },
+    data: {
+      timeIn: timeInDt, timeOut: timeOutDt,
+      hoursWorked: Math.round(hoursWorked * 100) / 100,
+      otHours:     Math.round(otHours     * 100) / 100,
+      ndHours:     Math.round(ndHours     * 100) / 100,
+      otRateCode,
+    },
+  });
+  redirect("/attendance?tab=history&period=current");
+}
+
+async function deleteAttendance(formData: FormData) {
+  "use server";
+  const session = await auth();
+  if (!session) redirect("/login");
+  const id = String(formData.get("id"));
+  await prisma.attendance.delete({ where: { id } });
+  redirect("/attendance?tab=history&period=current");
+}
+
 export default async function AttendancePage({
   searchParams,
 }: {
@@ -205,6 +248,7 @@ export default async function AttendancePage({
 
   const params = await searchParams;
   const tab = params.tab ?? "today";
+  const editing = params.editing ?? "";
 
   // History filter params
   const period = params.period ?? "current";
@@ -619,6 +663,7 @@ export default async function AttendancePage({
                       <Th className="text-right">OT</Th>
                       <Th>Rate</Th>
                       <Th>Status</Th>
+                      {period === "current" && <Th></Th>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -628,7 +673,52 @@ export default async function AttendancePage({
                         : !rec.timeOut ? "In progress"
                         : rec.hoursWorked < 8 ? "Late / Short"
                         : "Present";
-                      return (
+                      return editing === rec.id && period === "current" ? (
+                        <TableRow key={rec.id} className="bg-[var(--neutral-bg)]">
+                          <Td colSpan={3} className="text-sm font-medium">
+                            {rec.employee.lastName}, {rec.employee.firstName}
+                            <span className="ml-2 text-xs text-[var(--text-tertiary)]">
+                              {rec.date.toLocaleDateString("en-PH", { month: "short", day: "numeric" })}
+                            </span>
+                          </Td>
+                          <Td colSpan={7}>
+                            <form action={editAttendance} className="flex flex-wrap gap-2 items-center">
+                              <input type="hidden" name="id" value={rec.id} />
+                              <input
+                                type="time" name="timeIn"
+                                defaultValue={rec.timeIn ? `${String(rec.timeIn.getHours()).padStart(2,"0")}:${String(rec.timeIn.getMinutes()).padStart(2,"0")}` : "08:00"}
+                                className="h-8 w-28 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-2 text-sm focus:outline-none focus:border-[var(--brand)]"
+                              />
+                              <span className="text-[var(--text-tertiary)]">→</span>
+                              <input
+                                type="time" name="timeOut"
+                                defaultValue={rec.timeOut ? `${String(rec.timeOut.getHours()).padStart(2,"0")}:${String(rec.timeOut.getMinutes()).padStart(2,"0")}` : "17:00"}
+                                className="h-8 w-28 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-2 text-sm focus:outline-none focus:border-[var(--brand)]"
+                              />
+                              <select
+                                name="otRateCode" defaultValue={rec.otRateCode ?? ""}
+                                className="h-8 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-2 text-xs focus:outline-none focus:border-[var(--brand)]"
+                              >
+                                <option value="">— None —</option>
+                                {["Regular OT", "Rest Day", "Special Holiday", "Regular Holiday", "Night Differential"].map((group) => (
+                                  <optgroup key={group} label={group}>
+                                    {OT_RATE_OPTIONS.filter((o) => o.group === group).map((o) => (
+                                      <option key={o.value} value={o.value}>{o.label}</option>
+                                    ))}
+                                  </optgroup>
+                                ))}
+                              </select>
+                              <Button type="submit" size="sm">Save</Button>
+                              <Link
+                                href="/attendance?tab=history&period=current"
+                                className="text-xs text-[var(--text-secondary)] hover:underline ml-1"
+                              >
+                                Cancel
+                              </Link>
+                            </form>
+                          </Td>
+                        </TableRow>
+                      ) : (
                         <TableRow key={rec.id}>
                           <Td>
                             <span className="text-sm font-medium">
@@ -668,6 +758,24 @@ export default async function AttendancePage({
                               {status}
                             </Badge>
                           </Td>
+                          {period === "current" && (
+                            <Td>
+                              <div className="flex items-center gap-2">
+                                <Link
+                                  href={`/attendance?tab=history&period=current&editing=${rec.id}`}
+                                  className="text-xs font-medium text-[var(--brand)] hover:underline"
+                                >
+                                  Edit
+                                </Link>
+                                <form action={deleteAttendance} className="inline">
+                                  <input type="hidden" name="id" value={rec.id} />
+                                  <button type="submit" className="text-xs font-medium text-[var(--error)] hover:underline">
+                                    Delete
+                                  </button>
+                                </form>
+                              </div>
+                            </Td>
+                          )}
                         </TableRow>
                       );
                     })}
@@ -683,7 +791,7 @@ export default async function AttendancePage({
                       <Td numeric className="font-semibold">
                         {histRecords.reduce((s, r) => s + (r.otHours ?? 0), 0).toFixed(1)}h
                       </Td>
-                      <Td colSpan={2} />
+                      <Td colSpan={period === "current" ? 3 : 2} />
                     </TableRow>
                   </TableFooter>
                 </Table>

@@ -37,7 +37,7 @@ async function createEmployee(formData: FormData) {
       civilStatus: (formData.get("civilStatus") as string) || null,
     },
   });
-  redirect("/employees");
+  redirect("/employees?toast=Employee+added+successfully");
 }
 
 export default function NewEmployeePage() {

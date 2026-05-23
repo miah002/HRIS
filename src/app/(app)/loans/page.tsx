@@ -26,7 +26,7 @@ async function editLoan(formData: FormData) {
   const monthlyDeduction = Number(formData.get("monthlyDeduction"));
   const status = String(formData.get("status"));
   await prisma.loan.update({ where: { id: loanId }, data: { balance, monthlyDeduction, status } });
-  redirect("/loans");
+  redirect("/loans?toast=Loan+updated+successfully");
 }
 
 async function addLoan(formData: FormData) {
@@ -58,7 +58,7 @@ async function addLoan(formData: FormData) {
     },
   });
 
-  redirect("/loans");
+  redirect("/loans?toast=Loan+added+successfully");
 }
 
 async function markPaid(id: string) {
@@ -66,7 +66,7 @@ async function markPaid(id: string) {
   const session = await auth();
   if (!session) redirect("/login");
   await prisma.loan.update({ where: { id }, data: { status: "PAID" } });
-  redirect("/loans");
+  redirect("/loans?toast=Loan+marked+as+paid");
 }
 
 async function cancelLoan(id: string) {
@@ -74,7 +74,7 @@ async function cancelLoan(id: string) {
   const session = await auth();
   if (!session) redirect("/login");
   await prisma.loan.update({ where: { id }, data: { status: "CANCELLED" } });
-  redirect("/loans");
+  redirect("/loans?toast=Loan+cancelled");
 }
 
 export default async function LoansPage({ searchParams }: { searchParams: Promise<{ editLoan?: string; editClosed?: string }> }) {

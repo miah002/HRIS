@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Sidebar, BottomNav } from "@/components/nav";
+import { ToastListener } from "@/components/toast-listener";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -20,6 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </main>
       <BottomNav role={role} />
+      <Suspense><ToastListener /></Suspense>
     </div>
   );
 }

@@ -107,11 +107,11 @@ async function runPayroll(formData: FormData) {
       create: { employeeId: e.id, periodStart: start, periodEnd: end, status: "DRAFT", ...data },
     });
   }
-  redirect(`/payroll?ran=1`);
+  redirect(`/payroll?toast=Payroll+computed+successfully`);
 }
 
-export default async function PayrollPage({ searchParams }: { searchParams: Promise<{ ran?: string; period?: string }> }) {
-  const { ran, period } = await searchParams;
+export default async function PayrollPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
+  const { period } = await searchParams;
   const cutoff = currentCutoff();
 
   // Resolve which period to display in the main table
@@ -229,12 +229,6 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
           )}
         </div>
       </div>
-
-      {ran && (
-        <div className="rounded-[var(--radius-md)] bg-[var(--success-bg)] border border-[var(--success-border)] text-[var(--success)] px-4 py-3 text-sm">
-          ✓ Payroll computed for all active employees. Review and release below.
-        </div>
-      )}
 
       {/* Hours preview card */}
       <Card>

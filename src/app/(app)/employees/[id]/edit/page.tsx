@@ -38,7 +38,7 @@ async function updateEmployee(id: string, formData: FormData) {
       civilStatus:  (formData.get("civilStatus")  as string) || null,
     },
   });
-  redirect(`/employees/${id}`);
+  redirect(`/employees/${id}?toast=Employee+updated+successfully`);
 }
 
 export default async function EditEmployeePage({ params }: { params: Promise<{ id: string }> }) {

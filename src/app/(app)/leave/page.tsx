@@ -15,7 +15,7 @@ async function approveLeave(id: string) {
   const session = await auth();
   if (!session) redirect("/login");
   await prisma.leaveRequest.update({ where: { id }, data: { status: "APPROVED" } });
-  redirect("/leave");
+  redirect("/leave?toast=Leave+approved");
 }
 
 async function rejectLeave(id: string) {
@@ -23,7 +23,7 @@ async function rejectLeave(id: string) {
   const session = await auth();
   if (!session) redirect("/login");
   await prisma.leaveRequest.update({ where: { id }, data: { status: "REJECTED" } });
-  redirect("/leave");
+  redirect("/leave?toast=Leave+rejected");
 }
 
 async function submitLeave(formData: FormData) {
@@ -41,7 +41,7 @@ async function submitLeave(formData: FormData) {
   await prisma.leaveRequest.create({
     data: { employeeId, leaveType, startDate, endDate, status: "PENDING" },
   });
-  redirect("/leave");
+  redirect("/leave?toast=Leave+request+submitted");
 }
 
 export default async function LeavePage() {

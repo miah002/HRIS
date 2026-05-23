@@ -327,11 +327,11 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
               <TableHeader>
                 <TableRow>
                   <Th>Employee</Th>
-                  <Th>Gross</Th>
-                  <Th>SSS</Th>
-                  <Th>PHIC</Th>
-                  <Th>HDMF</Th>
-                  <Th>WHT</Th>
+                  <Th className="text-right">Gross</Th>
+                  <Th className="text-right">SSS</Th>
+                  <Th className="text-right">PHIC</Th>
+                  <Th className="text-right">HDMF</Th>
+                  <Th className="text-right">WHT</Th>
                   <Th className="text-right">Net pay</Th>
                   <Th></Th>
                 </TableRow>

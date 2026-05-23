@@ -204,6 +204,108 @@ async function main() {
     });
   }
 
+  // --- Attendance test data ---
+  function attData(date: Date, inH: number, inM: number, outH: number, outM: number, rateCode: string | null) {
+    const timeIn  = new Date(date); timeIn.setHours(inH, inM, 0, 0);
+    const timeOut = new Date(date); timeOut.setHours(outH, outM, 0, 0);
+    const hoursWorked = (timeOut.getTime() - timeIn.getTime()) / 3600000;
+    const otHours     = Math.max(0, hoursWorked - 8);
+    return {
+      timeIn, timeOut,
+      hoursWorked: Math.round(hoursWorked * 100) / 100,
+      otHours:     Math.round(otHours     * 100) / 100,
+      ndHours:     0,
+      isRestDay:   !!rateCode?.includes("RD"),
+      isHoliday:   !!(rateCode?.startsWith("RH") || rateCode?.startsWith("SH")),
+      otRateCode:  rateCode,
+    };
+  }
+
+  // Previous cutoff: May 1–15, 2026 — weekdays
+  const prevWeekdays = [
+    new Date(2026, 4, 4),  new Date(2026, 4, 5),  new Date(2026, 4, 6),
+    new Date(2026, 4, 7),  new Date(2026, 4, 8),
+    new Date(2026, 4, 11), new Date(2026, 4, 12), new Date(2026, 4, 13),
+    new Date(2026, 4, 14), new Date(2026, 4, 15),
+  ];
+  for (const { id: empId } of created) {
+    for (const date of prevWeekdays) {
+      const d = attData(date, 8, 0, 17, 0, null);
+      await prisma.attendance.upsert({
+        where:  { employeeId_date: { employeeId: empId, date } },
+        update: d, create: { employeeId: empId, date, ...d },
+      });
+    }
+  }
+
+  // Employees 0,1,2 (Emnase, Castillo, Veloso): Saturday May 10 rest day
+  for (const { id: empId } of [created[0], created[1], created[2]]) {
+    const date = new Date(2026, 4, 10);
+    const d = attData(date, 8, 0, 17, 0, "RD");
+    await prisma.attendance.upsert({
+      where:  { employeeId_date: { employeeId: empId, date } },
+      update: d, create: { employeeId: empId, date, ...d },
+    });
+  }
+
+  // Employees 3,4 (Domingo, Espanola): Thursday May 7 with 2h OT (overrides regular day above)
+  for (const { id: empId } of [created[3], created[4]]) {
+    const date = new Date(2026, 4, 7);
+    const d = attData(date, 8, 0, 19, 0, "R_OT");
+    await prisma.attendance.upsert({
+      where:  { employeeId_date: { employeeId: empId, date } },
+      update: d, create: { employeeId: empId, date, ...d },
+    });
+  }
+
+  // Current cutoff: May 16–31, 2026 — weekdays
+  const currWeekdays = [
+    new Date(2026, 4, 18), new Date(2026, 4, 19), new Date(2026, 4, 20),
+    new Date(2026, 4, 21), new Date(2026, 4, 22),
+    new Date(2026, 4, 25), new Date(2026, 4, 26), new Date(2026, 4, 27),
+    new Date(2026, 4, 28), new Date(2026, 4, 29),
+  ];
+  for (const { id: empId } of created) {
+    for (const date of currWeekdays) {
+      const d = attData(date, 8, 0, 17, 0, null);
+      await prisma.attendance.upsert({
+        where:  { employeeId_date: { employeeId: empId, date } },
+        update: d, create: { employeeId: empId, date, ...d },
+      });
+    }
+  }
+
+  // Employees 0,1 (Emnase, Castillo): Wednesday May 20 with 1h OT (overrides regular day)
+  for (const { id: empId } of [created[0], created[1]]) {
+    const date = new Date(2026, 4, 20);
+    const d = attData(date, 8, 0, 18, 0, "R_OT");
+    await prisma.attendance.upsert({
+      where:  { employeeId_date: { employeeId: empId, date } },
+      update: d, create: { employeeId: empId, date, ...d },
+    });
+  }
+
+  // Employees 2,3 (Veloso, Domingo): Saturday May 23, 4h rest day (no OT)
+  for (const { id: empId } of [created[2], created[3]]) {
+    const date = new Date(2026, 4, 23);
+    const d = attData(date, 8, 0, 13, 0, "RD");
+    await prisma.attendance.upsert({
+      where:  { employeeId_date: { employeeId: empId, date } },
+      update: d, create: { employeeId: empId, date, ...d },
+    });
+  }
+
+  // Employee 4 (Espanola): Saturday May 23, 9h → RD_OT (1h OT)
+  {
+    const { id: empId } = created[4];
+    const date = new Date(2026, 4, 23);
+    const d = attData(date, 8, 0, 17, 0, "RD_OT");
+    await prisma.attendance.upsert({
+      where:  { employeeId_date: { employeeId: empId, date } },
+      update: d, create: { employeeId: empId, date, ...d },
+    });
+  }
+
   console.log(`\nSeeded company "${company.name}" with ${EMPLOYEES.length} employees.\n`);
   console.log("=== CREDENTIALS ===");
   console.log("ADMIN:  owner@demo.ph / demo1234");

@@ -1,13 +1,23 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { php } from "@/lib/format";
 import { computeSemiMonthlyPayroll } from "@/lib/ph-payroll";
 import { ReportsCharts } from "./charts";
+import { ComplianceDownloads } from "./compliance-downloads";
+import { FileSpreadsheet, Table2, Gift } from "lucide-react";
 
 export default async function ReportsPage() {
-  const employees = await prisma.employee.findMany({ where: { archived: false } });
+  const session = await auth();
+  if (!session) redirect("/login");
 
-  // Headcount by department
+  const user = await prisma.user.findUnique({ where: { email: session.user!.email! } });
+  const companyId = user?.companyId ?? "";
+
+  const employees = await prisma.employee.findMany({ where: { companyId, archived: false } });
+
   const byDept = Object.entries(
     employees.reduce<Record<string, number>>((acc, e) => {
       acc[e.department] = (acc[e.department] ?? 0) + 1;
@@ -15,7 +25,6 @@ export default async function ReportsPage() {
     }, {})
   ).map(([department, count]) => ({ department, count }));
 
-  // Tenure distribution
   const tenureBuckets = [
     { bucket: "<1y", count: 0 },
     { bucket: "1–2y", count: 0 },
@@ -30,7 +39,6 @@ export default async function ReportsPage() {
     else tenureBuckets[3].count++;
   });
 
-  // 6-month projected payroll cost trend (synthetic — based on current roster)
   const totalMonthly = employees.reduce((s, e) => {
     const half = computeSemiMonthlyPayroll({ monthlyRate: e.basicMonthlyRate, periodStart: new Date(), periodEnd: new Date() });
     return s + half.grossPay * 2;
@@ -39,12 +47,49 @@ export default async function ReportsPage() {
   const payrollTrend = months.map((m, i) => ({ month: m, cost: Math.round(totalMonthly * (0.92 + i * 0.02)) }));
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Reports & analytics</h1>
-        <p className="text-sm text-muted-foreground">Headcount, payroll cost, tenure. Export to PDF/Excel from any panel.</p>
+        <p className="text-sm text-[var(--text-secondary)]">Headcount, payroll cost, tenure, and statutory compliance reports.</p>
       </div>
 
+      {/* Quick links to report pages */}
+      <div className="grid sm:grid-cols-2 gap-3">
+        {[
+          { href: "/reports/pay-register", icon: Table2, title: "Pay Register", desc: "Full payroll run detail — all employees, all line items" },
+          { href: "/reports/13th-month", icon: Gift, title: "13th Month Pay", desc: "Annual computation per employee, DOLE-compliant" },
+        ].map(({ href, icon: Icon, title, desc }) => (
+          <Link key={href} href={href}>
+            <Card className="hover:border-[var(--brand)] transition-colors cursor-pointer h-full">
+              <CardContent className="pt-4 flex items-start gap-3">
+                <div className="h-9 w-9 rounded-[var(--radius-md)] bg-[var(--brand-subtle)] grid place-items-center flex-shrink-0">
+                  <Icon className="h-4 w-4 text-[var(--brand)]" />
+                </div>
+                <div>
+                  <div className="font-semibold text-sm">{title}</div>
+                  <div className="text-xs text-[var(--text-secondary)] mt-0.5">{desc}</div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+      </div>
+
+      {/* Government compliance CSV downloads */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileSpreadsheet className="h-4 w-4 text-[var(--brand)]" />
+            Government Compliance Reports
+          </CardTitle>
+          <p className="text-xs text-[var(--text-secondary)]">Download CSV files for submission to SSS, PhilHealth, Pag-IBIG, and BIR.</p>
+        </CardHeader>
+        <CardContent>
+          <ComplianceDownloads />
+        </CardContent>
+      </Card>
+
+      {/* Analytics */}
       <div className="grid md:grid-cols-3 gap-3">
         <Mini label="Headcount" value={String(employees.length)} />
         <Mini label="Avg. monthly rate" value={php(employees.reduce((s, e) => s + e.basicMonthlyRate, 0) / Math.max(1, employees.length))} />
@@ -59,7 +104,7 @@ export default async function ReportsPage() {
 function Mini({ label, value }: { label: string; value: string }) {
   return (
     <Card><CardContent className="pt-4">
-      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-xs text-[var(--text-secondary)]">{label}</div>
       <div className="font-semibold text-lg">{value}</div>
     </CardContent></Card>
   );

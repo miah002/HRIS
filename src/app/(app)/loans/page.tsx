@@ -77,8 +77,8 @@ async function cancelLoan(id: string) {
   redirect("/loans");
 }
 
-export default async function LoansPage({ searchParams }: { searchParams: Promise<{ editLoan?: string }> }) {
-  const { editLoan: editLoanId } = await searchParams;
+export default async function LoansPage({ searchParams }: { searchParams: Promise<{ editLoan?: string; editClosed?: string }> }) {
+  const { editLoan: editLoanId, editClosed: editClosedId } = await searchParams;
   const session = await auth();
   if (!session) redirect("/login");
 
@@ -343,36 +343,80 @@ export default async function LoansPage({ searchParams }: { searchParams: Promis
                   <Th>Employee</Th>
                   <Th>Type</Th>
                   <Th className="text-right">Total</Th>
+                  <Th className="text-right">Balance</Th>
                   <Th className="text-right">Monthly</Th>
                   <Th>Started</Th>
                   <Th>Status</Th>
+                  <Th></Th>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {closedLoans.map((loan) => (
-                  <TableRow key={loan.id}>
-                    <Td>
-                      <div className="flex items-center gap-3">
-                        <Avatar
-                          name={`${loan.employee.firstName} ${loan.employee.lastName}`}
-                          size="sm"
-                        />
-                        <div className="text-sm font-medium">
-                          {loan.employee.lastName}, {loan.employee.firstName}
-                        </div>
-                      </div>
-                    </Td>
-                    <Td>{LOAN_LABELS[loan.type] ?? loan.type}</Td>
-                    <Td numeric>{php(loan.totalAmount)}</Td>
-                    <Td numeric>{php(loan.monthlyDeduction)}</Td>
-                    <Td>{phDate(loan.startDate)}</Td>
-                    <Td>
-                      <Badge variant={loan.status === "PAID" ? "success" : "neutral"}>
-                        {loan.status}
-                      </Badge>
-                    </Td>
-                  </TableRow>
-                ))}
+                {closedLoans.map((loan) => {
+                  const isEditing = editClosedId === loan.id;
+                  return (
+                    <>
+                      <TableRow key={loan.id}>
+                        <Td>
+                          <div className="flex items-center gap-3">
+                            <Avatar name={`${loan.employee.firstName} ${loan.employee.lastName}`} size="sm" />
+                            <div className="text-sm font-medium">
+                              {loan.employee.lastName}, {loan.employee.firstName}
+                            </div>
+                          </div>
+                        </Td>
+                        <Td>{LOAN_LABELS[loan.type] ?? loan.type}</Td>
+                        <Td numeric>{php(loan.totalAmount)}</Td>
+                        <Td numeric>{php(loan.balance)}</Td>
+                        <Td numeric>{php(loan.monthlyDeduction)}</Td>
+                        <Td>{phDate(loan.startDate)}</Td>
+                        <Td>
+                          <Badge variant={loan.status === "PAID" ? "success" : "neutral"}>
+                            {loan.status}
+                          </Badge>
+                        </Td>
+                        <Td>
+                          <Link href={isEditing ? "/loans" : `/loans?editClosed=${loan.id}`}>
+                            <Button size="sm" variant="secondary" type="button">
+                              {isEditing ? "Close" : "Edit"}
+                            </Button>
+                          </Link>
+                        </Td>
+                      </TableRow>
+                      {isEditing && (
+                        <TableRow className="bg-[var(--neutral-bg)]">
+                          <Td colSpan={8}>
+                            <form action={editLoan} className="flex flex-wrap gap-3 items-end py-1">
+                              <input type="hidden" name="loanId" value={loan.id} />
+                              <div className="flex flex-col gap-1 text-xs">
+                                <span className="text-[var(--text-tertiary)]">Balance</span>
+                                <input type="number" name="balance" defaultValue={loan.balance} min="0" step="0.01"
+                                  className="h-8 w-32 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-2 text-sm tabular focus:outline-none focus:border-[var(--brand)]"
+                                />
+                              </div>
+                              <div className="flex flex-col gap-1 text-xs">
+                                <span className="text-[var(--text-tertiary)]">Monthly deduction</span>
+                                <input type="number" name="monthlyDeduction" defaultValue={loan.monthlyDeduction} min="0" step="0.01"
+                                  className="h-8 w-36 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-2 text-sm tabular focus:outline-none focus:border-[var(--brand)]"
+                                />
+                              </div>
+                              <div className="flex flex-col gap-1 text-xs">
+                                <span className="text-[var(--text-tertiary)]">Status</span>
+                                <select name="status" defaultValue={loan.status}
+                                  className="h-8 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-2 text-sm focus:outline-none focus:border-[var(--brand)]"
+                                >
+                                  <option value="ACTIVE">Active</option>
+                                  <option value="PAID">Paid</option>
+                                  <option value="CANCELLED">Cancelled</option>
+                                </select>
+                              </div>
+                              <Button type="submit" size="sm">Save</Button>
+                            </form>
+                          </Td>
+                        </TableRow>
+                      )}
+                    </>
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>

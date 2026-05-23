@@ -151,10 +151,8 @@ export default async function EmployeeDetail({ params }: { params: Promise<{ id:
             const isMale   = e.sex === "MALE";
             const isFemale = e.sex === "FEMALE";
             // Paternity: MALE + MARRIED only; Maternity/Magna Carta/VAWC: FEMALE only
-            if (type === "PATERNITY"   && !(isMale   && e.civilStatus === "MARRIED")) return null;
-            if (type === "MATERNITY"   && !isFemale)  return null;
-            if (type === "MAGNA_CARTA" && !isFemale)  return null;
-            if (type === "VAWC"        && !isFemale)  return null;
+            if (type === "PATERNITY" && !(isMale && e.civilStatus === "MARRIED")) return null;
+            if (type === "MATERNITY" && !isFemale) return null;
             const ineligible = type === "SIL" && !eligibleSIL;
             const entitled = ineligible ? 0 : info.days;
             const used = leaveUsedMap[type] ?? 0;

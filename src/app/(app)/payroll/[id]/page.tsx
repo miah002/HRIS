@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 import { php, phDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, PlayCircle } from "lucide-react";
 import { PrintButton } from "./print-button";
 import { computeSemiMonthlyPayroll, OT_RATES, hourlyRate } from "@/lib/ph-payroll";
 import { Table, TableHeader, TableBody, TableRow, Th, Td, TableFooter } from "@/components/ui/table";
@@ -15,50 +15,6 @@ async function releasePayroll(id: string) {
   const session = await auth();
   if (!session) redirect("/login");
   await prisma.payroll.update({ where: { id }, data: { status: "RELEASED" } });
-  redirect(`/payroll/${id}`);
-}
-
-async function updateHours(id: string, formData: FormData) {
-  "use server";
-  const session = await auth();
-  if (!session) redirect("/login");
-
-  const daysWorked = parseFloat(String(formData.get("daysWorked"))) || 0;
-  const otHours = parseFloat(String(formData.get("otHours"))) || 0;
-  const regularHours = daysWorked * 8;
-
-  const payroll = await prisma.payroll.findUnique({
-    where: { id },
-    include: { employee: true, adjustments: true },
-  });
-  if (!payroll) redirect("/payroll");
-
-  const taxableAdj = payroll.adjustments.filter(a => a.type === "TAXABLE").reduce((s, a) => s + a.amount, 0);
-  const nonTaxableAdj = payroll.adjustments.filter(a => a.type === "NON_TAXABLE").reduce((s, a) => s + a.amount, 0);
-
-  const calc = computeSemiMonthlyPayroll({
-    monthlyRate: payroll.employee.basicMonthlyRate,
-    periodStart: payroll.periodStart,
-    periodEnd: payroll.periodEnd,
-    daysWorked: daysWorked > 0 ? daysWorked : undefined,
-    regularHours,
-    otHours,
-    taxableAdjustments: taxableAdj,
-    nonTaxableAdjustments: nonTaxableAdj,
-  });
-
-  const loans = await prisma.loan.findMany({ where: { employeeId: payroll.employeeId, status: "ACTIVE" } });
-  let loanDeductions = 0;
-  for (const loan of loans) loanDeductions += Math.min(loan.monthlyDeduction / 2, loan.balance);
-  loanDeductions = Math.round(loanDeductions * 100) / 100;
-
-  const totalDeductions = Math.round((calc.totalDeductions + loanDeductions) * 100) / 100;
-  const netPay = Math.round((calc.grossPay - totalDeductions) * 100) / 100;
-
-  await prisma.payroll.update({
-    where: { id },
-    data: { ...calc, loanDeductions, totalDeductions, netPay },
-  });
   redirect(`/payroll/${id}`);
 }
 
@@ -90,7 +46,9 @@ async function addAdjustment(id: string, formData: FormData) {
     periodEnd: payroll.periodEnd,
     daysWorked: payroll.daysWorked > 0 ? payroll.daysWorked : undefined,
     regularHours: payroll.regularHours,
-    otHours: payroll.overtimePay / (payroll.employee.basicMonthlyRate * 12 / 313 / 8 * 1.25) || 0,
+    overtimePayIn:  payroll.overtimePay,
+    holidayPayIn:   payroll.holidayPay,
+    nightDiffPayIn: payroll.nightDiffPay,
     taxableAdjustments: taxableAdj,
     nonTaxableAdjustments: nonTaxableAdj,
   });
@@ -130,6 +88,9 @@ async function removeAdjustment(adjustmentId: string, payrollId: string) {
     periodEnd: payroll.periodEnd,
     daysWorked: payroll.daysWorked > 0 ? payroll.daysWorked : undefined,
     regularHours: payroll.regularHours,
+    overtimePayIn:  payroll.overtimePay,
+    holidayPayIn:   payroll.holidayPay,
+    nightDiffPayIn: payroll.nightDiffPay,
     taxableAdjustments: taxableAdj,
     nonTaxableAdjustments: nonTaxableAdj,
   });
@@ -182,7 +143,6 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
     return s + Math.round(hours * hr * (OT_RATES[code] ?? 1.25) * 100) / 100;
   }, 0);
   const releaseFn = releasePayroll.bind(null, id);
-  const updateHoursFn = updateHours.bind(null, id);
   const addAdjustmentFn = addAdjustment.bind(null, id);
 
   const deductions = [
@@ -467,33 +427,17 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
       {isAdmin && (
         <div className="print:hidden space-y-4">
 
-          {/* Update hours */}
+          {/* Re-run payroll */}
           <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
-            <div className="text-sm font-semibold mb-3">Update attendance hours</div>
-            <form action={updateHoursFn} className="flex flex-wrap gap-3 items-end">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-[var(--text-secondary)]">Days worked</label>
-                <input
-                  type="number" name="daysWorked" min="0" max="31" step="0.5"
-                  defaultValue={payroll.daysWorked || ""}
-                  placeholder="e.g. 11"
-                  className="h-9 w-28 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg)] px-3 text-sm focus:outline-none focus:border-[var(--brand)]"
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-[var(--text-secondary)]">OT hours</label>
-                <input
-                  type="number" name="otHours" min="0" step="0.5"
-                  defaultValue={attTotalOtHrs > 0 ? attTotalOtHrs.toFixed(1) : ""}
-                  placeholder="e.g. 4"
-                  className="h-9 w-28 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg)] px-3 text-sm focus:outline-none focus:border-[var(--brand)]"
-                />
-              </div>
-              <Button type="submit" size="sm" variant="outline">Recalculate</Button>
-            </form>
-            <p className="text-[10px] text-[var(--text-tertiary)] mt-2">
-              Daily rate: {php(e.basicMonthlyRate / 21.75)} · Hourly: {php(e.basicMonthlyRate / 21.75 / 8)} · OT rate (×1.25): {php(e.basicMonthlyRate / 21.75 / 8 * 1.25)}
+            <div className="text-sm font-semibold mb-1">Re-run payroll</div>
+            <p className="text-xs text-[var(--text-secondary)] mb-3">
+              To recalculate from attendance records, go to the payroll page and click "Re-run payroll".
             </p>
+            <Link href="/payroll">
+              <Button variant="secondary" size="sm">
+                <PlayCircle className="h-3.5 w-3.5" /> Go to payroll
+              </Button>
+            </Link>
           </div>
 
           {/* Adjustments */}

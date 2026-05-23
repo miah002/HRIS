@@ -3,15 +3,21 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { php, phDate } from "@/lib/format";
-import { computeSemiMonthlyPayroll } from "@/lib/ph-payroll";
+import { computeSemiMonthlyPayroll, OT_RATES, hourlyRate } from "@/lib/ph-payroll";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { KpiCard } from "./kpi-card";
 import { Greeting } from "./greeting";
-import { PlayCircle, UserPlus, CheckCheck, AlertTriangle } from "lucide-react";
+import { PlayCircle, UserPlus, CheckCheck, AlertTriangle, Clock } from "lucide-react";
 import { ReportsCharts } from "../reports/charts";
+
+function currentCutoff(now = new Date()) {
+  const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
+  if (d <= 15) return { start: new Date(y, m, 1), end: new Date(y, m, 15), label: `${now.toLocaleString("en-PH", { month: "long" })} 1–15` };
+  return { start: new Date(y, m, 16), end: new Date(y, m + 1, 0), label: `${now.toLocaleString("en-PH", { month: "long" })} 16–end` };
+}
 
 function upcomingDeadlines(now: Date) {
   const m = now.getMonth(); const y = now.getFullYear();
@@ -74,6 +80,35 @@ export default async function DashboardPage() {
 
   const recentHires = [...employees].sort((a, b) => +b.dateHired - +a.dateHired).slice(0, 5);
 
+  // OT summary for current cutoff
+  const cutoff = currentCutoff(now);
+  const cutoffAttendance = await prisma.attendance.findMany({
+    where: { date: { gte: cutoff.start, lte: cutoff.end } },
+    include: { employee: true },
+  });
+
+  const otByEmployee = new Map<string, { name: string; otHrs: number; otPay: number }>();
+  for (const row of cutoffAttendance) {
+    if ((row.otHours ?? 0) <= 0) continue;
+    const hr = hourlyRate(row.employee.basicMonthlyRate);
+    const code = row.otRateCode ?? "R_OT";
+    const pay = Math.round((row.otHours ?? 0) * hr * (OT_RATES[code] ?? 1.25) * 100) / 100;
+    const existing = otByEmployee.get(row.employeeId);
+    if (existing) {
+      existing.otHrs += row.otHours ?? 0;
+      existing.otPay += pay;
+    } else {
+      otByEmployee.set(row.employeeId, {
+        name: `${row.employee.lastName}, ${row.employee.firstName}`,
+        otHrs: row.otHours ?? 0,
+        otPay: pay,
+      });
+    }
+  }
+  const otRows = [...otByEmployee.values()].sort((a, b) => b.otHrs - a.otHrs);
+  const totalOtHrs = otRows.reduce((s, r) => s + r.otHrs, 0);
+  const totalOtPay = otRows.reduce((s, r) => s + r.otPay, 0);
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -129,6 +164,43 @@ export default async function DashboardPage() {
           <Button size="sm" variant="secondary"><CheckCheck className="h-3.5 w-3.5" />Approve leaves</Button>
         </Link>
       </div>
+
+      {/* OT summary */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Clock className="h-4 w-4 text-[var(--brand)]" />
+            Overtime — {cutoff.label}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-3">
+          <div className="flex gap-8 mb-4">
+            <div>
+              <div className="text-2xs text-[var(--text-tertiary)] uppercase tracking-wide">Total OT hours</div>
+              <div className="text-xl font-semibold tabular mt-0.5">{totalOtHrs.toFixed(1)}h</div>
+            </div>
+            <div>
+              <div className="text-2xs text-[var(--text-tertiary)] uppercase tracking-wide">Est. OT pay</div>
+              <div className="text-xl font-semibold tabular mt-0.5 text-[var(--brand)]">{php(totalOtPay)}</div>
+            </div>
+          </div>
+          {otRows.length === 0 ? (
+            <p className="text-xs text-[var(--text-tertiary)]">No overtime recorded for this cutoff.</p>
+          ) : (
+            <div className="space-y-1">
+              {otRows.map((r) => (
+                <div key={r.name} className="flex items-center justify-between gap-3 py-1.5 border-b border-[var(--border)] last:border-0">
+                  <span className="text-sm">{r.name}</span>
+                  <div className="flex items-center gap-4 text-sm tabular text-[var(--text-secondary)] flex-shrink-0">
+                    <span>{r.otHrs.toFixed(1)}h</span>
+                    <span className="text-[var(--brand)] font-medium">{php(r.otPay)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Charts + Deadlines */}
       <div className="grid lg:grid-cols-3 gap-4">

@@ -251,12 +251,14 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
       </Card>
 
       {/* Summary KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
-          { label: "Gross pay",    value: T.gross },
-          { label: "Net pay",      value: T.net },
-          { label: "WHT (BIR)",    value: T.wht },
-          { label: "Statutory EE", value: T.sssEE + T.phicEE + T.hdmfEE },
+          { label: "Gross pay", value: T.gross },
+          { label: "Net pay",   value: T.net },
+          { label: "WHT (BIR)", value: T.wht },
+          { label: "SSS EE",    value: T.sssEE },
+          { label: "PHIC EE",   value: T.phicEE },
+          { label: "HDMF EE",   value: T.hdmfEE },
         ].map((k) => (
           <Card key={k.label}>
             <CardContent className="pt-4">

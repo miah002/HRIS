@@ -182,6 +182,7 @@ async function bulkEntry(formData: FormData) {
   const session = await auth();
   if (!session) redirect("/login");
   const employeeId = String(formData.get("employeeId"));
+  if (!employeeId) redirect("/attendance?tab=bulk");
   const weekStr    = String(formData.get("week"));
 
   for (let i = 0; i < 7; i++) {
@@ -365,7 +366,9 @@ export default async function AttendancePage({
 
   const rows = employees.map((e) => {
     const rec = recordMap.get(e.id);
-    const status = !rec ? "Absent" : !rec.timeIn ? "Absent" : !rec.timeOut ? "In progress" : rec.hoursWorked < 8 ? "Late / Short" : "Present";
+    const status = !rec ? "Absent" : !rec.timeIn ? "Absent" : !rec.timeOut ? "In progress"
+      : (rec.isRestDay || rec.otRateCode?.startsWith("RD")) ? "Present"
+      : rec.hoursWorked < 8 ? "Late / Short" : "Present";
     return { e, rec, status };
   });
 
@@ -706,6 +709,7 @@ export default async function AttendancePage({
                       const status =
                         !rec.timeIn ? "Absent"
                         : !rec.timeOut ? "In progress"
+                        : (rec.isRestDay || rec.otRateCode?.startsWith("RD")) ? "Present"
                         : rec.hoursWorked < 8 ? "Late / Short"
                         : "Present";
                       return editing === rec.id && period === "current" ? (

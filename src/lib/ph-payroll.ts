@@ -210,12 +210,11 @@ export function thirteenthMonthAccrual(monthlyBasic: number, monthsWorked: numbe
 
 // ---------- Statutory leave entitlements ----------
 export const STATUTORY_LEAVE = {
-  SIL: { days: 5, ref: "Art. 95, Labor Code (after 1 year of service)" },
+  SIL:       { days: 5,   ref: "Art. 95, Labor Code (after 1 year of service)" },
+  VL:        { days: 15,  ref: "Company policy — Vacation Leave" },
+  SL:        { days: 15,  ref: "Company policy — Sick Leave" },
   MATERNITY: { days: 105, ref: "RA 11210 (Expanded Maternity Leave; +15 if solo parent)" },
-  PATERNITY: { days: 7, ref: "RA 8187 (for first 4 deliveries of legitimate spouse)" },
-  SOLO_PARENT: { days: 7, ref: "RA 11861 (Expanded Solo Parents Welfare Act)" },
-  MAGNA_CARTA: { days: 60, ref: "RA 9710 (Special Leave for Women, post-surgery)" },
-  VAWC: { days: 10, ref: "RA 9262 (Violence Against Women and Children)" },
+  PATERNITY: { days: 7,   ref: "RA 8187 (for first 4 deliveries of legitimate spouse)" },
 } as const;
 
 function round2(n: number) {

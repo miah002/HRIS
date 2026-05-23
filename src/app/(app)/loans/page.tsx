@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Table, TableHeader, TableBody, TableRow, Th, Td } from "@/components/ui/table";
+import Link from "next/link";
 import { CreditCard, PlusCircle } from "lucide-react";
 
 const LOAN_LABELS: Record<string, string> = {
@@ -15,6 +16,18 @@ const LOAN_LABELS: Record<string, string> = {
   CASH_ADVANCE: "Company Cash Advance",
   OTHER: "Other",
 };
+
+async function editLoan(formData: FormData) {
+  "use server";
+  const session = await auth();
+  if (!session) redirect("/login");
+  const loanId = String(formData.get("loanId"));
+  const balance = Number(formData.get("balance"));
+  const monthlyDeduction = Number(formData.get("monthlyDeduction"));
+  const status = String(formData.get("status"));
+  await prisma.loan.update({ where: { id: loanId }, data: { balance, monthlyDeduction, status } });
+  redirect("/loans");
+}
 
 async function addLoan(formData: FormData) {
   "use server";
@@ -64,7 +77,8 @@ async function cancelLoan(id: string) {
   redirect("/loans");
 }
 
-export default async function LoansPage() {
+export default async function LoansPage({ searchParams }: { searchParams: Promise<{ editLoan?: string }> }) {
+  const { editLoan: editLoanId } = await searchParams;
   const session = await auth();
   if (!session) redirect("/login");
 
@@ -220,7 +234,9 @@ export default async function LoansPage() {
                 {activeLoans.map((loan) => {
                   const markPaidFn = markPaid.bind(null, loan.id);
                   const cancelFn = cancelLoan.bind(null, loan.id);
+                  const isEditing = editLoanId === loan.id;
                   return (
+                    <>
                     <TableRow key={loan.id}>
                       <Td>
                         <div className="flex items-center gap-3">
@@ -256,6 +272,11 @@ export default async function LoansPage() {
                       <Td>{phDate(loan.startDate)}</Td>
                       <Td>
                         <div className="flex items-center gap-2 flex-wrap">
+                          <Link href={isEditing ? "/loans" : `/loans?editLoan=${loan.id}`}>
+                            <Button size="sm" variant="secondary" type="button">
+                              {isEditing ? "Close" : "Edit"}
+                            </Button>
+                          </Link>
                           <form action={markPaidFn}>
                             <Button size="sm" variant="secondary" type="submit">
                               Mark Paid
@@ -269,6 +290,39 @@ export default async function LoansPage() {
                         </div>
                       </Td>
                     </TableRow>
+                    {isEditing && (
+                      <TableRow className="bg-[var(--neutral-bg)]">
+                        <Td colSpan={7}>
+                          <form action={editLoan} className="flex flex-wrap gap-3 items-end py-1">
+                            <input type="hidden" name="loanId" value={loan.id} />
+                            <div className="flex flex-col gap-1 text-xs">
+                              <span className="text-[var(--text-tertiary)]">Balance</span>
+                              <input type="number" name="balance" defaultValue={loan.balance} min="0" step="0.01"
+                                className="h-8 w-32 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-2 text-sm tabular focus:outline-none focus:border-[var(--brand)]"
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1 text-xs">
+                              <span className="text-[var(--text-tertiary)]">Monthly deduction</span>
+                              <input type="number" name="monthlyDeduction" defaultValue={loan.monthlyDeduction} min="0" step="0.01"
+                                className="h-8 w-36 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-2 text-sm tabular focus:outline-none focus:border-[var(--brand)]"
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1 text-xs">
+                              <span className="text-[var(--text-tertiary)]">Status</span>
+                              <select name="status" defaultValue={loan.status}
+                                className="h-8 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-2 text-sm focus:outline-none focus:border-[var(--brand)]"
+                              >
+                                <option value="ACTIVE">Active</option>
+                                <option value="PAID">Paid</option>
+                                <option value="CANCELLED">Cancelled</option>
+                              </select>
+                            </div>
+                            <Button type="submit" size="sm">Save</Button>
+                          </form>
+                        </Td>
+                      </TableRow>
+                    )}
+                    </>
                   );
                 })}
               </TableBody>

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { phDate, php } from "@/lib/format";
 import { ChevronLeft } from "lucide-react";
-import { PrintButton } from "../../../payroll/[id]/print-button";
+import { PrintButton } from "@/components/print-button";
 
 export default async function BIR2316Page({
   params,
@@ -22,7 +22,7 @@ export default async function BIR2316Page({
     where: { id },
     include: { company: true },
   });
-  if (!e) notFound();
+  if (!e || !e.company) notFound();
 
   const now = new Date();
   const year = parseInt(sp.year ?? String(now.getFullYear()));

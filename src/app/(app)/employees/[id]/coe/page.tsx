@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 import { phDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
-import { PrintButton } from "../../../payroll/[id]/print-button";
+import { PrintButton } from "@/components/print-button";
 
 export default async function COEPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

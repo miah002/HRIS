@@ -6,7 +6,7 @@ import { php, phDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, PlayCircle } from "lucide-react";
-import { PrintButton } from "./print-button";
+import { PrintButton } from "@/components/print-button";
 import { computeSemiMonthlyPayroll, OT_RATES, hourlyRate } from "@/lib/ph-payroll";
 import { Table, TableHeader, TableBody, TableRow, Th, Td, TableFooter } from "@/components/ui/table";
 

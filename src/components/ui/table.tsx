@@ -56,23 +56,25 @@ export function TableRow({ className, ...props }: React.HTMLAttributes<HTMLTable
   );
 }
 
-// Column header — optional sort indicator
+// Column header — optional sort indicator, optional numeric (right-align + tabular)
 interface ThProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
   sortable?: boolean;
   sorted?: "asc" | "desc" | null;
+  numeric?: boolean;
 }
 
-export function Th({ className, sortable, sorted, children, ...props }: ThProps) {
+export function Th({ className, sortable, sorted, numeric, children, ...props }: ThProps) {
   return (
     <th
       className={cn(
         "px-4 py-3 text-left text-xs font-medium text-[var(--text-tertiary)] tracking-wide uppercase",
+        numeric && "text-right tabular",
         sortable && "cursor-pointer select-none hover:text-[var(--text-secondary)]",
         className
       )}
       {...props}
     >
-      <span className="flex items-center gap-1">
+      <span className={cn("flex items-center gap-1", numeric && "justify-end")}>
         {children}
         {sortable && (
           <span className={cn("opacity-40 transition-opacity", sorted && "opacity-100")}>

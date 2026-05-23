@@ -61,14 +61,6 @@ export default async function BIR2316Page({
           <ChevronLeft className="h-3 w-3" /> Back to profile
         </Link>
         <div className="flex items-center gap-2">
-          <select
-            value={year}
-            // navigate via form to avoid client component
-            onChange={() => {}}
-            className="h-7 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-2 text-xs text-[var(--text-primary)] focus:outline-none print:hidden"
-          >
-            {years.map((y) => <option key={y} value={y}>{y}</option>)}
-          </select>
           <div className="flex gap-1">
             {years.map((y) => (
               <a

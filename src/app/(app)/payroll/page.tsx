@@ -37,15 +37,28 @@ async function runPayroll(formData: FormData) {
     let nightDiffPayIn = 0;
     let holidayPayIn   = 0;
 
+    const REG_PREMIUM: Record<string, number> = {
+      RD: 0.30,    RD_OT: 0.30,
+      SH: 0.30,    SH_OT: 0.30,  SH_RD: 0.50,   SH_RD_OT: 0.50,
+      RH: 1.00,    RH_OT: 1.00,  RH_RD: 1.60,   RH_RD_OT: 1.60,
+    };
     for (const row of attendance) {
-      const hours = row.otHours ?? 0;
-      if (!hours) continue;
-      const code = row.otRateCode ?? "R_OT";
-      const mult = OT_RATES[code] ?? 1.25;
-      const pay  = Math.round(hours * hr * mult * 100) / 100;
-      if (code.startsWith("ND"))       nightDiffPayIn += pay;
-      else if (code.startsWith("RH"))  holidayPayIn   += pay;
-      else                             overtimePayIn  += pay;
+      const code   = row.otRateCode;
+      const regHrs = Math.min(row.hoursWorked, 8);
+      const otHrs  = row.otHours ?? 0;
+      const ndHrs  = row.ndHours ?? 0;
+      if (!code) {
+        if (otHrs > 0) overtimePayIn += Math.round(otHrs * hr * 1.25 * 100) / 100;
+      } else {
+        const baseCode = code.replace(/_OT$/, "");
+        const regPrem  = (REG_PREMIUM[code] ?? 0) * regHrs * hr;
+        const otPay    = otHrs > 0 ? otHrs * hr * (OT_RATES[code] ?? 1.25) : 0;
+        const total    = Math.round((regPrem + otPay) * 100) / 100;
+        if (baseCode.startsWith("RH"))      holidayPayIn   += total;
+        else if (baseCode.startsWith("ND")) nightDiffPayIn += total;
+        else                                overtimePayIn  += total;
+      }
+      if (ndHrs > 0) nightDiffPayIn += Math.round(ndHrs * hr * 0.10 * 100) / 100;
     }
 
     // Preserve existing adjustments if payroll already ran for this period

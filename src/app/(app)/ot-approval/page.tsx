@@ -9,14 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, Th, Td } from "@/components/ui/table";
 import { ClipboardCheck, Check, Clock } from "lucide-react";
 
-const ALLOWED_PREPARERS = ["ailyn", "angela", "louie"];
-const ALLOWED_CHECKERS  = ["angela"];
-const ALLOWED_APPROVERS = ["louie", "angela"];
+// Prepare: OWNER, MANAGER, HR  |  Check: OWNER, MANAGER, HR  |  Approve: OWNER, MANAGER
+const CAN_PREPARE = ["OWNER", "MANAGER", "HR"];
+const CAN_CHECK   = ["OWNER", "MANAGER", "HR"];
+const CAN_APPROVE = ["OWNER", "MANAGER"];
 
-function nameAllowed(name: string | null | undefined, allowed: string[]) {
-  if (!name) return false;
-  const lower = name.toLowerCase();
-  return allowed.some((n) => lower.includes(n));
+function roleAllowed(role: string | null | undefined, allowed: string[]) {
+  return allowed.includes(role ?? "");
 }
 
 function currentCutoff(now = new Date()) {
@@ -31,7 +30,7 @@ async function prepareOT(formData: FormData) {
   if (!session) redirect("/login");
   const user = await prisma.user.findUnique({ where: { email: session.user!.email! } });
   if (!user?.companyId) redirect("/dashboard");
-  if (!nameAllowed(user.name, ALLOWED_PREPARERS))
+  if (!roleAllowed(user.role, CAN_PREPARE))
     redirect("/ot-approval?toast=Not+authorized+to+prepare&toastType=error");
   const start = new Date(String(formData.get("periodStart")));
   const end   = new Date(String(formData.get("periodEnd")));
@@ -50,7 +49,7 @@ async function checkOT(formData: FormData) {
   if (!session) redirect("/login");
   const user = await prisma.user.findUnique({ where: { email: session.user!.email! } });
   if (!user?.companyId) redirect("/dashboard");
-  if (!nameAllowed(user.name, ALLOWED_CHECKERS))
+  if (!roleAllowed(user.role, CAN_CHECK))
     redirect("/ot-approval?toast=Not+authorized+to+check&toastType=error");
   const start = new Date(String(formData.get("periodStart")));
   const end   = new Date(String(formData.get("periodEnd")));
@@ -69,7 +68,7 @@ async function approveOT(formData: FormData) {
   if (!session) redirect("/login");
   const user = await prisma.user.findUnique({ where: { email: session.user!.email! } });
   if (!user?.companyId) redirect("/dashboard");
-  if (!nameAllowed(user.name, ALLOWED_APPROVERS))
+  if (!roleAllowed(user.role, CAN_APPROVE))
     redirect("/ot-approval?toast=Not+authorized+to+approve&toastType=error");
   const start = new Date(String(formData.get("periodStart")));
   const end   = new Date(String(formData.get("periodEnd")));
@@ -140,9 +139,9 @@ export default async function OTApprovalPage() {
   const isChecked  = ["CHECKED", "APPROVED"].includes(status);
   const isApproved = status === "APPROVED";
 
-  const canPrepare = nameAllowed(user.name, ALLOWED_PREPARERS);
-  const canCheck   = nameAllowed(user.name, ALLOWED_CHECKERS);
-  const canApprove = nameAllowed(user.name, ALLOWED_APPROVERS);
+  const canPrepare = roleAllowed(user.role, CAN_PREPARE);
+  const canCheck   = roleAllowed(user.role, CAN_CHECK);
+  const canApprove = roleAllowed(user.role, CAN_APPROVE);
 
   const cutoffLabel = `${phDate(cutoff.start)} – ${phDate(cutoff.end)}`;
 
@@ -249,7 +248,7 @@ export default async function OTApprovalPage() {
                 </Button>
               </form>
             ) : (
-              <p className="text-xs text-[var(--text-tertiary)]">Only Ailyn, Angela, or Louie can prepare.</p>
+              <p className="text-xs text-[var(--text-tertiary)]">Requires Owner, Manager, or HR role.</p>
             )}
           </CardContent>
         </Card>
@@ -295,7 +294,7 @@ export default async function OTApprovalPage() {
                 )}
               </form>
             ) : (
-              <p className="text-xs text-[var(--text-tertiary)]">Only Angela can check.</p>
+              <p className="text-xs text-[var(--text-tertiary)]">Requires Owner, Manager, or HR role.</p>
             )}
           </CardContent>
         </Card>
@@ -341,7 +340,7 @@ export default async function OTApprovalPage() {
                 )}
               </form>
             ) : (
-              <p className="text-xs text-[var(--text-tertiary)]">Only Louie or Angela can approve.</p>
+              <p className="text-xs text-[var(--text-tertiary)]">Requires Owner or Manager role.</p>
             )}
           </CardContent>
         </Card>

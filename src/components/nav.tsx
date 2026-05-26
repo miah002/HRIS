@@ -8,7 +8,7 @@ import { useTheme } from "next-themes";
 import {
   LayoutDashboard, Users, Clock, Wallet, CalendarCheck,
   ShieldCheck, BarChart3, LogOut, ChevronLeft, ChevronRight,
-  Sun, Moon, Monitor, User, CreditCard, ClipboardCheck
+  Sun, Moon, Monitor, User, CreditCard, ClipboardCheck, Settings
 } from "lucide-react";
 import { cn } from "@/lib/format";
 import { Avatar } from "@/components/ui/avatar";
@@ -23,6 +23,7 @@ const OWNER_NAV = [
   { href: "/loans",      label: "Loans",      sub: "Salary loans",  icon: CreditCard },
   { href: "/compliance", label: "Compliance", sub: "DOLE/BIR",      icon: ShieldCheck },
   { href: "/reports",    label: "Reports",    sub: "Analytics",     icon: BarChart3 },
+  { href: "/settings",   label: "Settings",   sub: "Roles & access", icon: Settings },
 ];
 
 const EMPLOYEE_NAV = [

@@ -8,7 +8,7 @@ import { useTheme } from "next-themes";
 import {
   LayoutDashboard, Users, Clock, Wallet, CalendarCheck,
   ShieldCheck, BarChart3, LogOut, ChevronLeft, ChevronRight,
-  Sun, Moon, Monitor, User, CreditCard
+  Sun, Moon, Monitor, User, CreditCard, ClipboardCheck
 } from "lucide-react";
 import { cn } from "@/lib/format";
 import { Avatar } from "@/components/ui/avatar";
@@ -18,6 +18,7 @@ const OWNER_NAV = [
   { href: "/employees",  label: "Employees",  sub: "Mga Empleyado", icon: Users },
   { href: "/attendance", label: "Attendance", sub: "DTR",           icon: Clock },
   { href: "/payroll",    label: "Payroll",    sub: "Sweldo",        icon: Wallet },
+  { href: "/ot-approval", label: "OT Approval", sub: "Prepare · Check · Approve", icon: ClipboardCheck },
   { href: "/leave",      label: "Leave",      sub: "Bakasyon",      icon: CalendarCheck },
   { href: "/loans",      label: "Loans",      sub: "Salary loans",  icon: CreditCard },
   { href: "/compliance", label: "Compliance", sub: "DOLE/BIR",      icon: ShieldCheck },

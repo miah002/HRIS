@@ -70,6 +70,7 @@ model Company {
   employees         Employee[]
   loans             Loan[]
   complianceRecords ComplianceRecord[]
+  otApprovals       OTApproval[]
   createdAt         DateTime           @default(now())
 }
 
@@ -216,6 +217,24 @@ model Loan {
   status           String   @default("ACTIVE") // ACTIVE | PAID | CANCELLED
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+}
+
+model OTApproval {
+  id          String    @id @default(cuid())
+  companyId   String
+  company     Company   @relation(fields: [companyId], references: [id])
+  periodStart DateTime
+  periodEnd   DateTime
+  status      String    @default("PENDING") // PENDING | PREPARED | CHECKED | APPROVED
+  preparedBy  String    @default("Ailyn")
+  preparedAt  DateTime?
+  checkedBy   String    @default("Angela")
+  checkedAt   DateTime?
+  approvedBy  String    @default("Louie")
+  approvedAt  DateTime?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  @@unique([companyId, periodStart, periodEnd])
 }
 
 model ComplianceRecord {

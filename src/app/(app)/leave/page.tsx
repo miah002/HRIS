@@ -6,9 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, STATUS_BADGE } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
-import { STATUTORY_LEAVE } from "@/lib/ph-payroll";
 import { phDate } from "@/lib/format";
-import { CalendarCheck, PlusCircle } from "lucide-react";
+import { CalendarCheck, PlusCircle, ShieldCheck } from "lucide-react";
+import { StandardLeaveForm, SpecialLeaveForm } from "./leave-form";
 
 async function approveLeave(id: string) {
   "use server";
@@ -34,14 +34,41 @@ async function submitLeave(formData: FormData) {
   if (!user?.companyId) redirect("/dashboard");
 
   const employeeId = String(formData.get("employeeId"));
-  const leaveType = String(formData.get("leaveType"));
-  const startDate = new Date(String(formData.get("startDate")));
-  const endDate = new Date(String(formData.get("endDate")));
+  const leaveType  = String(formData.get("leaveType"));
+  const startDate  = new Date(String(formData.get("startDate")));
+  const endDate    = new Date(String(formData.get("endDate")));
 
-  await prisma.leaveRequest.create({
-    data: { employeeId, leaveType, startDate, endDate, status: "PENDING" },
-  });
+  // VL / SL only in standard form
+  if (!["VL", "SL"].includes(leaveType)) redirect("/leave?toast=Invalid+leave+type&toastType=error");
+
+  await prisma.leaveRequest.create({ data: { employeeId, leaveType, startDate, endDate, status: "PENDING" } });
   redirect("/leave?toast=Leave+request+submitted");
+}
+
+async function submitSpecialLeave(formData: FormData) {
+  "use server";
+  const session = await auth();
+  if (!session) redirect("/login");
+  const user = await prisma.user.findUnique({ where: { email: session.user!.email! } });
+  if (!user?.companyId) redirect("/dashboard");
+
+  const employeeId = String(formData.get("employeeId"));
+  const leaveType  = String(formData.get("leaveType"));
+  const startDate  = new Date(String(formData.get("startDate")));
+  const endDate    = new Date(String(formData.get("endDate")));
+
+  if (!["MATERNITY", "PATERNITY"].includes(leaveType)) redirect("/leave?toast=Invalid+special+leave+type&toastType=error");
+
+  const emp = await prisma.employee.findUnique({ where: { id: employeeId }, select: { sex: true } });
+  if (!emp) redirect("/leave?toast=Employee+not+found&toastType=error");
+
+  if (leaveType === "MATERNITY" && emp.sex !== "FEMALE")
+    redirect("/leave?toast=Maternity+leave+is+for+female+employees+only&toastType=error");
+  if (leaveType === "PATERNITY" && emp.sex !== "MALE")
+    redirect("/leave?toast=Paternity+leave+is+for+male+employees+only&toastType=error");
+
+  await prisma.leaveRequest.create({ data: { employeeId, leaveType, startDate, endDate, status: "PENDING" } });
+  redirect("/leave?toast=Special+leave+filed");
 }
 
 export default async function LeavePage() {
@@ -52,6 +79,7 @@ export default async function LeavePage() {
   const employees = await prisma.employee.findMany({
     where: { companyId: user?.companyId ?? "", archived: false },
     orderBy: { firstName: "asc" },
+    select: { id: true, firstName: true, lastName: true, sex: true },
   });
 
   const requests = await prisma.leaveRequest.findMany({
@@ -76,58 +104,33 @@ export default async function LeavePage() {
         </div>
       </div>
 
-      {/* File a leave request */}
+      {/* Standard leave (VL / SL) */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <PlusCircle className="h-4 w-4 text-[var(--brand)]" /> File a leave request
+            <span className="text-xs font-normal text-[var(--text-tertiary)] ml-1">— Vacation Leave / Sick Leave</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-3">
-          <form action={submitLeave} className="grid sm:grid-cols-4 gap-3 items-end">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[var(--text-secondary)]">Employee</label>
-              <select
-                name="employeeId" required
-                className="h-10 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)]"
-              >
-                <option value="">Select employee…</option>
-                {employees.map((e) => (
-                  <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[var(--text-secondary)]">Leave type</label>
-              <select
-                name="leaveType" required
-                className="h-10 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)]"
-              >
-                {Object.keys(STATUTORY_LEAVE).map((t) => (
-                  <option key={t} value={t}>{t.replace(/_/g, " ")}</option>
-                ))}
-                <option value="VL">Vacation Leave</option>
-                <option value="SL">Sick Leave</option>
-              </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[var(--text-secondary)]">Start date</label>
-              <input
-                type="date" name="startDate" required
-                className="h-10 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)]"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[var(--text-secondary)]">End date</label>
-              <input
-                type="date" name="endDate" required
-                className="h-10 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)]"
-              />
-            </div>
-            <div className="sm:col-span-4 flex justify-end">
-              <Button type="submit" size="sm">Submit request</Button>
-            </div>
-          </form>
+          <StandardLeaveForm employees={employees} action={submitLeave} />
+        </CardContent>
+      </Card>
+
+      {/* Special leave (Maternity / Paternity — admin only) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <ShieldCheck className="h-4 w-4 text-[var(--brand)]" /> Special leave — admin
+            <span className="text-xs font-normal text-[var(--text-tertiary)] ml-1">Maternity · Paternity</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-3">
+          <p className="text-xs text-[var(--text-secondary)] mb-4">
+            Maternity leave is available only to female employees (RA 11210 — 105 days).
+            Paternity leave is available only to male employees (RA 8187 — 7 days).
+          </p>
+          <SpecialLeaveForm employees={employees} action={submitSpecialLeave} />
         </CardContent>
       </Card>
 
@@ -148,7 +151,7 @@ export default async function LeavePage() {
             <div className="space-y-2">
               {pending.map((r) => {
                 const approveFn = approveLeave.bind(null, r.id);
-                const rejectFn = rejectLeave.bind(null, r.id);
+                const rejectFn  = rejectLeave.bind(null, r.id);
                 const days = Math.max(1, Math.ceil((+r.endDate - +r.startDate) / 86400000) + 1);
                 return (
                   <div key={r.id} className="flex items-center justify-between gap-3 py-2.5 border-b border-[var(--border)] last:border-0">
@@ -165,12 +168,8 @@ export default async function LeavePage() {
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <Badge variant="warning">PENDING</Badge>
-                      <form action={rejectFn}>
-                        <Button size="sm" variant="secondary" type="submit">Reject</Button>
-                      </form>
-                      <form action={approveFn}>
-                        <Button size="sm" type="submit">Approve</Button>
-                      </form>
+                      <form action={rejectFn}><Button size="sm" variant="secondary" type="submit">Reject</Button></form>
+                      <form action={approveFn}><Button size="sm" type="submit">Approve</Button></form>
                     </div>
                   </div>
                 );
@@ -206,17 +205,22 @@ export default async function LeavePage() {
         </Card>
       )}
 
-      {/* Statutory entitlements reference */}
+      {/* Leave reference */}
       <Card>
-        <CardHeader><CardTitle>Statutory leave entitlements</CardTitle></CardHeader>
-        <CardContent className="pt-3 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {Object.entries(STATUTORY_LEAVE).map(([code, info]) => (
+        <CardHeader><CardTitle>Leave entitlement reference</CardTitle></CardHeader>
+        <CardContent className="pt-3 grid sm:grid-cols-2 gap-3">
+          {[
+            { code: "VL", label: "Vacation Leave", days: 15, ref: "Company policy" },
+            { code: "SL", label: "Sick Leave", days: 15, ref: "Company policy" },
+            { code: "MATERNITY", label: "Maternity Leave (Female)", days: 105, ref: "RA 11210 — Expanded Maternity Leave" },
+            { code: "PATERNITY", label: "Paternity Leave (Male)", days: 7, ref: "RA 8187 — Paternity Leave Act" },
+          ].map(({ code, label, days, ref }) => (
             <div key={code} className="rounded-[var(--radius-sm)] border border-[var(--border)] p-3">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium">{code.replace(/_/g, " ")}</span>
-                <Badge variant="brand">{info.days}d</Badge>
+                <span className="text-xs font-medium">{label}</span>
+                <Badge variant="brand">{days}d</Badge>
               </div>
-              <p className="text-[10px] text-[var(--text-tertiary)] mt-1 leading-relaxed">{info.ref}</p>
+              <p className="text-[10px] text-[var(--text-tertiary)] mt-1 leading-relaxed">{ref}</p>
             </div>
           ))}
         </CardContent>

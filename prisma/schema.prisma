@@ -98,6 +98,7 @@ model Employee {
   archived         Boolean        @default(false)
   archivedAt       DateTime?
   notes            String?
+  hdmfMp2Monthly   Float          @default(0)
   attendance       Attendance[]
   payrolls         Payroll[]
   leaves           LeaveRequest[]
@@ -165,6 +166,11 @@ model Payroll {
   sssER                 Float              @default(0)
   philHealthER          Float              @default(0)
   pagIbigER             Float              @default(0)
+  lateMinutes           Float              @default(0)
+  lateDeduction         Float              @default(0)
+  undertimeMinutes      Float              @default(0)
+  undertimeDeduction    Float              @default(0)
+  hdmfMp2               Float              @default(0)
   status                String             @default("DRAFT") // DRAFT | RELEASED
   adjustments           PayrollAdjustment[]
   createdAt             DateTime           @default(now())

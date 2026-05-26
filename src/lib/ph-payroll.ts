@@ -5,8 +5,13 @@
  *  - Labor Code of the Philippines (PD 442, as amended) — OT, night differential, holiday premiums
  *  - SSS Circular 2023-006 / RA 11199 — contribution table (effective 2025 schedule, used as 2026 baseline)
  *  - RA 11223 (Universal Health Care Act) — PhilHealth premium rate (5% in 2024+, capped salary floor/ceiling)
- *  - HDMF Circular 460 — Pag-IBIG 2% EE / 2% ER, MSC ceiling ₱10,000
+ *  - HDMF Circular 460 — Pag-IBIG 2% EE / 2% ER, MSC ceiling ₱10,000 → fixed ₱200 EE/ER
  *  - TRAIN Law (RA 10963) — revised withholding tax tables (effective Jan 1, 2023 onwards)
+ *
+ * Cutoff deduction assignment (client preference):
+ *  - 1st cutoff (1–15): PHIC + HDMF full monthly amounts
+ *  - 2nd cutoff (16–end): SSS full monthly amount
+ *  - WHT: always monthly amount ÷ 2 per cutoff
  *
  * IMPORTANT: Contribution tables move periodically. Values here are accurate as of build time;
  * production deployments should expose these as DB-driven config so finance teams can update
@@ -21,11 +26,11 @@ const SSS_MSC_MIN = 5000;   // 2025 floor
 const SSS_MSC_MAX = 35000;  // 2025 ceiling
 const SSS_MSC_STEP = 500;
 
-export function sssContribution(monthlyRate: number) {
-  // Round monthly rate to nearest MSC bracket (round down to step within floor/ceiling).
+export function sssContribution(monthlyEarnings: number) {
+  // Round monthly earnings to nearest MSC bracket (round down to step within floor/ceiling).
   const msc = Math.max(
     SSS_MSC_MIN,
-    Math.min(SSS_MSC_MAX, Math.floor(monthlyRate / SSS_MSC_STEP) * SSS_MSC_STEP)
+    Math.min(SSS_MSC_MAX, Math.floor(monthlyEarnings / SSS_MSC_STEP) * SSS_MSC_STEP)
   );
   return {
     msc,
@@ -46,7 +51,7 @@ export function philHealthContribution(monthlyRate: number) {
   return { employee: half, employer: half };
 }
 
-// ---------- Pag-IBIG (HDMF): 2% EE / 2% ER, capped at ₱10,000 MSC ----------
+// ---------- Pag-IBIG (HDMF): 2% EE / 2% ER, capped at ₱10,000 MSC → ₱200 fixed for salary ≥ ₱10k ----------
 const HDMF_RATE = 0.02;
 const HDMF_CAP = 10000;
 
@@ -110,9 +115,39 @@ export function hourlyRate(monthlyRate: number) {
   return (monthlyRate / 21.75) / 8;
 }
 
+// ---------- Late / undertime computation ----------
+// Uses hoursWorked as authoritative figure; splits shortfall into late (from timeIn) and undertime.
+export function lateUndertimeMinutes(
+  hoursWorked: number,
+  timeIn: Date | null | undefined,
+  gracePeriodMinutes = 5,
+) {
+  const SCHEDULE_START = 8 * 60; // 08:00 in minutes from midnight
+  const SCHEDULED_MINUTES = 480; // 8-hour workday
+
+  let lateMin = 0;
+  if (timeIn) {
+    const t = new Date(timeIn);
+    const tinMin = t.getHours() * 60 + t.getMinutes();
+    lateMin = Math.max(0, tinMin - SCHEDULE_START - gracePeriodMinutes);
+  }
+
+  const workedMin = hoursWorked * 60;
+  const shortageMin = Math.max(0, SCHEDULED_MINUTES - workedMin);
+  const undertimeMin = Math.max(0, shortageMin - lateMin);
+
+  return { lateMinutes: lateMin, undertimeMinutes: undertimeMin };
+}
+
 // ---------- Semi-monthly payroll (cutoffs 1–15 and 16–end) ----------
-// Mandatory deductions are MONTHLY but commonly split evenly across two cutoffs.
-// We split SSS/PhilHealth/Pag-IBIG/WHT in half for each semi-monthly run.
+//
+// Deduction cutoff assignment (client preference):
+//   1st cutoff (day ≤ 15 = isFirstCutoff true):  PHIC + HDMF full
+//   2nd cutoff (day > 15 = isFirstCutoff false):  SSS full
+//   WHT: always monthly WHT ÷ 2 regardless of cutoff
+//
+// SSS MSC basis: sssEarningsMonthly (basic + OT × 2 + de minimis × 2 if provided)
+// otherwise falls back to monthlyRate.
 export interface PayrollInput {
   monthlyRate: number;
   periodStart: Date;
@@ -132,11 +167,20 @@ export interface PayrollInput {
   overtimePayIn?: number;
   nightDiffPayIn?: number;
   holidayPayIn?: number;
+  // Cutoff and SSS basis
+  isFirstCutoff?: boolean;       // true = 1–15 (PHIC+HDMF), false = 16–end (SSS). Auto-derived from periodStart if omitted.
+  sssEarningsMonthly?: number;   // total monthly earnings for SSS MSC (basic + OT + de minimis projection)
+  // Late / undertime (pre-computed from attendance)
+  lateMinutesIn?: number;
+  lateDeductionIn?: number;
+  undertimeMinutesIn?: number;
+  undertimeDeductionIn?: number;
+  // HDMF MP2 voluntary savings (semi-monthly amount)
+  hdmfMp2In?: number;
 }
 
 export function computeSemiMonthlyPayroll(i: PayrollInput) {
   const hr = hourlyRate(i.monthlyRate);
-  const dailyRate = round2(i.monthlyRate / 21.75);
 
   // Fixed semi-monthly: always pay half-month rate. daysWorked is informational only.
   const basicPay = round2(i.monthlyRate / 2);
@@ -161,22 +205,42 @@ export function computeSemiMonthlyPayroll(i: PayrollInput) {
 
   const grossPay = round2(basicPay + otPay + ndPay + holidayPay + allowances + taxableAdj + nonTaxableAdj);
 
-  const sss  = sssContribution(i.monthlyRate);
+  // Determine cutoff type: 1st (PHIC+HDMF) vs 2nd (SSS)
+  const isFirstCutoff = i.isFirstCutoff ?? (i.periodStart.getDate() <= 15);
+
+  // SSS MSC basis: total monthly earnings (basic + OT × 2 + non-taxable × 2) if provided
+  const sssEarnings = i.sssEarningsMonthly ?? i.monthlyRate;
+  const sss  = sssContribution(sssEarnings);
   const phic = philHealthContribution(i.monthlyRate);
   const hdmf = pagIbigContribution(i.monthlyRate);
 
-  const sssEE  = round2(sss.employee / 2);
-  const phicEE = round2(phic.employee / 2);
-  const hdmfEE = round2(hdmf.employee / 2);
+  // Assign statutory deductions to the appropriate cutoff (full amount, not split)
+  const sssEE  = isFirstCutoff ? 0 : round2(sss.employee);
+  const phicEE = isFirstCutoff ? round2(phic.employee) : 0;
+  const hdmfEE = isFirstCutoff ? round2(hdmf.employee) : 0;
 
+  const sssERVal  = isFirstCutoff ? 0 : round2(sss.employer);
+  const phicERVal = isFirstCutoff ? round2(phic.employer) : 0;
+  const hdmfERVal = isFirstCutoff ? round2(hdmf.employer) : 0;
+
+  // WHT always monthly ÷ 2 (use full statutory as monthly deduction basis for tax computation)
   const monthlyStatutory = sss.employee + phic.employee + hdmf.employee;
   const taxableSemi = basicPay + otPay + taxableAdj;
   const taxableMonthly = Math.max(0, taxableSemi * 2 - monthlyStatutory);
   const monthlyWHT = withholdingTaxMonthly(taxableMonthly);
   const whtSemi = round2(monthlyWHT / 2);
 
+  // Late / undertime
+  const lateMinutes = i.lateMinutesIn ?? 0;
+  const lateDeduction = i.lateDeductionIn ?? 0;
+  const undertimeMinutes = i.undertimeMinutesIn ?? 0;
+  const undertimeDeduction = i.undertimeDeductionIn ?? 0;
+
+  // HDMF MP2 voluntary savings
+  const hdmfMp2 = i.hdmfMp2In ?? 0;
+
   const otherDed = i.otherDeductions ?? 0;
-  const totalDeductions = round2(sssEE + phicEE + hdmfEE + whtSemi + otherDed);
+  const totalDeductions = round2(sssEE + phicEE + hdmfEE + whtSemi + lateDeduction + undertimeDeduction + hdmfMp2 + otherDed);
   const netPay = round2(grossPay - totalDeductions);
 
   return {
@@ -194,12 +258,17 @@ export function computeSemiMonthlyPayroll(i: PayrollInput) {
     philHealthEE: phicEE,
     pagIbigEE: hdmfEE,
     withholdingTax: whtSemi,
+    lateMinutes,
+    lateDeduction,
+    undertimeMinutes,
+    undertimeDeduction,
+    hdmfMp2,
     otherDeductions: otherDed,
     totalDeductions,
     netPay,
-    sssER: round2(sss.employer / 2),
-    philHealthER: round2(phic.employer / 2),
-    pagIbigER: round2(hdmf.employer / 2),
+    sssER: sssERVal,
+    philHealthER: phicERVal,
+    pagIbigER: hdmfERVal,
   };
 }
 

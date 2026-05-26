@@ -28,7 +28,15 @@ async function runPayroll(formData: FormData) {
   if (!companyId) redirect("/dashboard");
   const start = new Date(String(formData.get("start")));
   const end   = new Date(String(formData.get("end")));
+  const isFirstCutoff = start.getDate() <= 15;
   const employees = await prisma.employee.findMany({ where: { companyId, archived: false } });
+
+  const GRACE_MINUTES = 5;
+  const REG_PREMIUM: Record<string, number> = {
+    RD: 0.30,    RD_OT: 0.30,
+    SH: 0.30,    SH_OT: 0.30,  SH_RD: 0.50,   SH_RD_OT: 0.50,
+    RH: 1.00,    RH_OT: 1.00,  RH_RD: 1.60,   RH_RD_OT: 1.60,
+  };
 
   for (const e of employees) {
     // Fetch attendance for this pay period
@@ -43,11 +51,11 @@ async function runPayroll(formData: FormData) {
     let nightDiffPayIn = 0;
     let holidayPayIn   = 0;
 
-    const REG_PREMIUM: Record<string, number> = {
-      RD: 0.30,    RD_OT: 0.30,
-      SH: 0.30,    SH_OT: 0.30,  SH_RD: 0.50,   SH_RD_OT: 0.50,
-      RH: 1.00,    RH_OT: 1.00,  RH_RD: 1.60,   RH_RD_OT: 1.60,
-    };
+    // Late / undertime from attendance timeIn and hoursWorked
+    let totalLateMinutes = 0;
+    let totalUndertimeMinutes = 0;
+    const SCHEDULE_START_MIN = 8 * 60; // 08:00
+
     for (const row of attendance) {
       const code   = row.otRateCode;
       const regHrs = Math.min(row.hoursWorked, 8);
@@ -65,7 +73,27 @@ async function runPayroll(formData: FormData) {
         else                                overtimePayIn  += total;
       }
       if (ndHrs > 0) nightDiffPayIn += Math.round(ndHrs * hr * 0.10 * 100) / 100;
+
+      // Compute late / undertime only for present days
+      if (row.hoursWorked > 0) {
+        let rowLate = 0;
+        if (row.timeIn) {
+          const t = new Date(row.timeIn);
+          const tinMin = t.getHours() * 60 + t.getMinutes();
+          rowLate = Math.max(0, tinMin - SCHEDULE_START_MIN - GRACE_MINUTES);
+        }
+        totalLateMinutes += rowLate;
+        const shortageMin = Math.max(0, 480 - row.hoursWorked * 60);
+        totalUndertimeMinutes += Math.max(0, shortageMin - rowLate);
+      }
     }
+
+    const perMinute = (e.basicMonthlyRate / 21.75) / 480;
+    const lateDeductionIn = Math.round(totalLateMinutes * perMinute * 100) / 100;
+    const undertimeDeductionIn = Math.round(totalUndertimeMinutes * perMinute * 100) / 100;
+
+    // HDMF MP2 voluntary savings (semi-monthly: monthly / 2)
+    const hdmfMp2In = Math.round(((e.hdmfMp2Monthly ?? 0) / 2) * 100) / 100;
 
     // Preserve existing adjustments if payroll already ran for this period
     const existing = await prisma.payroll.findUnique({
@@ -75,10 +103,15 @@ async function runPayroll(formData: FormData) {
     const taxableAdj = existing?.adjustments.filter(a => a.type === "TAXABLE").reduce((s, a) => s + a.amount, 0) ?? 0;
     const nonTaxableAdj = existing?.adjustments.filter(a => a.type === "NON_TAXABLE").reduce((s, a) => s + a.amount, 0) ?? 0;
 
+    // SSS MSC basis: basic + OT + de minimis projected to monthly
+    const sssEarningsMonthly = e.basicMonthlyRate + (overtimePayIn + nonTaxableAdj) * 2;
+
     const calc = computeSemiMonthlyPayroll({
       monthlyRate: e.basicMonthlyRate,
       periodStart: start,
       periodEnd: end,
+      isFirstCutoff,
+      sssEarningsMonthly,
       daysWorked: daysWorked > 0 ? daysWorked : undefined,
       regularHours,
       overtimePayIn,
@@ -86,6 +119,11 @@ async function runPayroll(formData: FormData) {
       holidayPayIn,
       taxableAdjustments: taxableAdj,
       nonTaxableAdjustments: nonTaxableAdj,
+      lateMinutesIn: totalLateMinutes,
+      lateDeductionIn,
+      undertimeMinutesIn: totalUndertimeMinutes,
+      undertimeDeductionIn,
+      hdmfMp2In,
     });
 
     // Active loan deductions, split semi-monthly (monthly deduction / 2), capped at balance
@@ -203,8 +241,9 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
       phicEE: a.phicEE + p.philHealthEE, phicER: a.phicER + p.philHealthER,
       hdmfEE: a.hdmfEE + p.pagIbigEE,   hdmfER: a.hdmfER + p.pagIbigER,
       wht: a.wht + p.withholdingTax,
+      deminimis: a.deminimis + p.nonTaxableAdjustments,
     }),
-    { gross: 0, net: 0, sssEE: 0, sssER: 0, phicEE: 0, phicER: 0, hdmfEE: 0, hdmfER: 0, wht: 0 }
+    { gross: 0, net: 0, sssEE: 0, sssER: 0, phicEE: 0, phicER: 0, hdmfEE: 0, hdmfER: 0, wht: 0, deminimis: 0 }
   );
 
   return (
@@ -316,14 +355,15 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
       </Card>
 
       {/* Summary KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
         {[
-          { label: "Gross pay", value: T.gross },
-          { label: "Net pay",   value: T.net },
-          { label: "WHT (BIR)", value: T.wht },
-          { label: "SSS EE",    value: T.sssEE },
-          { label: "PHIC EE",   value: T.phicEE },
-          { label: "HDMF EE",   value: T.hdmfEE },
+          { label: "Gross pay",    value: T.gross },
+          { label: "Net pay",      value: T.net },
+          { label: "De Minimis",   value: T.deminimis },
+          { label: "WHT (BIR)",   value: T.wht },
+          { label: "SSS EE",      value: T.sssEE },
+          { label: "PHIC EE",     value: T.phicEE },
+          { label: "HDMF EE",     value: T.hdmfEE },
         ].map((k) => (
           <Card key={k.label}>
             <CardContent className="pt-4">

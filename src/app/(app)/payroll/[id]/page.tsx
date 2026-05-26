@@ -40,10 +40,15 @@ async function addAdjustment(id: string, formData: FormData) {
   const taxableAdj = payroll.adjustments.filter(a => a.type === "TAXABLE").reduce((s, a) => s + a.amount, 0);
   const nonTaxableAdj = payroll.adjustments.filter(a => a.type === "NON_TAXABLE").reduce((s, a) => s + a.amount, 0);
 
+  const isFirstCutoff = payroll.periodStart.getDate() <= 15;
+  const sssEarningsMonthly = payroll.employee.basicMonthlyRate + (payroll.overtimePay + nonTaxableAdj) * 2;
+
   const calc = computeSemiMonthlyPayroll({
     monthlyRate: payroll.employee.basicMonthlyRate,
     periodStart: payroll.periodStart,
     periodEnd: payroll.periodEnd,
+    isFirstCutoff,
+    sssEarningsMonthly,
     daysWorked: payroll.daysWorked > 0 ? payroll.daysWorked : undefined,
     regularHours: payroll.regularHours,
     overtimePayIn:  payroll.overtimePay,
@@ -51,6 +56,11 @@ async function addAdjustment(id: string, formData: FormData) {
     nightDiffPayIn: payroll.nightDiffPay,
     taxableAdjustments: taxableAdj,
     nonTaxableAdjustments: nonTaxableAdj,
+    lateMinutesIn: payroll.lateMinutes,
+    lateDeductionIn: payroll.lateDeduction,
+    undertimeMinutesIn: payroll.undertimeMinutes,
+    undertimeDeductionIn: payroll.undertimeDeduction,
+    hdmfMp2In: payroll.hdmfMp2,
   });
 
   const loans = await prisma.loan.findMany({ where: { employeeId: payroll.employeeId, status: "ACTIVE" } });
@@ -82,10 +92,15 @@ async function removeAdjustment(adjustmentId: string, payrollId: string) {
   const taxableAdj = payroll.adjustments.filter(a => a.type === "TAXABLE").reduce((s, a) => s + a.amount, 0);
   const nonTaxableAdj = payroll.adjustments.filter(a => a.type === "NON_TAXABLE").reduce((s, a) => s + a.amount, 0);
 
+  const isFirstCutoff = payroll.periodStart.getDate() <= 15;
+  const sssEarningsMonthly = payroll.employee.basicMonthlyRate + (payroll.overtimePay + nonTaxableAdj) * 2;
+
   const calc = computeSemiMonthlyPayroll({
     monthlyRate: payroll.employee.basicMonthlyRate,
     periodStart: payroll.periodStart,
     periodEnd: payroll.periodEnd,
+    isFirstCutoff,
+    sssEarningsMonthly,
     daysWorked: payroll.daysWorked > 0 ? payroll.daysWorked : undefined,
     regularHours: payroll.regularHours,
     overtimePayIn:  payroll.overtimePay,
@@ -93,6 +108,11 @@ async function removeAdjustment(adjustmentId: string, payrollId: string) {
     nightDiffPayIn: payroll.nightDiffPay,
     taxableAdjustments: taxableAdj,
     nonTaxableAdjustments: nonTaxableAdj,
+    lateMinutesIn: payroll.lateMinutes,
+    lateDeductionIn: payroll.lateDeduction,
+    undertimeMinutesIn: payroll.undertimeMinutes,
+    undertimeDeductionIn: payroll.undertimeDeduction,
+    hdmfMp2In: payroll.hdmfMp2,
   });
 
   const loans = await prisma.loan.findMany({ where: { employeeId: payroll.employeeId, status: "ACTIVE" } });
@@ -142,16 +162,40 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
     const code = r.otRateCode ?? "R_OT";
     return s + Math.round(hours * hr * (OT_RATES[code] ?? 1.25) * 100) / 100;
   }, 0);
+
+  // OT breakdown by rate code from attendance records
+  const otMap = new Map<string, { hours: number; pay: number }>();
+  for (const row of attendanceRows) {
+    const hours = row.otHours ?? 0;
+    if (!hours) continue;
+    const code = row.otRateCode ?? "R_OT";
+    const pay  = Math.round(hours * hr * (OT_RATES[code] ?? 1.25) * 100) / 100;
+    const prev = otMap.get(code);
+    otMap.set(code, prev ? { hours: prev.hours + hours, pay: prev.pay + pay } : { hours, pay });
+  }
+  const otBreakdown = [...otMap.entries()].map(([code, { hours, pay }]) => ({
+    code, hours, rate: OT_RATES[code] ?? 1.25, pay,
+  }));
+
   const releaseFn = releasePayroll.bind(null, id);
   const addAdjustmentFn = addAdjustment.bind(null, id);
 
   const deductions = [
     { label: "SSS contribution (EE)", ref: "RA 11199", amount: payroll.sssEE },
     { label: "PhilHealth premium (EE)", ref: "RA 11223", amount: payroll.philHealthEE },
-    { label: "Pag-IBIG / HDMF (EE)", ref: "HDMF Circ. 460", amount: payroll.pagIbigEE },
+    { label: "Pag-IBIG / HDMF (EE)", ref: "HDMF Circ. 460 — ₱200 fixed", amount: payroll.pagIbigEE },
     { label: "Withholding tax (BIR TRAIN)", ref: "RR 11-2018", amount: payroll.withholdingTax },
   ].filter((d) => d.amount > 0);
 
+  if (payroll.lateDeduction > 0) {
+    deductions.push({ label: `Late (${Math.round(payroll.lateMinutes)}m · 5-min grace)`, ref: "DOLE Art. 113", amount: payroll.lateDeduction });
+  }
+  if (payroll.undertimeDeduction > 0) {
+    deductions.push({ label: `Undertime (${Math.round(payroll.undertimeMinutes)}m)`, ref: "DOLE Art. 113", amount: payroll.undertimeDeduction });
+  }
+  if (payroll.hdmfMp2 > 0) {
+    deductions.push({ label: "HDMF MP2 voluntary savings", ref: "HDMF MP2 program", amount: payroll.hdmfMp2 });
+  }
   if (payroll.loanDeductions > 0) {
     deductions.push({ label: "Loan amortization", ref: "Salary/company loans", amount: payroll.loanDeductions });
   }
@@ -166,7 +210,16 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
         : "Basic pay (½ month)",
       amount: payroll.basicPay,
     },
-    payroll.overtimePay > 0 && { label: `Overtime pay (×1.25)`, amount: payroll.overtimePay },
+    // OT breakdown per rate code (from attendance); fall back to stored amount if no attendance detail
+    ...(otBreakdown.length > 0
+      ? otBreakdown.map(({ code, hours, rate, pay }) => ({
+          label: `${code.replace(/_/g, " ")} — ${hours.toFixed(1)}h × ×${rate}`,
+          amount: pay,
+        }))
+      : payroll.overtimePay > 0
+        ? [{ label: "Overtime pay", amount: payroll.overtimePay }]
+        : []
+    ),
     payroll.nightDiffPay > 0 && { label: "Night differential (+10%)", amount: payroll.nightDiffPay },
     payroll.holidayPay > 0 && { label: "Holiday pay", amount: payroll.holidayPay },
     payroll.allowances > 0 && { label: "Allowances", amount: payroll.allowances },
@@ -175,7 +228,7 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
       .map(a => ({ label: `${a.description} (taxable)`, amount: a.amount })),
     ...payroll.adjustments
       .filter(a => a.type === "NON_TAXABLE")
-      .map(a => ({ label: `${a.description} (non-taxable)`, amount: a.amount })),
+      .map(a => ({ label: `De Minimis / Non-taxable — ${a.description}`, amount: a.amount })),
   ].filter(Boolean) as { label: string; amount: number }[];
 
   const dbUser = await prisma.user.findUnique({ where: { email: session.user!.email! } });

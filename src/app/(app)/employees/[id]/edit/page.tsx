@@ -30,6 +30,7 @@ async function updateEmployee(id: string, formData: FormData) {
       department: String(formData.get("department")),
       employmentStatus: String(formData.get("employmentStatus")),
       basicMonthlyRate: Number(formData.get("basicMonthlyRate")),
+      hdmfMp2Monthly: Number(formData.get("hdmfMp2Monthly")) || 0,
       tin: (formData.get("tin") as string) || null,
       sssNumber: (formData.get("sssNumber") as string) || null,
       philHealthNumber: (formData.get("philHealthNumber") as string) || null,
@@ -135,6 +136,18 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
                   id="basicMonthlyRate" name="basicMonthlyRate" type="number"
                   min="0" step="100" required className="pl-7 tabular"
                   defaultValue={e.basicMonthlyRate}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="hdmfMp2Monthly">HDMF MP2 (monthly)</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--text-secondary)]">₱</span>
+                <Input
+                  id="hdmfMp2Monthly" name="hdmfMp2Monthly" type="number"
+                  min="0" step="100" className="pl-7 tabular"
+                  defaultValue={e.hdmfMp2Monthly ?? 0}
+                  placeholder="0"
                 />
               </div>
             </div>

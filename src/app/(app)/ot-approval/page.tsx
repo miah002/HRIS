@@ -9,6 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, Th, Td } from "@/components/ui/table";
 import { ClipboardCheck, Check, Clock } from "lucide-react";
 
+const ALLOWED_PREPARERS = ["ailyn", "angela", "louie"];
+const ALLOWED_CHECKERS  = ["angela"];
+const ALLOWED_APPROVERS = ["louie", "angela"];
+
+function nameAllowed(name: string | null | undefined, allowed: string[]) {
+  if (!name) return false;
+  const lower = name.toLowerCase();
+  return allowed.some((n) => lower.includes(n));
+}
+
 function currentCutoff(now = new Date()) {
   const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
   if (d <= 15) return { start: new Date(y, m, 1), end: new Date(y, m, 15) };
@@ -21,9 +31,11 @@ async function prepareOT(formData: FormData) {
   if (!session) redirect("/login");
   const user = await prisma.user.findUnique({ where: { email: session.user!.email! } });
   if (!user?.companyId) redirect("/dashboard");
+  if (!nameAllowed(user.name, ALLOWED_PREPARERS))
+    redirect("/ot-approval?toast=Not+authorized+to+prepare&toastType=error");
   const start = new Date(String(formData.get("periodStart")));
   const end   = new Date(String(formData.get("periodEnd")));
-  const name  = String(formData.get("preparedBy") || "Ailyn").trim();
+  const name  = String(formData.get("preparedBy") || user.name || "Ailyn").trim();
   await prisma.oTApproval.upsert({
     where: { companyId_periodStart_periodEnd: { companyId: user.companyId, periodStart: start, periodEnd: end } },
     update: { preparedBy: name, preparedAt: new Date(), status: "PREPARED" },
@@ -38,9 +50,11 @@ async function checkOT(formData: FormData) {
   if (!session) redirect("/login");
   const user = await prisma.user.findUnique({ where: { email: session.user!.email! } });
   if (!user?.companyId) redirect("/dashboard");
+  if (!nameAllowed(user.name, ALLOWED_CHECKERS))
+    redirect("/ot-approval?toast=Not+authorized+to+check&toastType=error");
   const start = new Date(String(formData.get("periodStart")));
   const end   = new Date(String(formData.get("periodEnd")));
-  const name  = String(formData.get("checkedBy") || "Angela").trim();
+  const name  = String(formData.get("checkedBy") || user.name || "Angela").trim();
   await prisma.oTApproval.upsert({
     where: { companyId_periodStart_periodEnd: { companyId: user.companyId, periodStart: start, periodEnd: end } },
     update: { checkedBy: name, checkedAt: new Date(), status: "CHECKED" },
@@ -55,9 +69,11 @@ async function approveOT(formData: FormData) {
   if (!session) redirect("/login");
   const user = await prisma.user.findUnique({ where: { email: session.user!.email! } });
   if (!user?.companyId) redirect("/dashboard");
+  if (!nameAllowed(user.name, ALLOWED_APPROVERS))
+    redirect("/ot-approval?toast=Not+authorized+to+approve&toastType=error");
   const start = new Date(String(formData.get("periodStart")));
   const end   = new Date(String(formData.get("periodEnd")));
-  const name  = String(formData.get("approvedBy") || "Louie").trim();
+  const name  = String(formData.get("approvedBy") || user.name || "Louie").trim();
   await prisma.oTApproval.upsert({
     where: { companyId_periodStart_periodEnd: { companyId: user.companyId, periodStart: start, periodEnd: end } },
     update: { approvedBy: name, approvedAt: new Date(), status: "APPROVED" },
@@ -123,6 +139,10 @@ export default async function OTApprovalPage() {
   const isPrepared = ["PREPARED", "CHECKED", "APPROVED"].includes(status);
   const isChecked  = ["CHECKED", "APPROVED"].includes(status);
   const isApproved = status === "APPROVED";
+
+  const canPrepare = nameAllowed(user.name, ALLOWED_PREPARERS);
+  const canCheck   = nameAllowed(user.name, ALLOWED_CHECKERS);
+  const canApprove = nameAllowed(user.name, ALLOWED_APPROVERS);
 
   const cutoffLabel = `${phDate(cutoff.start)} – ${phDate(cutoff.end)}`;
 
@@ -213,14 +233,14 @@ export default async function OTApprovalPage() {
                   {approval?.preparedAt ? phDate(approval.preparedAt) : "—"}
                 </div>
               </div>
-            ) : (
+            ) : canPrepare ? (
               <form action={prepareOT} className="space-y-3">
                 <input type="hidden" name="periodStart" value={cutoff.start.toISOString()} />
                 <input type="hidden" name="periodEnd"   value={cutoff.end.toISOString()} />
                 <div>
                   <label className="text-xs text-[var(--text-secondary)] block mb-1">Preparer name</label>
                   <input
-                    name="preparedBy" defaultValue="Ailyn"
+                    name="preparedBy" defaultValue={user.name ?? "Ailyn"}
                     className="h-9 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg)] px-3 text-sm focus:outline-none focus:border-[var(--brand)]"
                   />
                 </div>
@@ -228,6 +248,8 @@ export default async function OTApprovalPage() {
                   Mark as Prepared
                 </Button>
               </form>
+            ) : (
+              <p className="text-xs text-[var(--text-tertiary)]">Only Ailyn, Angela, or Louie can prepare.</p>
             )}
           </CardContent>
         </Card>
@@ -251,14 +273,14 @@ export default async function OTApprovalPage() {
                   {approval?.checkedAt ? phDate(approval.checkedAt) : "—"}
                 </div>
               </div>
-            ) : (
+            ) : canCheck ? (
               <form action={checkOT} className="space-y-3">
                 <input type="hidden" name="periodStart" value={cutoff.start.toISOString()} />
                 <input type="hidden" name="periodEnd"   value={cutoff.end.toISOString()} />
                 <div>
                   <label className="text-xs text-[var(--text-secondary)] block mb-1">Checker name</label>
                   <input
-                    name="checkedBy" defaultValue="Angela"
+                    name="checkedBy" defaultValue={user.name ?? "Angela"}
                     className="h-9 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg)] px-3 text-sm focus:outline-none focus:border-[var(--brand)]"
                   />
                 </div>
@@ -272,6 +294,8 @@ export default async function OTApprovalPage() {
                   <p className="text-[10px] text-[var(--text-tertiary)] text-center">Requires Prepare first</p>
                 )}
               </form>
+            ) : (
+              <p className="text-xs text-[var(--text-tertiary)]">Only Angela can check.</p>
             )}
           </CardContent>
         </Card>
@@ -295,14 +319,14 @@ export default async function OTApprovalPage() {
                   {approval?.approvedAt ? phDate(approval.approvedAt) : "—"}
                 </div>
               </div>
-            ) : (
+            ) : canApprove ? (
               <form action={approveOT} className="space-y-3">
                 <input type="hidden" name="periodStart" value={cutoff.start.toISOString()} />
                 <input type="hidden" name="periodEnd"   value={cutoff.end.toISOString()} />
                 <div>
                   <label className="text-xs text-[var(--text-secondary)] block mb-1">Approver name</label>
                   <input
-                    name="approvedBy" defaultValue="Louie"
+                    name="approvedBy" defaultValue={user.name ?? "Louie"}
                     className="h-9 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg)] px-3 text-sm focus:outline-none focus:border-[var(--brand)]"
                   />
                 </div>
@@ -316,6 +340,8 @@ export default async function OTApprovalPage() {
                   <p className="text-[10px] text-[var(--text-tertiary)] text-center">Requires Check first</p>
                 )}
               </form>
+            ) : (
+              <p className="text-xs text-[var(--text-tertiary)]">Only Louie or Angela can approve.</p>
             )}
           </CardContent>
         </Card>

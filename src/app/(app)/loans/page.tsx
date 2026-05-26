@@ -1,3 +1,4 @@
+import React from "react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { php, phDate } from "@/lib/format";
@@ -236,8 +237,8 @@ export default async function LoansPage({ searchParams }: { searchParams: Promis
                   const cancelFn = cancelLoan.bind(null, loan.id);
                   const isEditing = editLoanId === loan.id;
                   return (
-                    <>
-                    <TableRow key={loan.id}>
+                    <React.Fragment key={loan.id}>
+                    <TableRow>
                       <Td>
                         <div className="flex items-center gap-3">
                           <Avatar
@@ -322,7 +323,7 @@ export default async function LoansPage({ searchParams }: { searchParams: Promis
                         </Td>
                       </TableRow>
                     )}
-                    </>
+                    </React.Fragment>
                   );
                 })}
               </TableBody>
@@ -354,8 +355,8 @@ export default async function LoansPage({ searchParams }: { searchParams: Promis
                 {closedLoans.map((loan) => {
                   const isEditing = editClosedId === loan.id;
                   return (
-                    <>
-                      <TableRow key={loan.id}>
+                    <React.Fragment key={loan.id}>
+                      <TableRow>
                         <Td>
                           <div className="flex items-center gap-3">
                             <Avatar name={`${loan.employee.firstName} ${loan.employee.lastName}`} size="sm" />
@@ -414,7 +415,7 @@ export default async function LoansPage({ searchParams }: { searchParams: Promis
                           </Td>
                         </TableRow>
                       )}
-                    </>
+                    </React.Fragment>
                   );
                 })}
               </TableBody>

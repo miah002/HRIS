@@ -236,12 +236,9 @@ export default async function OTApprovalPage() {
               <form action={prepareOT} className="space-y-3">
                 <input type="hidden" name="periodStart" value={cutoff.start.toISOString()} />
                 <input type="hidden" name="periodEnd"   value={cutoff.end.toISOString()} />
-                <div>
-                  <label className="text-xs text-[var(--text-secondary)] block mb-1">Preparer name</label>
-                  <input
-                    name="preparedBy" defaultValue={user.name ?? "Ailyn"}
-                    className="h-9 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg)] px-3 text-sm focus:outline-none focus:border-[var(--brand)]"
-                  />
+                <input type="hidden" name="preparedBy"  value={user.name ?? ""} />
+                <div className="text-xs text-[var(--text-secondary)]">
+                  Signing as <span className="font-semibold text-[var(--text-primary)]">{user.name ?? "—"}</span>
                 </div>
                 <Button type="submit" size="sm" className="w-full" disabled={otRows.length === 0}>
                   Mark as Prepared
@@ -276,17 +273,11 @@ export default async function OTApprovalPage() {
               <form action={checkOT} className="space-y-3">
                 <input type="hidden" name="periodStart" value={cutoff.start.toISOString()} />
                 <input type="hidden" name="periodEnd"   value={cutoff.end.toISOString()} />
-                <div>
-                  <label className="text-xs text-[var(--text-secondary)] block mb-1">Checker name</label>
-                  <input
-                    name="checkedBy" defaultValue={user.name ?? "Angela"}
-                    className="h-9 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg)] px-3 text-sm focus:outline-none focus:border-[var(--brand)]"
-                  />
+                <input type="hidden" name="checkedBy"   value={user.name ?? ""} />
+                <div className="text-xs text-[var(--text-secondary)]">
+                  Signing as <span className="font-semibold text-[var(--text-primary)]">{user.name ?? "—"}</span>
                 </div>
-                <Button
-                  type="submit" size="sm" className="w-full"
-                  disabled={!isPrepared}
-                >
+                <Button type="submit" size="sm" className="w-full" disabled={!isPrepared}>
                   Mark as Checked
                 </Button>
                 {!isPrepared && (
@@ -322,17 +313,11 @@ export default async function OTApprovalPage() {
               <form action={approveOT} className="space-y-3">
                 <input type="hidden" name="periodStart" value={cutoff.start.toISOString()} />
                 <input type="hidden" name="periodEnd"   value={cutoff.end.toISOString()} />
-                <div>
-                  <label className="text-xs text-[var(--text-secondary)] block mb-1">Approver name</label>
-                  <input
-                    name="approvedBy" defaultValue={user.name ?? "Louie"}
-                    className="h-9 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg)] px-3 text-sm focus:outline-none focus:border-[var(--brand)]"
-                  />
+                <input type="hidden" name="approvedBy"  value={user.name ?? ""} />
+                <div className="text-xs text-[var(--text-secondary)]">
+                  Signing as <span className="font-semibold text-[var(--text-primary)]">{user.name ?? "—"}</span>
                 </div>
-                <Button
-                  type="submit" size="sm" className="w-full"
-                  disabled={!isChecked}
-                >
+                <Button type="submit" size="sm" className="w-full" disabled={!isChecked}>
                   Approve OT
                 </Button>
                 {!isChecked && (

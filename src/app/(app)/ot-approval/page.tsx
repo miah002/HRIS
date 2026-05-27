@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, Th, Td } from "@/components/ui/table";
-import { ClipboardCheck, Check, Clock } from "lucide-react";
+import { ClipboardCheck, Check, Clock, RotateCcw } from "lucide-react";
 
 // Prepare: OWNER, MANAGER, HR  |  Check: OWNER, MANAGER, HR  |  Approve: OWNER, MANAGER
 const CAN_PREPARE = ["OWNER", "MANAGER", "HR"];
@@ -60,6 +60,34 @@ async function checkOT(formData: FormData) {
     create: { companyId: user.companyId, periodStart: start, periodEnd: end, checkedBy: name, checkedAt: new Date(), status: "CHECKED" },
   });
   redirect("/ot-approval?toast=OT+marked+as+Checked&toastType=success");
+}
+
+async function rewindOT(formData: FormData) {
+  "use server";
+  const session = await auth();
+  if (!session) redirect("/login");
+  const user = await prisma.user.findUnique({ where: { email: session.user!.email! } });
+  if (!user?.companyId) redirect("/dashboard");
+  if (user.role !== "OWNER")
+    redirect("/ot-approval?toast=Only+Owner+can+undo+approvals&toastType=error");
+
+  const start = new Date(String(formData.get("periodStart")));
+  const end   = new Date(String(formData.get("periodEnd")));
+  const currentStatus = String(formData.get("currentStatus"));
+
+  const REWIND_MAP: Record<string, object> = {
+    APPROVED: { status: "CHECKED",  approvedBy: "Louie",  approvedAt: null },
+    CHECKED:  { status: "PREPARED", checkedBy: "Angela",  checkedAt: null  },
+    PREPARED: { status: "PENDING",  preparedBy: "Ailyn",  preparedAt: null },
+  };
+  const data = REWIND_MAP[currentStatus];
+  if (!data) redirect("/ot-approval?toast=Nothing+to+undo&toastType=error");
+
+  await prisma.oTApproval.update({
+    where: { companyId_periodStart_periodEnd: { companyId: user.companyId, periodStart: start, periodEnd: end } },
+    data,
+  });
+  redirect("/ot-approval?toast=Stage+undone&toastType=success");
 }
 
 async function approveOT(formData: FormData) {
@@ -142,6 +170,7 @@ export default async function OTApprovalPage() {
   const canPrepare = roleAllowed(user.role, CAN_PREPARE);
   const canCheck   = roleAllowed(user.role, CAN_CHECK);
   const canApprove = roleAllowed(user.role, CAN_APPROVE);
+  const canRewind  = user.role === "OWNER";
 
   const cutoffLabel = `${phDate(cutoff.start)} – ${phDate(cutoff.end)}`;
 
@@ -226,11 +255,21 @@ export default async function OTApprovalPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {isPrepared ? (
-              <div>
+              <div className="space-y-2">
                 <div className="text-sm font-semibold">{approval?.preparedBy}</div>
                 <div className="text-xs text-[var(--text-tertiary)]">
                   {approval?.preparedAt ? phDate(approval.preparedAt) : "—"}
                 </div>
+                {status === "PREPARED" && canRewind && (
+                  <form action={rewindOT}>
+                    <input type="hidden" name="periodStart" value={cutoff.start.toISOString()} />
+                    <input type="hidden" name="periodEnd"   value={cutoff.end.toISOString()} />
+                    <input type="hidden" name="currentStatus" value="PREPARED" />
+                    <Button type="submit" size="sm" variant="secondary" className="w-full gap-1.5 text-[var(--error)]">
+                      <RotateCcw className="h-3 w-3" /> Undo
+                    </Button>
+                  </form>
+                )}
               </div>
             ) : canPrepare ? (
               <form action={prepareOT} className="space-y-3">
@@ -263,11 +302,21 @@ export default async function OTApprovalPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {isChecked ? (
-              <div>
+              <div className="space-y-2">
                 <div className="text-sm font-semibold">{approval?.checkedBy}</div>
                 <div className="text-xs text-[var(--text-tertiary)]">
                   {approval?.checkedAt ? phDate(approval.checkedAt) : "—"}
                 </div>
+                {status === "CHECKED" && canRewind && (
+                  <form action={rewindOT}>
+                    <input type="hidden" name="periodStart" value={cutoff.start.toISOString()} />
+                    <input type="hidden" name="periodEnd"   value={cutoff.end.toISOString()} />
+                    <input type="hidden" name="currentStatus" value="CHECKED" />
+                    <Button type="submit" size="sm" variant="secondary" className="w-full gap-1.5 text-[var(--error)]">
+                      <RotateCcw className="h-3 w-3" /> Undo
+                    </Button>
+                  </form>
+                )}
               </div>
             ) : canCheck ? (
               <form action={checkOT} className="space-y-3">
@@ -303,11 +352,21 @@ export default async function OTApprovalPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {isApproved ? (
-              <div>
+              <div className="space-y-2">
                 <div className="text-sm font-semibold">{approval?.approvedBy}</div>
                 <div className="text-xs text-[var(--text-tertiary)]">
                   {approval?.approvedAt ? phDate(approval.approvedAt) : "—"}
                 </div>
+                {canRewind && (
+                  <form action={rewindOT}>
+                    <input type="hidden" name="periodStart" value={cutoff.start.toISOString()} />
+                    <input type="hidden" name="periodEnd"   value={cutoff.end.toISOString()} />
+                    <input type="hidden" name="currentStatus" value="APPROVED" />
+                    <Button type="submit" size="sm" variant="secondary" className="w-full gap-1.5 text-[var(--error)]">
+                      <RotateCcw className="h-3 w-3" /> Undo Approval
+                    </Button>
+                  </form>
+                )}
               </div>
             ) : canApprove ? (
               <form action={approveOT} className="space-y-3">

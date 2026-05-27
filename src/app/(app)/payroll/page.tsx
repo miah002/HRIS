@@ -9,7 +9,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Table, TableHeader, TableBody, TableRow, Th, Td, TableFooter } from "@/components/ui/table";
 import { php, phDate } from "@/lib/format";
 import { computeSemiMonthlyPayroll, OT_RATES, hourlyRate } from "@/lib/ph-payroll";
-import { PlayCircle, Wallet, FileText, Clock } from "lucide-react";
+import { PlayCircle, Wallet, FileText, Clock, ClipboardCheck } from "lucide-react";
 
 function currentCutoff(now = new Date()) {
   const year = now.getFullYear();
@@ -18,6 +18,13 @@ function currentCutoff(now = new Date()) {
   if (day <= 15) return { start: new Date(year, month, 1), end: new Date(year, month, 15), label: "1–15" };
   return { start: new Date(year, month, 16), end: new Date(year, month + 1, 0), label: "16–end" };
 }
+
+const OT_STATUS_BADGE: Record<string, "neutral" | "warning" | "success" | "brand"> = {
+  PENDING:  "neutral",
+  PREPARED: "warning",
+  CHECKED:  "warning",
+  APPROVED: "success",
+};
 
 async function runPayroll(formData: FormData) {
   "use server";
@@ -29,6 +36,14 @@ async function runPayroll(formData: FormData) {
   const start = new Date(String(formData.get("start")));
   const end   = new Date(String(formData.get("end")));
   const isFirstCutoff = start.getDate() <= 15;
+
+  // OT pay only counted when the period's OT Approval is APPROVED
+  const otApprovalRec = await prisma.oTApproval.findUnique({
+    where: { companyId_periodStart_periodEnd: { companyId, periodStart: start, periodEnd: end } },
+    select: { status: true },
+  });
+  const otApproved = otApprovalRec?.status === "APPROVED";
+
   const employees = await prisma.employee.findMany({ where: { companyId, archived: false } });
 
   const GRACE_MINUTES = 5;
@@ -59,7 +74,7 @@ async function runPayroll(formData: FormData) {
     for (const row of attendance) {
       const code   = row.otRateCode;
       const regHrs = Math.min(row.hoursWorked, 8);
-      const otHrs  = row.otHours ?? 0;
+      const otHrs  = otApproved ? (row.otHours ?? 0) : 0;   // zero out OT if not APPROVED
       const ndHrs  = row.ndHours ?? 0;
       if (!code) {
         if (otHrs > 0) overtimePayIn += Math.round(otHrs * hr * 1.25 * 100) / 100;
@@ -151,6 +166,21 @@ async function runPayroll(formData: FormData) {
 export default async function PayrollPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
   const { period } = await searchParams;
   const cutoff = currentCutoff();
+
+  const session = await auth();
+  if (!session) redirect("/login");
+  const pageUser = await prisma.user.findUnique({ where: { email: session.user!.email! } });
+  const pageCompanyId = pageUser?.companyId ?? "";
+
+  // OT approval status for current cutoff — affects OT pay in runPayroll()
+  const otApprovalRecord = pageCompanyId
+    ? await prisma.oTApproval.findUnique({
+        where: { companyId_periodStart_periodEnd: { companyId: pageCompanyId, periodStart: cutoff.start, periodEnd: cutoff.end } },
+        select: { status: true },
+      })
+    : null;
+  const otStatus = otApprovalRecord?.status ?? null;
+  const otApprovedForPayroll = otStatus === "APPROVED";
 
   // Resolve which period to display in the main table
   const viewStart = period ? new Date(period) : cutoff.start;
@@ -261,21 +291,33 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
               : `History · ${phDate(viewStart)} – ${phDate(viewEnd)}`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           {!isCurrentCutoff && (
             <Link href="/payroll">
               <Button variant="outline" size="sm">← Current cutoff</Button>
             </Link>
           )}
           {isCurrentCutoff && (
-            <form action={runPayroll}>
-              <input type="hidden" name="start" value={cutoff.start.toISOString()} />
-              <input type="hidden" name="end"   value={cutoff.end.toISOString()} />
-              <Button type="submit">
-                <PlayCircle className="h-4 w-4" />
-                {runs.length ? "Re-run payroll" : "Run payroll"}
-              </Button>
-            </form>
+            <>
+              <Link href="/ot-approval" className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
+                <ClipboardCheck className="h-3.5 w-3.5 text-[var(--text-tertiary)]" />
+                <Badge
+                  variant={otStatus ? (OT_STATUS_BADGE[otStatus] ?? "neutral") : "neutral"}
+                  dot={false}
+                  className="text-xs"
+                >
+                  OT: {otStatus ?? "no record"}
+                </Badge>
+              </Link>
+              <form action={runPayroll}>
+                <input type="hidden" name="start" value={cutoff.start.toISOString()} />
+                <input type="hidden" name="end"   value={cutoff.end.toISOString()} />
+                <Button type="submit">
+                  <PlayCircle className="h-4 w-4" />
+                  {runs.length ? "Re-run payroll" : "Run payroll"}
+                </Button>
+              </form>
+            </>
           )}
         </div>
       </div>
@@ -288,6 +330,15 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
             Attendance summary — {cutoff.label}
           </CardTitle>
         </CardHeader>
+        {!otApprovedForPayroll && (
+          <div className="px-4 py-2 border-b border-[var(--border)] flex items-center gap-2">
+            <ClipboardCheck className="h-3.5 w-3.5 text-[var(--warning)] flex-shrink-0" />
+            <span className="text-xs text-[var(--warning)] font-medium">
+              OT pay not counted — approval status: <strong>{otStatus ?? "no record"}</strong>.{" "}
+              <Link href="/ot-approval" className="underline hover:no-underline">Approve OT</Link> to include in payroll.
+            </span>
+          </div>
+        )}
         {(rdEmpIds.size > 0 || holEmpIds.size > 0) && (
           <div className="px-4 py-2 border-b border-[var(--border)] flex flex-wrap gap-4">
             {rdEmpIds.size > 0 && (
@@ -311,7 +362,12 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
                 <Th className="text-right">Reg hrs</Th>
                 <Th className="text-right">OT hrs</Th>
                 <Th>Rate codes</Th>
-                <Th className="text-right">Est. OT pay</Th>
+                <Th className="text-right">
+                  Est. OT pay
+                  {!otApprovedForPayroll && (
+                    <span className="block text-[10px] font-normal text-[var(--warning)]">not counted</span>
+                  )}
+                </Th>
               </TableRow>
             </TableHeader>
             <TableBody>

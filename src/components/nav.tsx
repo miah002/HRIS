@@ -136,7 +136,7 @@ export function Sidebar({ userName = "Demo Owner", role = "OWNER" }: { userName?
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <div className="text-xs font-medium text-[var(--text-primary)] truncate">{userName}</div>
-              <div className="text-[10px] text-[var(--text-tertiary)]">{role === "EMPLOYEE" ? "Employee" : "Owner"}</div>
+              <div className="text-[10px] text-[var(--text-tertiary)] capitalize">{role.charAt(0) + role.slice(1).toLowerCase()}</div>
             </div>
           )}
           {!collapsed && (

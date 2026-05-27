@@ -279,7 +279,7 @@ export default async function OTApprovalPage() {
                 </Button>
               </form>
             ) : (
-              <p className="text-xs text-[var(--text-tertiary)]">Requires Owner, Manager, or HR role.</p>
+              <p className="text-xs text-[var(--text-tertiary)]">Not authorized for this stage.</p>
             )}
           </CardContent>
         </Card>
@@ -329,7 +329,7 @@ export default async function OTApprovalPage() {
                 )}
               </form>
             ) : (
-              <p className="text-xs text-[var(--text-tertiary)]">Requires Owner, Manager, or HR role.</p>
+              <p className="text-xs text-[var(--text-tertiary)]">Not authorized for this stage.</p>
             )}
           </CardContent>
         </Card>
@@ -379,7 +379,7 @@ export default async function OTApprovalPage() {
                 )}
               </form>
             ) : (
-              <p className="text-xs text-[var(--text-tertiary)]">Requires Owner or Manager role.</p>
+              <p className="text-xs text-[var(--text-tertiary)]">Not authorized for this stage.</p>
             )}
           </CardContent>
         </Card>

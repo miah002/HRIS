@@ -41,6 +41,11 @@ async function addColumnIfMissing(table, column, type) {
 async function main() {
   console.log("Turso migration: checking schema...");
 
+  // User OT permission flags
+  await addColumnIfMissing("User", "canPrepareOT", "INTEGER NOT NULL DEFAULT 0");
+  await addColumnIfMissing("User", "canCheckOT",   "INTEGER NOT NULL DEFAULT 0");
+  await addColumnIfMissing("User", "canApproveOT", "INTEGER NOT NULL DEFAULT 0");
+
   // Employee additions
   await addColumnIfMissing("Employee", "hdmfMp2Monthly", "REAL NOT NULL DEFAULT 0");
 

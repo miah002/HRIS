@@ -9,14 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, Th, Td } from "@/components/ui/table";
 import { ClipboardCheck, Check, Clock, RotateCcw } from "lucide-react";
 
-// Prepare: OWNER, MANAGER, HR  |  Check: OWNER, MANAGER, HR  |  Approve: OWNER, MANAGER
-const CAN_PREPARE = ["OWNER", "MANAGER", "HR"];
-const CAN_CHECK   = ["OWNER", "MANAGER", "HR"];
-const CAN_APPROVE = ["OWNER", "MANAGER"];
-
-function roleAllowed(role: string | null | undefined, allowed: string[]) {
-  return allowed.includes(role ?? "");
-}
+// OT stage access is driven by per-user boolean flags (canPrepareOT/canCheckOT/canApproveOT)
+// set in Settings → User accounts. OWNER always has all access as fallback.
 
 function currentCutoff(now = new Date()) {
   const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
@@ -30,7 +24,7 @@ async function prepareOT(formData: FormData) {
   if (!session) redirect("/login");
   const user = await prisma.user.findUnique({ where: { email: session.user!.email! } });
   if (!user?.companyId) redirect("/dashboard");
-  if (!roleAllowed(user.role, CAN_PREPARE))
+  if (!user.canPrepareOT && user.role !== "OWNER")
     redirect("/ot-approval?toast=Not+authorized+to+prepare&toastType=error");
   const start = new Date(String(formData.get("periodStart")));
   const end   = new Date(String(formData.get("periodEnd")));
@@ -49,7 +43,7 @@ async function checkOT(formData: FormData) {
   if (!session) redirect("/login");
   const user = await prisma.user.findUnique({ where: { email: session.user!.email! } });
   if (!user?.companyId) redirect("/dashboard");
-  if (!roleAllowed(user.role, CAN_CHECK))
+  if (!user.canCheckOT && user.role !== "OWNER")
     redirect("/ot-approval?toast=Not+authorized+to+check&toastType=error");
   const start = new Date(String(formData.get("periodStart")));
   const end   = new Date(String(formData.get("periodEnd")));
@@ -96,7 +90,7 @@ async function approveOT(formData: FormData) {
   if (!session) redirect("/login");
   const user = await prisma.user.findUnique({ where: { email: session.user!.email! } });
   if (!user?.companyId) redirect("/dashboard");
-  if (!roleAllowed(user.role, CAN_APPROVE))
+  if (!user.canApproveOT && user.role !== "OWNER")
     redirect("/ot-approval?toast=Not+authorized+to+approve&toastType=error");
   const start = new Date(String(formData.get("periodStart")));
   const end   = new Date(String(formData.get("periodEnd")));
@@ -167,10 +161,11 @@ export default async function OTApprovalPage() {
   const isChecked  = ["CHECKED", "APPROVED"].includes(status);
   const isApproved = status === "APPROVED";
 
-  const canPrepare = roleAllowed(user.role, CAN_PREPARE);
-  const canCheck   = roleAllowed(user.role, CAN_CHECK);
-  const canApprove = roleAllowed(user.role, CAN_APPROVE);
-  const canRewind  = user.role === "OWNER";
+  const isOwner    = user.role === "OWNER";
+  const canPrepare = user.canPrepareOT || isOwner;
+  const canCheck   = user.canCheckOT   || isOwner;
+  const canApprove = user.canApproveOT || isOwner;
+  const canRewind  = isOwner;
 
   const cutoffLabel = `${phDate(cutoff.start)} – ${phDate(cutoff.end)}`;
 

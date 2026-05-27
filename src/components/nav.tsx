@@ -112,6 +112,9 @@ export function Sidebar({ userName = "Demo Owner", role = "OWNER" }: { userName?
                   transition={{ type: "spring", stiffness: 500, damping: 40 }}
                 />
               )}
+              {active && !collapsed && (
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[var(--brand)] rounded-r-full" />
+              )}
               <Icon className={cn("h-4 w-4 flex-shrink-0 relative", active && "text-[var(--brand)]")} />
               {!collapsed && (
                 <span className="relative flex flex-col min-w-0">

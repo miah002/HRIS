@@ -54,6 +54,10 @@
     --shadow-lg: 0 24px 48px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.04);
     --shadow-xl: 0 48px 96px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.04);
 
+    /* Card-specific shadows (Figma design system) */
+    --shadow-card:       0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
+    --shadow-card-hover: 0 4px 8px rgba(0,0,0,0.08), 0 12px 24px rgba(0,0,0,0.06);
+
     /* Border radius */
     --radius-sm: 6px;
     --radius:    8px;
@@ -122,6 +126,9 @@
     --shadow-md: 0 8px 24px rgba(0,0,0,0.60), 0 0 0 1px rgba(255,255,255,0.04);
     --shadow-lg: 0 24px 48px rgba(0,0,0,0.70), 0 0 0 1px rgba(255,255,255,0.04);
     --shadow-xl: 0 48px 96px rgba(0,0,0,0.80), 0 0 0 1px rgba(255,255,255,0.04);
+
+    --shadow-card:       0 1px 3px rgba(0,0,0,0.20), 0 4px 12px rgba(0,0,0,0.10);
+    --shadow-card-hover: 0 4px 8px rgba(0,0,0,0.30), 0 12px 24px rgba(0,0,0,0.20);
   }
 }
 
@@ -141,6 +148,11 @@
     color: var(--text-primary);
     font-size: var(--font-sm);
     line-height: 1.6;
+  }
+
+  /* Poppins for page titles and card titles */
+  h1, h2, h3 {
+    font-family: var(--font-poppins, var(--font-geist-sans));
   }
 
   /* Scrollbar styling — minimal and brand-aware */

@@ -4,11 +4,11 @@ import { cn } from "@/lib/format";
 // Elevation system: flat (border only), raised (shadow-xs), elevated (shadow-sm)
 type CardVariant = "flat" | "raised" | "elevated";
 
-const cardBase = "rounded-[var(--radius-md)] bg-[var(--bg-elevated)] transition-shadow duration-base";
+const cardBase = "rounded-[var(--radius-md)] bg-[var(--bg-elevated)] transition-shadow duration-200";
 const cardVariants: Record<CardVariant, string> = {
-  flat:     "border border-[var(--border)]",
-  raised:   "shadow-xs",
-  elevated: "shadow-sm",
+  flat:     "shadow-[var(--shadow-card)]",
+  raised:   "shadow-[var(--shadow-card)]",
+  elevated: "shadow-[var(--shadow-card-hover)]",
 };
 
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -22,7 +22,7 @@ export function Card({ className, variant = "flat", interactive, ...props }: Car
       className={cn(
         cardBase,
         cardVariants[variant],
-        interactive && "cursor-pointer hover:shadow-sm hover:border-[var(--border-strong)] active:scale-[0.995]",
+        interactive && "cursor-pointer hover:shadow-[var(--shadow-card-hover)] active:scale-[0.995]",
         className
       )}
       {...props}

@@ -4,7 +4,7 @@ import { cn } from "@/lib/format";
 type Variant = "default" | "brand" | "success" | "warning" | "error" | "neutral" | "outline";
 
 const base =
-  "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-medium leading-none tracking-wide whitespace-nowrap";
+  "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-2xs font-medium leading-none tracking-wide whitespace-nowrap";
 
 const variants: Record<Variant, string> = {
   default:  "bg-[var(--neutral-bg)] text-[var(--text-secondary)]",
@@ -16,18 +16,29 @@ const variants: Record<Variant, string> = {
   outline:  "border border-[var(--border-strong)] text-[var(--text-secondary)] bg-transparent",
 };
 
+// Dot color per variant (matches the text/icon color of each variant)
+const dotColor: Record<Variant, string> = {
+  default: "var(--text-secondary)",
+  brand:   "var(--text-brand)",
+  success: "var(--success)",
+  warning: "var(--warning)",
+  error:   "var(--error)",
+  neutral: "var(--text-tertiary)",
+  outline: "var(--text-secondary)",
+};
+
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: Variant;
   dot?: boolean;
 }
 
-export function Badge({ className, variant = "default", dot, children, ...props }: BadgeProps) {
+export function Badge({ className, variant = "default", dot = true, children, ...props }: BadgeProps) {
   return (
     <span className={cn(base, variants[variant], className)} {...props}>
       {dot && (
         <span
           className="h-1.5 w-1.5 rounded-full flex-shrink-0"
-          style={{ backgroundColor: "currentColor" }}
+          style={{ backgroundColor: dotColor[variant] }}
         />
       )}
       {children}

@@ -14,16 +14,16 @@ import { cn } from "@/lib/format";
 import { Avatar } from "@/components/ui/avatar";
 
 const OWNER_NAV = [
-  { href: "/dashboard",  label: "Dashboard",  sub: "Overview",      icon: LayoutDashboard },
-  { href: "/employees",  label: "Employees",  sub: "Mga Empleyado", icon: Users },
-  { href: "/attendance", label: "Attendance", sub: "DTR",           icon: Clock },
-  { href: "/payroll",    label: "Payroll",    sub: "Sweldo",        icon: Wallet },
-  { href: "/ot-approval", label: "OT Approval", sub: "Prepare · Check · Approve", icon: ClipboardCheck },
-  { href: "/leave",      label: "Leave",      sub: "Bakasyon",      icon: CalendarCheck },
-  { href: "/loans",      label: "Loans",      sub: "Salary loans",  icon: CreditCard },
-  { href: "/compliance", label: "Compliance", sub: "DOLE/BIR",      icon: ShieldCheck },
-  { href: "/reports",    label: "Reports",    sub: "Analytics",     icon: BarChart3 },
-  { href: "/settings",   label: "Settings",   sub: "Roles & access", icon: Settings },
+  { href: "/dashboard",   label: "Dashboard",   sub: "Overview",               icon: LayoutDashboard, ownerOnly: false },
+  { href: "/employees",   label: "Employees",   sub: "Mga Empleyado",          icon: Users,           ownerOnly: false },
+  { href: "/attendance",  label: "Attendance",  sub: "DTR",                    icon: Clock,           ownerOnly: false },
+  { href: "/payroll",     label: "Payroll",     sub: "Sweldo",                 icon: Wallet,          ownerOnly: false },
+  { href: "/ot-approval", label: "OT Approval", sub: "Prepare · Check · Approve", icon: ClipboardCheck, ownerOnly: false },
+  { href: "/leave",       label: "Leave",       sub: "Bakasyon",               icon: CalendarCheck,   ownerOnly: false },
+  { href: "/loans",       label: "Loans",       sub: "Salary loans",           icon: CreditCard,      ownerOnly: false },
+  { href: "/compliance",  label: "Compliance",  sub: "DOLE/BIR",               icon: ShieldCheck,     ownerOnly: false },
+  { href: "/reports",     label: "Reports",     sub: "Analytics",              icon: BarChart3,       ownerOnly: false },
+  { href: "/settings",    label: "Settings",    sub: "Roles & access",         icon: Settings,        ownerOnly: true  },
 ];
 
 const EMPLOYEE_NAV = [
@@ -48,7 +48,9 @@ function ThemeCycle() {
 export function Sidebar({ userName = "Demo Owner", role = "OWNER" }: { userName?: string; role?: string }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = React.useState(false);
-  const NAV = role === "EMPLOYEE" ? EMPLOYEE_NAV : OWNER_NAV;
+  const NAV = role === "EMPLOYEE"
+    ? EMPLOYEE_NAV
+    : OWNER_NAV.filter((item) => !item.ownerOnly || role === "OWNER");
   const homeHref = role === "EMPLOYEE" ? "/my" : "/dashboard";
 
   return (
@@ -151,7 +153,9 @@ export function Sidebar({ userName = "Demo Owner", role = "OWNER" }: { userName?
 
 export function BottomNav({ role = "OWNER" }: { role?: string }) {
   const pathname = usePathname();
-  const NAV = role === "EMPLOYEE" ? EMPLOYEE_NAV : OWNER_NAV.slice(0, 5);
+  const NAV = role === "EMPLOYEE"
+    ? EMPLOYEE_NAV
+    : OWNER_NAV.filter((item) => !item.ownerOnly || role === "OWNER").slice(0, 5);
   return (
     <nav
       className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[var(--bg-elevated)] border-t border-[var(--border)]"

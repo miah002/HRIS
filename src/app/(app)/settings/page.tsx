@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Avatar } from "@/components/ui/avatar";
 import { Settings, ShieldAlert, ClipboardCheck } from "lucide-react";
 
@@ -134,7 +135,7 @@ export default async function SettingsPage() {
                           <option key={r} value={r}>{ROLE_META[r].label}</option>
                         ))}
                       </select>
-                      <Button type="submit" size="sm" variant="secondary">Save</Button>
+                      <SubmitButton size="sm" variant="secondary">Save</SubmitButton>
                     </form>
                   </div>
 
@@ -161,9 +162,9 @@ export default async function SettingsPage() {
                           {label}
                         </label>
                       ))}
-                      <Button type="submit" size="sm" variant="ghost" className="text-xs h-7 px-2">
+                      <SubmitButton size="sm" variant="ghost" className="text-xs h-7 px-2">
                         Save
-                      </Button>
+                      </SubmitButton>
                     </form>
                   )}
                 </div>

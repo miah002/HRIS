@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, STATUS_BADGE } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Avatar } from "@/components/ui/avatar";
 import { php, phDate } from "@/lib/format";
 import { computeSemiMonthlyPayroll, STATUTORY_LEAVE } from "@/lib/ph-payroll";
@@ -181,12 +182,12 @@ export default async function MyPortalPage() {
             <div className="flex gap-2">
               {!todayAttendance?.timeIn && (
                 <form action={clockIn}>
-                  <Button type="submit" size="sm">Clock In</Button>
+                  <SubmitButton size="sm">Clock In</SubmitButton>
                 </form>
               )}
               {todayAttendance?.timeIn && !todayAttendance?.timeOut && (
                 <form action={clockOut}>
-                  <Button type="submit" size="sm" variant="outline">Clock Out</Button>
+                  <SubmitButton size="sm" variant="outline">Clock Out</SubmitButton>
                 </form>
               )}
               {todayAttendance?.timeIn && todayAttendance?.timeOut && (
@@ -255,7 +256,7 @@ export default async function MyPortalPage() {
                   />
                 </div>
               </div>
-              <Button type="submit" size="sm" className="w-full">Submit request</Button>
+              <SubmitButton size="sm" className="w-full">Submit request</SubmitButton>
             </form>
           </CardContent>
         </Card>

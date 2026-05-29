@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Badge } from "@/components/ui/badge";
 
 type Emp = { id: string; firstName: string; lastName: string; sex: string | null };
@@ -49,7 +50,7 @@ export function StandardLeaveForm({ employees, action }: { employees: Emp[]; act
         />
       </div>
       <div className="sm:col-span-4 flex justify-end">
-        <Button type="submit" size="sm">Submit request</Button>
+        <SubmitButton size="sm">Submit request</SubmitButton>
       </div>
     </form>
   );
@@ -116,9 +117,9 @@ export function SpecialLeaveForm({ employees, action }: { employees: Emp[]; acti
         />
       </div>
       <div className="sm:col-span-4 flex justify-end">
-        <Button type="submit" size="sm" disabled={!selectedId || availableTypes.length === 0}>
+        <SubmitButton size="sm" disabled={!selectedId || availableTypes.length === 0}>
           File special leave
-        </Button>
+        </SubmitButton>
       </div>
     </form>
   );

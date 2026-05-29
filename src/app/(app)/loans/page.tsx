@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Avatar } from "@/components/ui/avatar";
 import { Table, TableHeader, TableBody, TableRow, Th, Td } from "@/components/ui/table";
 import Link from "next/link";
@@ -196,9 +197,9 @@ export default async function LoansPage({ searchParams }: { searchParams: Promis
               />
             </div>
             <div className="sm:col-span-3 lg:col-span-6 flex justify-end">
-              <Button type="submit" size="sm">
+              <SubmitButton size="sm">
                 Add loan
-              </Button>
+              </SubmitButton>
             </div>
           </form>
         </CardContent>
@@ -279,14 +280,14 @@ export default async function LoansPage({ searchParams }: { searchParams: Promis
                             </Button>
                           </Link>
                           <form action={markPaidFn}>
-                            <Button size="sm" variant="secondary" type="submit">
+                            <SubmitButton size="sm" variant="secondary">
                               Mark Paid
-                            </Button>
+                            </SubmitButton>
                           </form>
                           <form action={cancelFn}>
-                            <Button size="sm" variant="secondary" type="submit">
+                            <SubmitButton size="sm" variant="secondary">
                               Cancel
-                            </Button>
+                            </SubmitButton>
                           </form>
                         </div>
                       </Td>
@@ -318,7 +319,7 @@ export default async function LoansPage({ searchParams }: { searchParams: Promis
                                 <option value="CANCELLED">Cancelled</option>
                               </select>
                             </div>
-                            <Button type="submit" size="sm">Save</Button>
+                            <SubmitButton size="sm">Save</SubmitButton>
                           </form>
                         </Td>
                       </TableRow>
@@ -410,7 +411,7 @@ export default async function LoansPage({ searchParams }: { searchParams: Promis
                                   <option value="CANCELLED">Cancelled</option>
                                 </select>
                               </div>
-                              <Button type="submit" size="sm">Save</Button>
+                              <SubmitButton size="sm">Save</SubmitButton>
                             </form>
                           </Td>
                         </TableRow>

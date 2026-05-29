@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, STATUS_BADGE } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Avatar } from "@/components/ui/avatar";
 import { phDate } from "@/lib/format";
 import { CalendarCheck, PlusCircle, ShieldCheck } from "lucide-react";
@@ -210,8 +211,8 @@ export default async function LeavePage() {
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <Badge variant="warning">PENDING</Badge>
-                      <form action={rejectFn}><Button size="sm" variant="secondary" type="submit">Reject</Button></form>
-                      <form action={approveFn}><Button size="sm" type="submit">Approve</Button></form>
+                      <form action={rejectFn}><SubmitButton size="sm" variant="secondary">Reject</SubmitButton></form>
+                      <form action={approveFn}><SubmitButton size="sm">Approve</SubmitButton></form>
                     </div>
                   </div>
                 );

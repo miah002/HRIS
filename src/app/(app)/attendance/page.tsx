@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Avatar } from "@/components/ui/avatar";
 import { Table, TableHeader, TableBody, TableRow, Th, Td, TableFooter } from "@/components/ui/table";
 import { OT_RATES } from "@/lib/ph-payroll";
@@ -526,17 +527,17 @@ export default async function AttendancePage({
                       {!rec?.timeIn && (
                         <form action={timeIn}>
                           <input type="hidden" name="employeeId" value={e.id} />
-                          <Button size="sm" type="submit">
+                          <SubmitButton size="sm">
                             <LogIn className="h-3 w-3" />Time in
-                          </Button>
+                          </SubmitButton>
                         </form>
                       )}
                       {rec?.timeIn && !rec?.timeOut && (
                         <form action={timeOut}>
                           <input type="hidden" name="employeeId" value={e.id} />
-                          <Button size="sm" variant="secondary" type="submit">
+                          <SubmitButton size="sm" variant="secondary">
                             <LogOut className="h-3 w-3" />Time out
-                          </Button>
+                          </SubmitButton>
                         </form>
                       )}
                       {rec?.timeIn && rec?.timeOut && (
@@ -622,7 +623,7 @@ export default async function AttendancePage({
               </div>
             </div>
             <div className="sm:col-span-3 lg:col-span-7 flex justify-end">
-              <Button type="submit" size="sm">Save attendance</Button>
+              <SubmitButton size="sm">Save attendance</SubmitButton>
             </div>
           </form>
         </CardContent>
@@ -691,7 +692,7 @@ export default async function AttendancePage({
                   </select>
                 </div>
 
-                <Button type="submit" size="sm">View</Button>
+                <SubmitButton size="sm">View</SubmitButton>
               </form>
               <script dangerouslySetInnerHTML={{ __html: `(function(){var s=document.getElementById('history-period-select');if(s)s.addEventListener('change',function(){this.form.submit();});})();` }} />
             </CardContent>
@@ -805,7 +806,7 @@ export default async function AttendancePage({
                                   </optgroup>
                                 ))}
                               </select>
-                              <Button type="submit" size="sm">Save</Button>
+                              <SubmitButton size="sm">Save</SubmitButton>
                               <Link
                                 href={`/attendance?${filterQs}`}
                                 className="text-xs text-[var(--text-secondary)] hover:underline ml-1"
@@ -870,9 +871,9 @@ export default async function AttendancePage({
                                   <input type="hidden" name="filterEmployeeId" value={histEmployeeId} />
                                   <input type="hidden" name="filterFrom"       value={params.from ?? ""} />
                                   <input type="hidden" name="filterTo"         value={params.to   ?? ""} />
-                                  <button type="submit" className="text-xs font-medium text-[var(--error)] hover:underline">
+                                  <SubmitButton className="text-xs font-medium text-[var(--error)] hover:underline">
                                     Delete
-                                  </button>
+                                  </SubmitButton>
                                 </form>
                               </div>
                             </Td>
@@ -935,7 +936,7 @@ export default async function AttendancePage({
                     className="h-10 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)]"
                   />
                 </div>
-                <Button type="submit" size="sm" variant="secondary">Load week</Button>
+                <SubmitButton size="sm" variant="secondary">Load week</SubmitButton>
               </form>
             </CardContent>
           </Card>
@@ -1039,7 +1040,7 @@ export default async function AttendancePage({
               </CardContent>
             </Card>
             <div className="flex justify-end mt-3">
-              <Button type="submit" size="sm">Save checked rows</Button>
+              <SubmitButton size="sm">Save checked rows</SubmitButton>
             </div>
           </form>
 

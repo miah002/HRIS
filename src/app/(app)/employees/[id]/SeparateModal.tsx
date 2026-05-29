@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Label } from "@/components/ui/label";
 import { UserX } from "lucide-react";
 
@@ -84,9 +85,9 @@ export function SeparateModal({ employeeId, minDate, separateAction }: Props) {
                 <Button type="button" variant="secondary" onClick={() => setOpen(false)} disabled={pending}>
                   Cancel
                 </Button>
-                <Button type="submit" variant="danger" disabled={pending}>
+                <SubmitButton variant="danger" disabled={pending}>
                   {pending ? "Saving…" : "Confirm separation"}
-                </Button>
+                </SubmitButton>
               </div>
             </form>
           </div>

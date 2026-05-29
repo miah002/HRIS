@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Badge, STATUS_BADGE } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Table, TableHeader, TableBody, TableRow, Th, Td, TableFooter } from "@/components/ui/table";
@@ -333,10 +334,10 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
               <form action={runPayroll}>
                 <input type="hidden" name="start" value={cutoff.start.toISOString()} />
                 <input type="hidden" name="end"   value={cutoff.end.toISOString()} />
-                <Button type="submit">
+                <SubmitButton>
                   <PlayCircle className="h-4 w-4" />
                   {runs.length ? "Re-run payroll" : "Run payroll"}
-                </Button>
+                </SubmitButton>
               </form>
               {runs.length > 0 && (
                 <ExportButton

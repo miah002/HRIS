@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, STATUS_BADGE } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Avatar } from "@/components/ui/avatar";
 import { php, phDate } from "@/lib/format";
 import { computeSemiMonthlyPayroll, STATUTORY_LEAVE } from "@/lib/ph-payroll";
@@ -417,7 +418,7 @@ export default async function EmployeeDetail({ params }: { params: Promise<{ id:
                       <option value="CANCELLED">Cancelled</option>
                     </select>
                   </div>
-                  <Button type="submit" size="sm">Update loan</Button>
+                  <SubmitButton size="sm">Update loan</SubmitButton>
                 </form>
               </div>
             ))}

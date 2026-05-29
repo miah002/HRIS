@@ -6,6 +6,7 @@ import { OT_RATES, hourlyRate } from "@/lib/ph-payroll";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Table, TableHeader, TableBody, TableRow, Th, Td } from "@/components/ui/table";
 import { ClipboardCheck, Check, Clock, RotateCcw } from "lucide-react";
 
@@ -261,9 +262,9 @@ export default async function OTApprovalPage() {
                     <input type="hidden" name="periodStart" value={cutoff.start.toISOString()} />
                     <input type="hidden" name="periodEnd"   value={cutoff.end.toISOString()} />
                     <input type="hidden" name="currentStatus" value="PREPARED" />
-                    <Button type="submit" size="sm" variant="secondary" className="w-full gap-1.5 text-[var(--error)]">
+                    <SubmitButton size="sm" variant="secondary" className="w-full gap-1.5 text-[var(--error)]">
                       <RotateCcw className="h-3 w-3" /> Undo
-                    </Button>
+                    </SubmitButton>
                   </form>
                 )}
               </div>
@@ -275,9 +276,9 @@ export default async function OTApprovalPage() {
                 <div className="text-xs text-[var(--text-secondary)]">
                   Signing as <span className="font-semibold text-[var(--text-primary)]">{user.name ?? "—"}</span>
                 </div>
-                <Button type="submit" size="sm" className="w-full" disabled={otRows.length === 0}>
+                <SubmitButton size="sm" className="w-full" disabled={otRows.length === 0}>
                   Mark as Prepared
-                </Button>
+                </SubmitButton>
               </form>
             ) : (
               <p className="text-xs text-[var(--text-tertiary)]">Not authorized for this stage.</p>
@@ -308,9 +309,9 @@ export default async function OTApprovalPage() {
                     <input type="hidden" name="periodStart" value={cutoff.start.toISOString()} />
                     <input type="hidden" name="periodEnd"   value={cutoff.end.toISOString()} />
                     <input type="hidden" name="currentStatus" value="CHECKED" />
-                    <Button type="submit" size="sm" variant="secondary" className="w-full gap-1.5 text-[var(--error)]">
+                    <SubmitButton size="sm" variant="secondary" className="w-full gap-1.5 text-[var(--error)]">
                       <RotateCcw className="h-3 w-3" /> Undo
-                    </Button>
+                    </SubmitButton>
                   </form>
                 )}
               </div>
@@ -322,9 +323,9 @@ export default async function OTApprovalPage() {
                 <div className="text-xs text-[var(--text-secondary)]">
                   Signing as <span className="font-semibold text-[var(--text-primary)]">{user.name ?? "—"}</span>
                 </div>
-                <Button type="submit" size="sm" className="w-full" disabled={!isPrepared}>
+                <SubmitButton size="sm" className="w-full" disabled={!isPrepared}>
                   Mark as Checked
-                </Button>
+                </SubmitButton>
                 {!isPrepared && (
                   <p className="text-[10px] text-[var(--text-tertiary)] text-center">Requires Prepare first</p>
                 )}
@@ -358,9 +359,9 @@ export default async function OTApprovalPage() {
                     <input type="hidden" name="periodStart" value={cutoff.start.toISOString()} />
                     <input type="hidden" name="periodEnd"   value={cutoff.end.toISOString()} />
                     <input type="hidden" name="currentStatus" value="APPROVED" />
-                    <Button type="submit" size="sm" variant="secondary" className="w-full gap-1.5 text-[var(--error)]">
+                    <SubmitButton size="sm" variant="secondary" className="w-full gap-1.5 text-[var(--error)]">
                       <RotateCcw className="h-3 w-3" /> Undo Approval
-                    </Button>
+                    </SubmitButton>
                   </form>
                 )}
               </div>
@@ -372,9 +373,9 @@ export default async function OTApprovalPage() {
                 <div className="text-xs text-[var(--text-secondary)]">
                   Signing as <span className="font-semibold text-[var(--text-primary)]">{user.name ?? "—"}</span>
                 </div>
-                <Button type="submit" size="sm" className="w-full" disabled={!isChecked}>
+                <SubmitButton size="sm" className="w-full" disabled={!isChecked}>
                   Approve OT
-                </Button>
+                </SubmitButton>
                 {!isChecked && (
                   <p className="text-[10px] text-[var(--text-tertiary)] text-center">Requires Check first</p>
                 )}

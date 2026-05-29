@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input, Field } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ChevronLeft, Pencil } from "lucide-react";
@@ -290,7 +291,7 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
 
         <div className="flex justify-end gap-2">
           <Link href={`/employees/${id}`}><Button type="button" variant="secondary">Cancel</Button></Link>
-          <Button type="submit">Save changes</Button>
+          <SubmitButton>Save changes</SubmitButton>
         </div>
       </form>
     </div>

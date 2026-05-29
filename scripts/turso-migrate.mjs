@@ -152,6 +152,32 @@ async function main() {
     AND employeeId IN (SELECT id FROM Employee WHERE sex = 'FEMALE' OR sex IS NULL AND lastName = 'Veloso')`);
   console.log("  cleaned up SIL and invalid PATERNITY records");
 
+  // Backfill HIRED EmployeeHistory for employees with no history
+  const employees = await db.execute(
+    `SELECT id, firstName, lastName, employeeNumber, position, department, basicMonthlyRate, dateHired
+     FROM Employee WHERE archived = 0`
+  );
+  let backfilled = 0;
+  for (const emp of employees.rows) {
+    const existing = await db.execute(
+      `SELECT id FROM EmployeeHistory WHERE employeeId = ? LIMIT 1`,
+      [emp.id]
+    );
+    if (existing.rows.length > 0) continue;
+    const rate = Number(emp.basicMonthlyRate).toLocaleString("en-PH");
+    const toValue = `${emp.position} · ${emp.department} · ₱${rate}`;
+    await db.execute(
+      `INSERT OR IGNORE INTO EmployeeHistory
+         (id, employeeId, type, effectiveDate, toValue, createdAt)
+       VALUES (?, ?, 'HIRED', ?, ?, CURRENT_TIMESTAMP)`,
+      [`${emp.id}-hired`, emp.id, emp.dateHired, toValue]
+    );
+    backfilled++;
+    console.log(`  backfilled HIRED: ${emp.firstName} ${emp.lastName}`);
+  }
+  if (backfilled === 0) console.log("  backfill: all employees already have history");
+  else console.log(`  backfill: created ${backfilled} HIRED entries`);
+
   console.log("Turso migration: done.");
   process.exit(0);
 }

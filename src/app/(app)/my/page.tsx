@@ -159,7 +159,7 @@ export default async function MyPortalPage() {
                 <div className="text-xs text-[var(--text-tertiary)] mb-0.5">Time In</div>
                 <div className="font-mono font-medium">
                   {todayAttendance?.timeIn
-                    ? todayAttendance.timeIn.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" })
+                    ? todayAttendance.timeIn.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Manila" })
                     : "—"}
                 </div>
               </div>
@@ -167,7 +167,7 @@ export default async function MyPortalPage() {
                 <div className="text-xs text-[var(--text-tertiary)] mb-0.5">Time Out</div>
                 <div className="font-mono font-medium">
                   {todayAttendance?.timeOut
-                    ? todayAttendance.timeOut.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" })
+                    ? todayAttendance.timeOut.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Manila" })
                     : "—"}
                 </div>
               </div>

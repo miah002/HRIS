@@ -70,12 +70,18 @@ function applyLunchBreak(rawHours: number): number {
 
 function fmt(d: Date | null): string {
   if (!d) return "—";
-  return d.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit", hour12: true });
+  return d.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Manila" });
 }
 
 function computeNdHours(timeIn: Date, timeOut: Date): number {
-  const ndStart = new Date(timeIn); ndStart.setHours(22, 0, 0, 0);
-  const ndEnd   = new Date(timeIn); ndEnd.setDate(ndEnd.getDate() + 1); ndEnd.setHours(6, 0, 0, 0);
+  // ND window: 10 PM PHT to 6 AM PHT next day = UTC 14:00 to UTC 22:00
+  const ndStart = new Date(timeIn); ndStart.setUTCHours(14, 0, 0, 0);
+  const ndEnd   = new Date(timeIn); ndEnd.setUTCHours(22, 0, 0, 0);
+  // If timeIn is after 22:00 UTC that day, shift ndStart/ndEnd to next UTC day
+  if (timeIn.getUTCHours() >= 22) {
+    ndStart.setUTCDate(ndStart.getUTCDate() + 1);
+    ndEnd.setUTCDate(ndEnd.getUTCDate() + 1);
+  }
   const overlapStart = Math.max(timeIn.getTime(), ndStart.getTime());
   const overlapEnd   = Math.min(timeOut.getTime(), ndEnd.getTime());
   return Math.round((Math.max(0, overlapEnd - overlapStart) / 3600000) * 100) / 100;

@@ -432,10 +432,10 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
                       {row.date.toLocaleDateString("en-PH", { weekday: "short" })}
                     </Td>
                     <Td className="tabular text-[var(--text-secondary)]">
-                      {row.timeIn ? row.timeIn.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit", hour12: true }) : "—"}
+                      {row.timeIn ? row.timeIn.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Manila" }) : "—"}
                     </Td>
                     <Td className="tabular text-[var(--text-secondary)]">
-                      {row.timeOut ? row.timeOut.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit", hour12: true }) : "—"}
+                      {row.timeOut ? row.timeOut.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Manila" }) : "—"}
                     </Td>
                     <Td numeric className="text-[var(--text-secondary)]">
                       {Math.min(row.hoursWorked, 8).toFixed(1)}h

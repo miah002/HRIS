@@ -178,8 +178,93 @@ async function main() {
   if (backfilled === 0) console.log("  backfill: all employees already have history");
   else console.log(`  backfill: created ${backfilled} HIRED entries`);
 
+  // ── Fix old 1-15 / 16-end periods → correct 11-25 / 26-10 MMTSI schedule ──
+  console.log("Checking for old-style 1-15/16-end payroll periods...");
+  await fixPayrollPeriodDates();
+
   console.log("Turso migration: done.");
   process.exit(0);
+}
+
+async function fixPayrollPeriodDates() {
+  // Find all distinct old-style periods (day 1 = old first half, day 16 = old second half)
+  const res = await db.execute(`
+    SELECT DISTINCT "periodStart", "periodEnd"
+    FROM "Payroll"
+    WHERE CAST(strftime('%d', "periodStart") AS INTEGER) IN (1, 16)
+  `);
+
+  if (res.rows.length === 0) {
+    console.log("  No old-style payroll periods found — nothing to fix.");
+  } else {
+    // Group old periods by computed new target, track total gross to keep best data
+    const targetMap = new Map();
+    for (const row of res.rows) {
+      const oldStart = new Date(row.periodStart);
+      const day = oldStart.getUTCDate();
+      const newStart = new Date(oldStart);
+      const newEnd   = new Date(oldStart);
+      if (day === 1) {
+        newStart.setUTCDate(11); newEnd.setUTCDate(25);
+      } else {
+        newStart.setUTCDate(26);
+        newEnd.setUTCMonth(newEnd.getUTCMonth() + 1); newEnd.setUTCDate(10);
+      }
+      const key = newStart.toISOString();
+      if (!targetMap.has(key)) targetMap.set(key, []);
+      const grossRes = await db.execute(
+        `SELECT COALESCE(SUM("grossPay"), 0) AS total FROM "Payroll" WHERE "periodStart"=? AND "periodEnd"=?`,
+        [row.periodStart, row.periodEnd]
+      );
+      targetMap.get(key).push({
+        oldStart: row.periodStart, oldEnd: row.periodEnd,
+        newStart: newStart.toISOString(), newEnd: newEnd.toISOString(),
+        total: Number(grossRes.rows[0]?.total ?? 0),
+      });
+    }
+
+    // Process each target period: lowest-gross first so highest-gross survives
+    for (const [, periods] of targetMap) {
+      periods.sort((a, b) => a.total - b.total);
+      for (const p of periods) {
+        // Remove any records already at the target dates (dedup / conflict prevention)
+        await db.execute(
+          `DELETE FROM "Payroll" WHERE "periodStart"=? AND "periodEnd"=?`,
+          [p.newStart, p.newEnd]
+        );
+        // Move this batch to correct dates
+        await db.execute(
+          `UPDATE "Payroll" SET "periodStart"=?, "periodEnd"=? WHERE "periodStart"=? AND "periodEnd"=?`,
+          [p.newStart, p.newEnd, p.oldStart, p.oldEnd]
+        );
+        console.log(`  Payroll: ${p.oldStart.slice(0,10)} – ${p.oldEnd.slice(0,10)} → ${p.newStart.slice(0,10)} – ${p.newEnd.slice(0,10)} (₱${p.total.toFixed(0)})`);
+      }
+    }
+  }
+
+  // Fix OTApproval dates too
+  const otRes = await db.execute(`
+    SELECT DISTINCT "periodStart", "periodEnd", "companyId"
+    FROM "OTApproval"
+    WHERE CAST(strftime('%d', "periodStart") AS INTEGER) IN (1, 16)
+  `);
+  for (const row of otRes.rows) {
+    const oldStart = new Date(row.periodStart);
+    const day = oldStart.getUTCDate();
+    const newStart = new Date(oldStart); const newEnd = new Date(oldStart);
+    if (day === 1) { newStart.setUTCDate(11); newEnd.setUTCDate(25); }
+    else { newStart.setUTCDate(26); newEnd.setUTCMonth(newEnd.getUTCMonth()+1); newEnd.setUTCDate(10); }
+    const ns = newStart.toISOString(), ne = newEnd.toISOString();
+    await db.execute(
+      `DELETE FROM "OTApproval" WHERE "periodStart"=? AND "periodEnd"=? AND "companyId"=?`,
+      [ns, ne, row.companyId]
+    );
+    await db.execute(
+      `UPDATE "OTApproval" SET "periodStart"=?, "periodEnd"=? WHERE "periodStart"=? AND "periodEnd"=? AND "companyId"=?`,
+      [ns, ne, row.periodStart, row.periodEnd, row.companyId]
+    );
+    console.log(`  OTApproval: fixed ${row.periodStart.slice(0,10)} → ${ns.slice(0,10)}`);
+  }
 }
 
 main().catch((err) => {

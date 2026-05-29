@@ -68,7 +68,7 @@ async function addAdjustment(id: string, formData: FormData) {
   for (const loan of loans) loanDeductions += Math.min(loan.monthlyDeduction / 2, loan.balance);
   loanDeductions = Math.round(loanDeductions * 100) / 100;
 
-  const totalDeductions = Math.round((calc.totalDeductions + loanDeductions) * 100) / 100;
+  const totalDeductions = Math.round((calc.totalDeductions + loanDeductions + payroll.absenceDeduction) * 100) / 100;
   const netPay = Math.round((calc.grossPay - totalDeductions) * 100) / 100;
 
   await prisma.payroll.update({ where: { id }, data: { ...calc, loanDeductions, totalDeductions, netPay } });
@@ -120,7 +120,7 @@ async function removeAdjustment(adjustmentId: string, payrollId: string) {
   for (const loan of loans) loanDeductions += Math.min(loan.monthlyDeduction / 2, loan.balance);
   loanDeductions = Math.round(loanDeductions * 100) / 100;
 
-  const totalDeductions = Math.round((calc.totalDeductions + loanDeductions) * 100) / 100;
+  const totalDeductions = Math.round((calc.totalDeductions + loanDeductions + payroll.absenceDeduction) * 100) / 100;
   const netPay = Math.round((calc.grossPay - totalDeductions) * 100) / 100;
 
   await prisma.payroll.update({ where: { id: payrollId }, data: { ...calc, loanDeductions, totalDeductions, netPay } });
@@ -187,6 +187,9 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
     { label: "Withholding tax (BIR TRAIN)", ref: "RR 11-2018", amount: payroll.withholdingTax },
   ].filter((d) => d.amount > 0);
 
+  if (payroll.absenceDeduction > 0) {
+    deductions.push({ label: "Absences / unpaid leave", ref: "Daily rate × days", amount: payroll.absenceDeduction });
+  }
   if (payroll.lateDeduction > 0) {
     deductions.push({ label: `Late (${Math.round(payroll.lateMinutes)}m · 5-min grace)`, ref: "DOLE Art. 113", amount: payroll.lateDeduction });
   }

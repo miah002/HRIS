@@ -43,8 +43,24 @@ export default async function ReportsPage() {
     const half = computeSemiMonthlyPayroll({ monthlyRate: e.basicMonthlyRate, periodStart: new Date(), periodEnd: new Date() });
     return s + half.grossPay * 2;
   }, 0);
-  const months = ["Dec", "Jan", "Feb", "Mar", "Apr", "May"];
-  const payrollTrend = months.map((m, i) => ({ month: m, cost: Math.round(totalMonthly * (0.92 + i * 0.02)) }));
+
+  const now = new Date();
+  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  const payrollHistory = await prisma.payroll.findMany({
+    where: { employee: { companyId }, periodStart: { gte: sixMonthsAgo } },
+    select: { periodStart: true, grossPay: true },
+  });
+  const MONTH_LABELS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const monthMap = new Map<string, number>();
+  for (const p of payrollHistory) {
+    const key = `${p.periodStart.getFullYear()}-${p.periodStart.getMonth()}`;
+    monthMap.set(key, (monthMap.get(key) ?? 0) + p.grossPay);
+  }
+  const payrollTrend = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    return { month: MONTH_LABELS[d.getMonth()], cost: monthMap.get(key) ?? 0 };
+  });
 
   return (
     <div className="space-y-6">

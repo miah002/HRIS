@@ -56,16 +56,35 @@ export default async function DashboardPage() {
 
   const deadlines = upcomingDeadlines(now);
 
-  // Sparkline: 6-month payroll trend (synthetic baseline — real impl reads DB history)
-  const spark = [0.91, 0.95, 0.97, 0.98, 1.0, 1.0].map((x) => Math.round(monthlyPayroll * x));
+  // Real 6-month payroll trend from DB
+  const companyId = user?.companyId ?? "";
+  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  const payrollHistory = await prisma.payroll.findMany({
+    where: { employee: { companyId }, periodStart: { gte: sixMonthsAgo } },
+    select: { periodStart: true, grossPay: true },
+  });
+  const MONTH_LABELS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const monthMap = new Map<string, number>();
+  for (const p of payrollHistory) {
+    const key = `${p.periodStart.getFullYear()}-${p.periodStart.getMonth()}`;
+    monthMap.set(key, (monthMap.get(key) ?? 0) + p.grossPay);
+  }
+  const payrollTrend = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    return { month: MONTH_LABELS[d.getMonth()], cost: monthMap.get(key) ?? 0 };
+  });
+  const spark = payrollTrend.map((p) => p.cost);
+  const currMonthCost = payrollTrend[5].cost;
+  const prevMonthCost = payrollTrend[4].cost;
+  const payrollDelta = prevMonthCost > 0
+    ? Math.round(((currMonthCost - prevMonthCost) / prevMonthCost) * 1000) / 10
+    : null;
 
   // Recharts data
   const byDept = Object.entries(
     employees.reduce<Record<string, number>>((acc, e) => ({ ...acc, [e.department]: (acc[e.department] ?? 0) + 1 }), {})
   ).map(([department, count]) => ({ department, count }));
-
-  const months = ["Dec", "Jan", "Feb", "Mar", "Apr", "May"];
-  const payrollTrend = months.map((m, i) => ({ month: m, cost: Math.round(monthlyPayroll * (0.91 + i * 0.018)) }));
 
   const tenureBuckets = [
     { bucket: "<1y", count: 0 }, { bucket: "1–2y", count: 0 }, { bucket: "3–5y", count: 0 }, { bucket: "5y+", count: 0 }
@@ -144,9 +163,9 @@ export default async function DashboardPage() {
         />
         <KpiCard
           label="Monthly payroll" sublabel="Gross"
-          value={Math.round(monthlyPayroll)}
+          value={currMonthCost > 0 ? Math.round(currMonthCost) : Math.round(monthlyPayroll)}
           format="currencyK"
-          delta={1.8}
+          delta={payrollDelta ?? undefined}
           sparkData={spark}
           delay={0.04}
         />

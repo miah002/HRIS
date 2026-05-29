@@ -47,8 +47,8 @@ export function TableRow({ className, ...props }: React.HTMLAttributes<HTMLTable
   return (
     <tr
       className={cn(
-        "group transition-colors duration-fast",
-        "hover:bg-[var(--bg-subtle)]",
+        "group transition-colors duration-150",
+        "hover:bg-[var(--brand-subtle)]",
         className
       )}
       {...props}

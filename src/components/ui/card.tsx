@@ -4,7 +4,7 @@ import { cn } from "@/lib/format";
 // Elevation system: flat (border only), raised (shadow-xs), elevated (shadow-sm)
 type CardVariant = "flat" | "raised" | "elevated";
 
-const cardBase = "rounded-[var(--radius-md)] bg-[var(--bg-elevated)] transition-shadow duration-200 hover:shadow-[var(--shadow-card-hover)]";
+const cardBase = "rounded-[var(--radius-md)] bg-[var(--bg-elevated)] border border-[var(--border)] transition-all duration-200 hover:shadow-[var(--shadow-card-hover)] hover:border-[var(--border-strong)]";
 const cardVariants: Record<CardVariant, string> = {
   flat:     "shadow-[var(--shadow-card)]",
   raised:   "shadow-[var(--shadow-card)]",

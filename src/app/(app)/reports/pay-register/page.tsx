@@ -25,16 +25,18 @@ export default async function PayRegisterPage({
   const now = new Date();
   const year = parseInt(params.year ?? String(now.getFullYear()));
   const month = parseInt(params.month ?? String(now.getMonth() + 1));
-  const half = parseInt(params.half ?? (now.getDate() <= 15 ? "1" : "2"));
+  const d = now.getDate();
+  const half = parseInt(params.half ?? ((d >= 11 && d <= 25) ? "1" : "2"));
 
+  // half=1 → 11–25 of selected month; half=2 → 26 of selected month to 10 of next month
   const periodStart = half === 1
-    ? new Date(year, month - 1, 1)
-    : new Date(year, month - 1, 16);
+    ? new Date(year, month - 1, 11)
+    : new Date(year, month - 1, 26);
   const periodEnd = half === 1
-    ? new Date(year, month - 1, 15)
-    : new Date(year, month, 0);
+    ? new Date(year, month - 1, 25)
+    : new Date(year, month, 10);
 
-  const periodLabel = `${MONTHS[month - 1]} ${year} — ${half === 1 ? "1–15" : "16–end"}`;
+  const periodLabel = `${MONTHS[month - 1]} ${year} — ${half === 1 ? "11–25" : "26–10"}`;
 
   const employees = await prisma.employee.findMany({
     where: { companyId, archived: false },

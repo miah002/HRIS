@@ -36,7 +36,7 @@ export function PeriodPicker({ year, month, half }: { year: number; month: numbe
             onClick={() => navigate(year, month, h)}
             className={`px-3 py-1 transition-colors ${half === h ? "bg-[var(--brand)] text-white" : "bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:bg-[var(--neutral-bg)]"}`}
           >
-            {h === 1 ? "1–15" : "16–end"}
+            {h === 1 ? "11–25" : "26–10"}
           </button>
         ))}
       </div>

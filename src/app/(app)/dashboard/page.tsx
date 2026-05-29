@@ -15,8 +15,12 @@ import { ReportsCharts } from "../reports/charts";
 
 function currentCutoff(now = new Date()) {
   const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
-  if (d <= 15) return { start: new Date(y, m, 1), end: new Date(y, m, 15), label: `${now.toLocaleString("en-PH", { month: "long" })} 1–15` };
-  return { start: new Date(y, m, 16), end: new Date(y, m + 1, 0), label: `${now.toLocaleString("en-PH", { month: "long" })} 16–end` };
+  const mn = now.toLocaleString("en-PH", { month: "long" });
+  if (d >= 11 && d <= 25) return { start: new Date(y, m, 11), end: new Date(y, m, 25), label: `${mn} 11–25` };
+  if (d > 25)             return { start: new Date(y, m, 26), end: new Date(y, m + 1, 10), label: `${mn} 26–10` };
+  // day 1–10: inside the 26–10 cutoff that started last month
+  const prev = new Date(y, m - 1, 1).toLocaleString("en-PH", { month: "long" });
+  return { start: new Date(y, m - 1, 26), end: new Date(y, m, 10), label: `${prev} 26–10` };
 }
 
 function upcomingDeadlines(now: Date) {

@@ -14,18 +14,19 @@ export async function GET(req: Request) {
   const ph = nowPH();
   const year = parseInt(url.searchParams.get("year") ?? String(ph.getFullYear()));
   const month = parseInt(url.searchParams.get("month") ?? String(ph.getMonth() + 1));
-  const half = parseInt(url.searchParams.get("half") ?? (ph.getDate() <= 15 ? "1" : "2"));
+  const phDay = ph.getDate();
+  const half = parseInt(url.searchParams.get("half") ?? ((phDay >= 11 && phDay <= 25) ? "1" : "2"));
 
   const periodStart = half === 1
-    ? new Date(year, month - 1, 1)
-    : new Date(year, month - 1, 16);
+    ? new Date(year, month - 1, 11)
+    : new Date(year, month - 1, 26);
   const periodEnd = half === 1
-    ? new Date(year, month - 1, 15)
-    : new Date(year, month, 0);
+    ? new Date(year, month - 1, 25)
+    : new Date(year, month, 10);
 
   const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const periodLabel = `${MONTHS[month - 1]} ${year} (${half === 1 ? "1–15" : "16–end"})`;
-  const fileLabel = `${year}-${String(month).padStart(2, "0")}-${half === 1 ? "1" : "2"}`;
+  const periodLabel = `${MONTHS[month - 1]} ${year} (${half === 1 ? "11–25" : "26–10"})`;
+  const fileLabel = `${year}-${String(month).padStart(2, "0")}-${half === 1 ? "11-25" : "26-10"}`;
 
   const employees = await prisma.employee.findMany({
     where: { companyId, archived: false },

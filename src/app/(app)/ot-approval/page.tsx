@@ -14,8 +14,9 @@ import { ClipboardCheck, Check, Clock, RotateCcw } from "lucide-react";
 
 function currentCutoff(now = new Date()) {
   const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
-  if (d <= 15) return { start: new Date(y, m, 1), end: new Date(y, m, 15) };
-  return { start: new Date(y, m, 16), end: new Date(y, m + 1, 0) };
+  if (d >= 11 && d <= 25) return { start: new Date(y, m, 11), end: new Date(y, m, 25) };
+  if (d > 25)             return { start: new Date(y, m, 26), end: new Date(y, m + 1, 10) };
+  return { start: new Date(y, m - 1, 26), end: new Date(y, m, 10) };
 }
 
 async function prepareOT(formData: FormData) {

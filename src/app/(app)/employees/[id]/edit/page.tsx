@@ -196,57 +196,73 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
             <CardTitle>Employment</CardTitle>
             <CardDescription>Status determines leave eligibility and DO 174 contracting compliance.</CardDescription>
           </CardHeader>
-          <CardContent className="grid md:grid-cols-3 gap-4">
-            <F label="Position" name="position" required defaultValue={e.position} />
-            <F label="Department" name="department" required defaultValue={e.department} />
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="employmentStatus">
-                Employment status <span className="text-[var(--error)]">*</span>
-              </Label>
-              <select
-                id="employmentStatus" name="employmentStatus" required
-                defaultValue={e.employmentStatus}
-                className="h-10 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)]"
-              >
-                <option value="REGULAR">Regular</option>
-                <option value="PROBATIONARY">Probationary (up to 6 months)</option>
-                <option value="PROJECT">Project-based (DOLE DO 174)</option>
-                <option value="CASUAL">Casual</option>
-                <option value="CONTRACTUAL">Contractual (DOLE DO 174)</option>
-              </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="basicMonthlyRate">
-                Basic monthly rate <span className="text-[var(--error)]">*</span>
-              </Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--text-secondary)]">₱</span>
-                <Input
-                  id="basicMonthlyRate" name="basicMonthlyRate" type="number"
-                  min="0" step="100" required className="pl-7 tabular"
-                  defaultValue={e.basicMonthlyRate}
-                />
+          <CardContent className="space-y-5">
+            {/* Job fields */}
+            <div className="grid md:grid-cols-3 gap-4">
+              <F label="Position" name="position" required defaultValue={e.position} />
+              <F label="Department" name="department" required defaultValue={e.department} />
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="employmentStatus">
+                  Employment status <span className="text-[var(--error)]">*</span>
+                </Label>
+                <select
+                  id="employmentStatus" name="employmentStatus" required
+                  defaultValue={e.employmentStatus}
+                  className="h-10 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)]"
+                >
+                  <option value="REGULAR">Regular</option>
+                  <option value="PROBATIONARY">Probationary (up to 6 months)</option>
+                  <option value="PROJECT">Project-based (DOLE DO 174)</option>
+                  <option value="CASUAL">Casual</option>
+                  <option value="CONTRACTUAL">Contractual (DOLE DO 174)</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="basicMonthlyRate">
+                  Basic monthly rate <span className="text-[var(--error)]">*</span>
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--text-secondary)]">₱</span>
+                  <Input
+                    id="basicMonthlyRate" name="basicMonthlyRate" type="number"
+                    min="0" step="100" required className="pl-7 tabular"
+                    defaultValue={e.basicMonthlyRate}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="hdmfMp2Monthly">HDMF MP2 (monthly)</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--text-secondary)]">₱</span>
+                  <Input
+                    id="hdmfMp2Monthly" name="hdmfMp2Monthly" type="number"
+                    min="0" step="100" className="pl-7 tabular"
+                    defaultValue={e.hdmfMp2Monthly ?? 0}
+                    placeholder="0"
+                  />
+                </div>
               </div>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="hdmfMp2Monthly">HDMF MP2 (monthly)</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--text-secondary)]">₱</span>
-                <Input
-                  id="hdmfMp2Monthly" name="hdmfMp2Monthly" type="number"
-                  min="0" step="100" className="pl-7 tabular"
-                  defaultValue={e.hdmfMp2Monthly ?? 0}
-                  placeholder="0"
-                />
+
+            {/* Change-tracking — only recorded when job fields actually differ */}
+            <div className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-subtle)] p-4 space-y-3">
+              <p className="text-xs font-medium text-[var(--text-secondary)]">Career history tracking — set these when changing position, salary, or status</p>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="effectiveDate">Effective date</Label>
+                  <Input id="effectiveDate" name="effectiveDate" type="date"
+                    placeholder="YYYY-MM-DD"
+                    defaultValue=""
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5 md:col-span-2">
+                  <Label htmlFor="changeNotes">Reason / notes</Label>
+                  <textarea id="changeNotes" name="changeNotes" rows={2}
+                    placeholder="e.g. Regularization, Annual increment, Promotion to team lead…"
+                    className="w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)] resize-none"
+                  />
+                </div>
               </div>
-            </div>
-            <F label="Effective date of change" name="effectiveDate" type="date" className="md:col-span-1"
-               defaultValue={new Date().toISOString().split("T")[0]} />
-            <div className="flex flex-col gap-1.5 md:col-span-2">
-              <Label htmlFor="changeNotes">Reason / notes for this change</Label>
-              <textarea id="changeNotes" name="changeNotes" rows={2} placeholder="e.g. Regularization, Annual increment…"
-                className="w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)] resize-none"
-              />
             </div>
           </CardContent>
         </Card>

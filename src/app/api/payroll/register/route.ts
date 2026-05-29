@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
@@ -25,85 +25,82 @@ export async function GET(request: NextRequest) {
   const company = await prisma.company.findUnique({ where: { id: companyId } });
 
   const payrolls = await prisma.payroll.findMany({
-    where: {
-      periodStart: start,
-      periodEnd:   end,
-      employee: { companyId },
-    },
-    include: {
-      employee: { select: { firstName: true, middleName: true, lastName: true } },
-    },
+    where: { periodStart: start, periodEnd: end, employee: { companyId } },
+    include: { employee: { select: { firstName: true, middleName: true, lastName: true } } },
     orderBy: { employee: { lastName: "asc" } },
   });
 
-  // Format date: "May 31, 2026"
+  // Date formatter (PH locale)
   const fmt = (d: Date) =>
     d.toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric", timeZone: "Asia/Manila" });
 
-  // Paydate: 11-25 period → 30th of same month; 26-10 period → 15th of next month
+  // Paydate: 11-25 → 30th same month; 26-10 → 15th next month
   const startDay = start.getUTCDate();
-  let paydate: Date;
-  if (startDay === 11) {
-    paydate = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 30));
-  } else {
-    // 26-10: end month (June for May 26–Jun 10) + 15th
-    paydate = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 15));
+  const paydate = startDay === 11
+    ? new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 30))
+    : new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 15));
+
+  const COL_COUNT = 20;
+
+  const thin: ExcelJS.BorderStyle = "thin";
+  const thinBorder: Partial<ExcelJS.Borders> = {
+    top: { style: thin }, bottom: { style: thin },
+    left: { style: thin }, right: { style: thin },
+  };
+
+  function borderRow(row: ExcelJS.Row) {
+    for (let c = 1; c <= COL_COUNT; c++) row.getCell(c).border = thinBorder;
   }
 
-  // Build worksheet as array-of-arrays
-  const aoa: (string | number | null)[][] = [];
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("Payroll Register");
 
-  // Header block — matches MMTSI Payroll Register template exactly
-  aoa.push([company?.name ?? "Company"]);
-  aoa.push([company?.address ?? ""]);
-  aoa.push(["Payroll Register"]);
-  aoa.push(["Semi-Monthly"]);
-  aoa.push([`Payroll Period ${fmt(paydate)}`]);
-  aoa.push([]); // blank row
-  aoa.push([]); // blank row
+  // Column widths
+  ws.getColumn(1).width = 30;
+  for (let i = 2; i <= COL_COUNT; i++) ws.getColumn(i).width = 16;
 
-  // Column headers
+  // ── Header block (no borders) ──
+  ws.addRow([company?.name ?? "Company"]).getCell(1).font = { bold: true };
+  ws.addRow([company?.address ?? ""]);
+  ws.addRow(["Payroll Register"]);
+  ws.addRow(["Semi-Monthly"]);
+  ws.addRow([`Payroll Period ${fmt(paydate)}`]);
+  ws.addRow([]);
+  ws.addRow([]);
+
+  // ── Column headers row ──
   const headers = [
-    "Name",
-    "Taxable Income",
-    "Basic Pay",
-    "Absences",
-    "Tardiness/Undertime",
-    "Overtime Pay",
-    "De Minimis",
-    "NT Adjustments",
-    "Taxable Adjustments",
-    "Total Earnings",
-    "Withholding tax",
-    "SSS EE",
-    "PH EE",
-    "HDMF EE",
-    "SSS Loan",
-    "HDMF Loan",
-    "Advances to OE",
-    "HDMF MP2",
-    "Total Deductions",
-    "Net Pay",
+    "Name", "Taxable Income", "Basic Pay", "Absences", "Tardiness/Undertime",
+    "Overtime Pay", "De Minimis", "NT Adjustments", "Taxable Adjustments",
+    "Total Earnings", "Withholding tax", "SSS EE", "PH EE", "HDMF EE",
+    "SSS Loan", "HDMF Loan", "Advances to OE", "HDMF MP2", "Total Deductions", "Net Pay",
   ];
-  aoa.push(headers);
+  const headerRow = ws.addRow(headers);
+  headerRow.font = { bold: true };
+  headerRow.height = 30;
+  headerRow.eachCell((cell) => {
+    cell.border = thinBorder;
+    cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+  });
 
-  // "Compensation:" section label row
-  aoa.push(["Compensation:"]);
+  // ── "Compensation:" section label ──
+  const compRow = ws.addRow(["Compensation:"]);
+  compRow.getCell(1).font = { italic: true };
+  borderRow(compRow);
 
-  // Grand total accumulators
-  const totals = new Array<number>(headers.length - 1).fill(0);
+  // ── Employee data rows ──
+  const totals = new Array<number>(COL_COUNT - 1).fill(0);
 
   for (const p of payrolls) {
     const emp = p.employee;
-    // Name format: First MI. Last  (e.g. "Angela Luz C. Veloso")
     const mi = emp.middleName ? emp.middleName.charAt(0).toUpperCase() + "." : null;
     const name = [emp.firstName, mi, emp.lastName].filter(Boolean).join(" ");
 
-    const taxableIncome =
-      p.grossPay - p.nonTaxableAdjustments - (p.sssEE + p.philHealthEE + p.pagIbigEE);
+    const taxableIncome = round2(
+      p.grossPay - p.nonTaxableAdjustments - (p.sssEE + p.philHealthEE + p.pagIbigEE)
+    );
 
-    const row: (string | number)[] = [
-      name,
+    const values = [
       round2(taxableIncome),
       round2(p.basicPay),
       round2(p.absenceDeduction),
@@ -124,33 +121,28 @@ export async function GET(request: NextRequest) {
       round2(p.totalDeductions),
       round2(p.netPay),
     ];
+    for (let i = 0; i < totals.length; i++) totals[i] = round2(totals[i] + values[i]);
 
-    // Accumulate totals (skip first col which is name)
-    for (let i = 0; i < totals.length; i++) {
-      totals[i] = round2(totals[i] + (row[i + 1] as number));
+    const dataRow = ws.addRow([name, ...values]);
+    borderRow(dataRow);
+    // Right-align numeric cells
+    for (let c = 2; c <= COL_COUNT; c++) {
+      dataRow.getCell(c).alignment = { horizontal: "right" };
     }
-
-    aoa.push(row);
   }
 
-  // Grand total row
-  aoa.push(["Grand Total", ...totals]);
+  // ── Grand Total row ──
+  const totalRow = ws.addRow(["Grand Total", ...totals]);
+  totalRow.font = { bold: true };
+  borderRow(totalRow);
+  for (let c = 2; c <= COL_COUNT; c++) {
+    totalRow.getCell(c).alignment = { horizontal: "right" };
+  }
 
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-
-  // Column widths
-  ws["!cols"] = [
-    { wch: 30 }, // Name
-    ...Array(headers.length - 1).fill({ wch: 16 }),
-  ];
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Payroll Register");
-
-  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
-
+  const buf = await wb.xlsx.writeBuffer();
   const filename = `Payroll-Register-${start.toISOString().slice(0, 10)}.xlsx`;
-  return new NextResponse(buf, {
+
+  return new NextResponse(buf as unknown as BodyInit, {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "Content-Disposition": `attachment; filename="${filename}"`,

@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { nowPH } from "@/lib/format";
 
 export async function GET(req: Request) {
   const session = await auth();
@@ -16,9 +17,9 @@ export async function GET(req: Request) {
     year = parseInt(monthParam.slice(0, 4));
     month = parseInt(monthParam.slice(5, 7)) - 1;
   } else {
-    const now = new Date();
-    year = now.getFullYear();
-    month = now.getMonth();
+    const ph = nowPH();
+    year = ph.getFullYear();
+    month = ph.getMonth();
   }
 
   const monthStart = new Date(year, month, 1);

@@ -206,7 +206,7 @@ export function computeSemiMonthlyPayroll(i: PayrollInput) {
   const grossPay = round2(basicPay + otPay + ndPay + holidayPay + allowances + taxableAdj + nonTaxableAdj);
 
   // Determine cutoff type: 1st (PHIC+HDMF) vs 2nd (SSS)
-  const isFirstCutoff = i.isFirstCutoff ?? (i.periodStart.getDate() <= 15);
+  const isFirstCutoff = i.isFirstCutoff ?? (i.periodStart.getDate() === 11);
 
   // SSS MSC basis: total monthly earnings (basic + OT × 2 + non-taxable × 2) if provided
   const sssEarnings = i.sssEarningsMonthly ?? i.monthlyRate;

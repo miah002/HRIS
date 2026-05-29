@@ -4,7 +4,20 @@ export function php(n: number) {
 
 export function phDate(d: Date | string) {
   const date = typeof d === "string" ? new Date(d) : d;
-  return new Intl.DateTimeFormat("en-PH", { year: "numeric", month: "short", day: "2-digit" }).format(date);
+  return new Intl.DateTimeFormat("en-PH", {
+    year: "numeric", month: "short", day: "2-digit",
+    timeZone: "Asia/Manila",
+  }).format(date);
+}
+
+/** Returns a Date whose .getDate()/.getMonth()/.getFullYear()/.getHours() reflect Philippine time. */
+export function nowPH(): Date {
+  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }));
+}
+
+/** Converts any UTC Date to a Date whose local methods (.getHours etc.) return Philippine time values. */
+export function toPhDate(d: Date): Date {
+  return new Date(d.toLocaleString("en-US", { timeZone: "Asia/Manila" }));
 }
 
 // Lightweight cn — for a real project, swap with clsx + tailwind-merge

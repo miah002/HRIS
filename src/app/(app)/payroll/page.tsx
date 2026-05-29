@@ -7,12 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Badge, STATUS_BADGE } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Table, TableHeader, TableBody, TableRow, Th, Td, TableFooter } from "@/components/ui/table";
-import { php, phDate } from "@/lib/format";
+import { php, phDate, nowPH } from "@/lib/format";
 import { computeSemiMonthlyPayroll, OT_RATES, hourlyRate } from "@/lib/ph-payroll";
 import { PlayCircle, Wallet, FileText, Clock, ClipboardCheck } from "lucide-react";
 import { ExportButton } from "./ExportButton";
 
-function currentCutoff(now = new Date()) {
+function currentCutoff(now = nowPH()) {
   const year = now.getFullYear();
   const month = now.getMonth();
   const day = now.getDate();

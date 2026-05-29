@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { nowPH } from "@/lib/format";
 
 export async function GET(req: Request) {
   const session = await auth();
@@ -10,10 +11,10 @@ export async function GET(req: Request) {
   const companyId = user?.companyId ?? "";
 
   const url = new URL(req.url);
-  const now = new Date();
-  const year = parseInt(url.searchParams.get("year") ?? String(now.getFullYear()));
-  const month = parseInt(url.searchParams.get("month") ?? String(now.getMonth() + 1));
-  const half = parseInt(url.searchParams.get("half") ?? (now.getDate() <= 15 ? "1" : "2"));
+  const ph = nowPH();
+  const year = parseInt(url.searchParams.get("year") ?? String(ph.getFullYear()));
+  const month = parseInt(url.searchParams.get("month") ?? String(ph.getMonth() + 1));
+  const half = parseInt(url.searchParams.get("half") ?? (ph.getDate() <= 15 ? "1" : "2"));
 
   const periodStart = half === 1
     ? new Date(year, month - 1, 1)

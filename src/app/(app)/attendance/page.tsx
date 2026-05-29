@@ -10,6 +10,7 @@ import { Table, TableHeader, TableBody, TableRow, Th, Td, TableFooter } from "@/
 import { OT_RATES } from "@/lib/ph-payroll";
 import { getPHHoliday } from "@/lib/ph-holidays";
 import { Clock, LogIn, LogOut, PlusCircle } from "lucide-react";
+import { nowPH, toPhDate } from "@/lib/format";
 
 const OT_RATE_OPTIONS: { value: string; label: string; group: string }[] = [
   { value: "R_OT",     label: "R OT — Regular OT (×1.25)",                      group: "Regular OT" },
@@ -31,16 +32,18 @@ const OT_RATE_OPTIONS: { value: string; label: string; group: string }[] = [
   { value: "ND_RH_OT", label: "ND RH OT — Night Diff Reg. Holiday OT (×2.86)",  group: "Night Differential" },
 ];
 
-function currentCutoff(now = new Date()) {
+function currentCutoff(now = nowPH()) {
   const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
-  if (d <= 15) return { start: new Date(y, m, 1), end: new Date(y, m, 15), label: `${now.toLocaleString("en-PH", { month: "long" })} 1–15` };
-  return { start: new Date(y, m, 16), end: new Date(y, m + 1, 0), label: `${now.toLocaleString("en-PH", { month: "long" })} 16–end` };
+  if (d >= 11 && d <= 25) return { start: new Date(y, m, 11), end: new Date(y, m, 25), label: `${now.toLocaleString("en-PH", { month: "long", timeZone: "Asia/Manila" })} 11–25` };
+  if (d >= 26)             return { start: new Date(y, m, 26), end: new Date(y, m + 1, 10), label: `${now.toLocaleString("en-PH", { month: "long", timeZone: "Asia/Manila" })} 26–10` };
+  return { start: new Date(y, m - 1, 26), end: new Date(y, m, 10), label: `${now.toLocaleString("en-PH", { month: "long", timeZone: "Asia/Manila" })} 26–10` };
 }
 
-function lastCutoff(now = new Date()) {
+function lastCutoff(now = nowPH()) {
   const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
-  if (d <= 15) return { start: new Date(y, m - 1, 16), end: new Date(y, m, 0) };
-  return { start: new Date(y, m, 1), end: new Date(y, m, 15) };
+  if (d >= 11 && d <= 25) return { start: new Date(y, m - 1, 26), end: new Date(y, m, 10) };
+  if (d >= 26)            return { start: new Date(y, m, 11), end: new Date(y, m, 25) };
+  return { start: new Date(y, m - 1, 11), end: new Date(y, m - 1, 25) };
 }
 
 function mondayOf(dateStr: string): Date {
@@ -51,8 +54,8 @@ function mondayOf(dateStr: string): Date {
 }
 
 function todayPH() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const ph = nowPH();
+  return new Date(ph.getFullYear(), ph.getMonth(), ph.getDate());
 }
 
 /** Format local date as YYYY-MM-DD without UTC conversion */
@@ -313,7 +316,7 @@ export default async function AttendancePage({
     : [];
 
   // Bulk entry: resolve week to Monday
-  const rawWeek    = params.week ?? toLocalDateStr(new Date());
+  const rawWeek    = params.week ?? toLocalDateStr(nowPH());
   const bulkMonday = mondayOf(rawWeek);
   const bulkWeekStr    = toLocalDateStr(bulkMonday);
   const bulkEmployeeId = params.bulkEmployeeId ?? "";
@@ -774,13 +777,13 @@ export default async function AttendancePage({
                               <input type="hidden" name="filterTo"         value={params.to   ?? ""} />
                               <input
                                 type="time" name="timeIn"
-                                defaultValue={rec.timeIn ? `${String(rec.timeIn.getHours()).padStart(2,"0")}:${String(rec.timeIn.getMinutes()).padStart(2,"0")}` : "08:00"}
+                                defaultValue={rec.timeIn ? `${String(toPhDate(rec.timeIn).getHours()).padStart(2,"0")}:${String(toPhDate(rec.timeIn).getMinutes()).padStart(2,"0")}` : "08:00"}
                                 className="h-8 w-28 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-2 text-sm focus:outline-none focus:border-[var(--brand)]"
                               />
                               <span className="text-[var(--text-tertiary)]">→</span>
                               <input
                                 type="time" name="timeOut"
-                                defaultValue={rec.timeOut ? `${String(rec.timeOut.getHours()).padStart(2,"0")}:${String(rec.timeOut.getMinutes()).padStart(2,"0")}` : "17:00"}
+                                defaultValue={rec.timeOut ? `${String(toPhDate(rec.timeOut).getHours()).padStart(2,"0")}:${String(toPhDate(rec.timeOut).getMinutes()).padStart(2,"0")}` : "17:00"}
                                 className="h-8 w-28 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-2 text-sm focus:outline-none focus:border-[var(--brand)]"
                               />
                               <select
@@ -960,10 +963,10 @@ export default async function AttendancePage({
                     {bulkDays.map((day, i) => {
                       const existing   = bulkExistingMap.get(day.dateStr);
                       const defaultIn  = existing?.timeIn
-                        ? `${String(existing.timeIn.getHours()).padStart(2, "0")}:${String(existing.timeIn.getMinutes()).padStart(2, "0")}`
+                        ? `${String(toPhDate(existing.timeIn).getHours()).padStart(2, "0")}:${String(toPhDate(existing.timeIn).getMinutes()).padStart(2, "0")}`
                         : "08:00";
                       const defaultOut = existing?.timeOut
-                        ? `${String(existing.timeOut.getHours()).padStart(2, "0")}:${String(existing.timeOut.getMinutes()).padStart(2, "0")}`
+                        ? `${String(toPhDate(existing.timeOut).getHours()).padStart(2, "0")}:${String(toPhDate(existing.timeOut).getMinutes()).padStart(2, "0")}`
                         : (day.autoCode === "RD" ? "12:00" : "17:00");
                       const defaultCode = existing?.otRateCode ?? day.autoCode ?? "";
                       const regHrs      = existing ? Math.min(existing.hoursWorked, 8) : null;

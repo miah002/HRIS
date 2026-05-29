@@ -73,7 +73,7 @@ export default async function PayRegisterPage({
     { basic: 0, ot: 0, nd: 0, holiday: 0, gross: 0, ded: 0, net: 0 }
   );
 
-  const csvHref = `/api/reports/pay-register?year=${year}&month=${month}&half=${half}`;
+  const xlsxHref = `/api/payroll/register?start=${periodStart.toISOString()}&end=${periodEnd.toISOString()}`;
 
   return (
     <div className="space-y-5">
@@ -81,9 +81,9 @@ export default async function PayRegisterPage({
         <Link href="/reports" className="inline-flex items-center gap-1 text-xs text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors">
           <ChevronLeft className="h-3 w-3" /> Reports
         </Link>
-        <a href={csvHref} download>
+        <a href={xlsxHref} download={`Payroll-Register-${periodLabel}.xlsx`}>
           <button className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-[var(--radius-sm)] border border-[var(--border)] hover:bg-[var(--neutral-bg)] transition-colors">
-            <Download className="h-3.5 w-3.5" /> Export CSV (full detail)
+            <Download className="h-3.5 w-3.5" /> Export XLSX
           </button>
         </a>
       </div>

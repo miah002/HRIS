@@ -154,7 +154,7 @@ export default async function PayRegisterPage({
           </Table>
         </CardContent>
       </Card>
-      <p className="text-xs text-[var(--text-tertiary)]">Hover over Deductions to see SSS / PhilHealth / HDMF / WHT / Loan breakdown. Export CSV for full detail.</p>
+      <p className="text-xs text-[var(--text-tertiary)]">Hover over Deductions to see SSS / PhilHealth / HDMF / WHT / Loan breakdown. Export XLSX for full detail.</p>
     </div>
   );
 }

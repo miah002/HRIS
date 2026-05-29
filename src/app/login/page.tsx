@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { signIn } from "@/lib/auth";
-import { Button } from "@/components/ui/button";
 import { Input, Field } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 export default function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   async function login(formData: FormData) {
@@ -22,14 +22,19 @@ export default function LoginPage({ searchParams }: { searchParams: Promise<{ er
     <main className="min-h-screen gradient-mesh grid place-items-center p-4">
       <div className="w-full max-w-sm space-y-4">
         {/* Logo */}
-        <div className="flex justify-center mb-6">
-          <Link href="/" className="flex items-center gap-2">
-            <img src="/mmtsi-logo.png" alt="MMTSI" className="h-8 w-auto object-contain" />
-            <span className="font-semibold text-[var(--text-primary)]">MMTSI HRIS</span>
+        <div className="flex flex-col items-center gap-3 mb-8">
+          <Link href="/" className="flex items-center gap-3">
+            <img src="/mmtsi-logo.png" alt="MMTSI" className="h-12 w-auto object-contain drop-shadow-sm" />
+            <div className="flex flex-col">
+              <span className="text-xl font-bold tracking-tight text-[var(--text-primary)] leading-tight">MMTSI HRIS</span>
+              <span className="text-xs text-[var(--text-tertiary)] leading-tight">HR Information System</span>
+            </div>
           </Link>
         </div>
 
-        <Card variant="raised">
+        <Card variant="raised" className="overflow-hidden">
+          {/* Brand accent bar */}
+          <div className="h-1 bg-gradient-to-r from-[var(--brand)] via-[var(--brand-bright)] to-[var(--brand-dim)]" />
           <CardHeader>
             <CardTitle className="text-base">Sign in</CardTitle>
             <CardDescription>
@@ -45,7 +50,7 @@ export default function LoginPage({ searchParams }: { searchParams: Promise<{ er
               <Field label="Password" name="password">
                 <Input id="password" name="password" type="password" required defaultValue="demo1234" autoComplete="current-password" />
               </Field>
-              <Button type="submit" className="w-full mt-2">Sign in</Button>
+              <SubmitButton className="w-full mt-2">Sign in</SubmitButton>
             </form>
             <p className="mt-5 text-xs text-center text-[var(--text-tertiary)]">
               No account?{" "}

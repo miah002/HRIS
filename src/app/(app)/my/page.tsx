@@ -101,7 +101,7 @@ export default async function MyPortalPage() {
 
   const projected = computeSemiMonthlyPayroll({ monthlyRate: e.basicMonthlyRate, periodStart: new Date(), periodEnd: new Date() });
   const yearsOfService = (Date.now() - +e.dateHired) / (1000 * 60 * 60 * 24 * 365.25);
-  const eligibleSIL = yearsOfService >= 1;
+  // SIL removed
   const name = e.firstName;
 
   // Leave balances for current year
@@ -266,20 +266,19 @@ export default async function MyPortalPage() {
         <CardHeader><CardTitle>My leave balances — {new Date().getFullYear()}</CardTitle></CardHeader>
         <CardContent className="pt-3 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {Object.entries(STATUTORY_LEAVE).map(([type, info]) => {
-            const ineligible = type === "SIL" && !eligibleSIL;
-            const entitled = ineligible ? 0 : info.days;
+            const entitled = info.days;
             const used = leaveUsedMap[type] ?? 0;
             const remaining = Math.max(0, entitled - used);
             return (
               <div key={type} className="rounded-[var(--radius-sm)] border border-[var(--border)] p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-medium">{type.replace(/_/g, " ")}</span>
-                  <Badge variant={ineligible ? "neutral" : remaining === 0 ? "error" : remaining <= 2 ? "warning" : "success"}>
+                  <Badge variant={remaining === 0 ? "error" : remaining <= 2 ? "warning" : "success"}>
                     {remaining}/{entitled}d
                   </Badge>
                 </div>
                 <div className="mt-2 h-1.5 rounded-full bg-[var(--bg-subtle)] overflow-hidden">
-                  <div className="h-full rounded-full bg-[var(--brand)]" style={{ width: entitled > 0 ? `${(remaining / entitled) * 100}%` : "0%" }} />
+                  <div className="h-full rounded-full bg-[var(--brand)]" style={{ width: `${(remaining / entitled) * 100}%` }} />
                 </div>
                 <div className="flex justify-between mt-1 text-[10px] text-[var(--text-tertiary)]">
                   <span>{used}d used</span><span>{remaining}d left</span>

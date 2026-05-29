@@ -59,7 +59,7 @@ export default async function ReportsPage() {
           { href: "/reports/pay-register", icon: Table2, title: "Pay Register", desc: "Full payroll run detail — all employees, all line items" },
           { href: "/reports/13th-month", icon: Gift, title: "13th Month Pay", desc: "Annual computation per employee, DOLE-compliant" },
           { href: "/reports/2316", icon: FileText, title: "BIR Form 2316", desc: "Annual certificate of compensation per employee for BIR filing" },
-          { href: "/reports/leave", icon: CalendarCheck, title: "Leave Summary", desc: "VL / SL / SIL balances and approved leave log by year" },
+          { href: "/reports/leave", icon: CalendarCheck, title: "Leave Summary", desc: "VL / SL balances and approved leave log by year" },
         ].map(({ href, icon: Icon, title, desc }) => (
           <Link key={href} href={href}>
             <Card className="hover:border-[var(--brand)] transition-colors cursor-pointer h-full">

@@ -146,6 +146,12 @@ async function main() {
     console.log("  skip EmployeeHistory table (exists)");
   }
 
+  // One-time data cleanup
+  await db.execute("DELETE FROM LeaveRequest WHERE leaveType = 'SIL'");
+  await db.execute(`DELETE FROM LeaveRequest WHERE leaveType = 'PATERNITY'
+    AND employeeId IN (SELECT id FROM Employee WHERE sex = 'FEMALE' OR sex IS NULL AND lastName = 'Veloso')`);
+  console.log("  cleaned up SIL and invalid PATERNITY records");
+
   console.log("Turso migration: done.");
   process.exit(0);
 }

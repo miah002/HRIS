@@ -46,7 +46,7 @@ const FEATURES = [
     icon: CalendarCheck,
     title: "Statutory Leaves",
     desc: "All PH-mandated leaves pre-configured. Approval workflows built in.",
-    bullets: ["SIL, Maternity (RA 11210)", "Paternity (RA 8187)", "VL / SL company policy"],
+    bullets: ["Maternity (RA 11210 — 105 days)", "Paternity (RA 8187 — 7 days)", "VL / SL company policy"],
   },
   {
     icon: ShieldCheck,
@@ -69,7 +69,7 @@ const FAQ = [
   },
   {
     q: "What statutory leaves are supported?",
-    a: "SIL (5 days, Art. 95), Maternity (105 days, RA 11210), Paternity (7 days, RA 8187), plus configurable VL and SL per company policy.",
+    a: "Maternity (105 days, RA 11210), Paternity (7 days, RA 8187), plus VL and SL (15 days each) per company policy.",
   },
   {
     q: "How does overtime computation work?",

@@ -93,7 +93,7 @@ export default async function EmployeeDetail({ params }: { params: Promise<{ id:
 
   const projected = computeSemiMonthlyPayroll({ monthlyRate: e.basicMonthlyRate, periodStart: new Date(), periodEnd: new Date() });
   const yearsOfService = (Date.now() - +e.dateHired) / (1000 * 60 * 60 * 24 * 365.25);
-  const eligibleSIL = yearsOfService >= 1;
+  // SIL removed — only VL, SL, MATERNITY, PATERNITY in use
 
   const yearStart = new Date(new Date().getFullYear(), 0, 1);
   const usedLeaves = e.leaves.filter(l => l.status === "APPROVED" && l.startDate >= yearStart);
@@ -282,26 +282,24 @@ export default async function EmployeeDetail({ params }: { params: Promise<{ id:
             const isFemale = e.sex === "FEMALE";
             if (type === "PATERNITY" && !(isMale && e.civilStatus === "MARRIED")) return null;
             if (type === "MATERNITY" && !isFemale) return null;
-            const ineligible = type === "SIL" && !eligibleSIL;
-            const entitled  = ineligible ? 0 : info.days;
+            const entitled  = info.days;
             const used      = leaveUsedMap[type] ?? 0;
             const remaining = Math.max(0, entitled - used);
             return (
               <div key={type} className="rounded-[var(--radius-sm)] border border-[var(--border)] p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-medium">{type.replace(/_/g, " ")}</span>
-                  <Badge variant={ineligible ? "neutral" : remaining === 0 ? "error" : remaining <= 2 ? "warning" : "success"}>
+                  <Badge variant={remaining === 0 ? "error" : remaining <= 2 ? "warning" : "success"}>
                     {remaining}/{entitled}d
                   </Badge>
                 </div>
                 <div className="mt-2 h-1.5 rounded-full bg-[var(--bg-subtle)] overflow-hidden">
                   <div className="h-full rounded-full bg-[var(--brand)] transition-all"
-                    style={{ width: entitled > 0 ? `${Math.max(0, (remaining / entitled) * 100)}%` : "0%" }} />
+                    style={{ width: `${Math.max(0, (remaining / entitled) * 100)}%` }} />
                 </div>
                 <div className="flex justify-between mt-1 text-[10px] text-[var(--text-tertiary)]">
                   <span>{used}d used</span><span>{remaining}d left</span>
                 </div>
-                {ineligible && <p className="text-[10px] text-[var(--warning)] mt-1">Requires 1 year of service</p>}
               </div>
             );
           })}

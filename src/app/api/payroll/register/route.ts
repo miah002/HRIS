@@ -36,23 +36,23 @@ export async function GET(request: NextRequest) {
     orderBy: { employee: { lastName: "asc" } },
   });
 
-  // Format period label e.g. "May 1–15, 2026"
+  // Format date: "May 31, 2026"
   const fmt = (d: Date) =>
-    d.toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" });
-  const periodLabel = `${fmt(start)} – ${fmt(end)}`;
+    d.toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric", timeZone: "Asia/Manila" });
 
   // Build worksheet as array-of-arrays
-  const aoa: (string | number)[][] = [];
+  const aoa: (string | number | null)[][] = [];
 
-  // Header block (rows 1–5)
+  // Header block — matches MMTSI Payroll Register template
   aoa.push([company?.name ?? "Company"]);
   aoa.push([company?.address ?? ""]);
-  aoa.push(["PAYROLL REGISTER"]);
+  aoa.push(["Payroll Register"]);
   aoa.push(["Semi-Monthly"]);
-  aoa.push([`Period: ${periodLabel}`]);
+  aoa.push([`Payroll Period ${fmt(start)} – ${fmt(end)}`]);
+  aoa.push([]); // blank row
   aoa.push([]); // blank row
 
-  // Column headers (row 7)
+  // Column headers
   const headers = [
     "Name",
     "Taxable Income",
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
     "NT Adjustments",
     "Taxable Adjustments",
     "Total Earnings",
-    "Withholding Tax",
+    "Withholding tax",
     "SSS EE",
     "PH EE",
     "HDMF EE",
@@ -77,13 +77,17 @@ export async function GET(request: NextRequest) {
   ];
   aoa.push(headers);
 
+  // "Compensation:" section label row
+  aoa.push(["Compensation:"]);
+
   // Grand total accumulators
   const totals = new Array<number>(headers.length - 1).fill(0);
 
   for (const p of payrolls) {
     const emp = p.employee;
-    const nameParts = [emp.lastName + ",", emp.firstName, emp.middleName ?? ""].filter(Boolean);
-    const name = nameParts.join(" ");
+    // Name format: First MI. Last  (e.g. "Angela Luz C. Veloso")
+    const mi = emp.middleName ? emp.middleName.charAt(0).toUpperCase() + "." : null;
+    const name = [emp.firstName, mi, emp.lastName].filter(Boolean).join(" ");
 
     const taxableIncome =
       p.grossPay - p.nonTaxableAdjustments - (p.sssEE + p.philHealthEE + p.pagIbigEE);
@@ -120,7 +124,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Grand total row
-  aoa.push(["GRAND TOTAL", ...totals]);
+  aoa.push(["Grand Total", ...totals]);
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
 

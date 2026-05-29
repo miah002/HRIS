@@ -41,6 +41,22 @@ async function addColumnIfMissing(table, column, type) {
 async function main() {
   console.log("Turso migration: checking schema...");
 
+  // Seed MMTSI company name/address if not yet set
+  const co = await db.execute(`SELECT id, name, address FROM "Company" LIMIT 1`);
+  if (co.rows.length > 0) {
+    const row = co.rows[0];
+    const needsUpdate = !row.name || row.name === "Company" || !row.address;
+    if (needsUpdate) {
+      await db.execute(
+        `UPDATE "Company" SET "name"=?, "address"=? WHERE "id"=?`,
+        ["Makiling Management Technology Systems, Inc.", "Sto. Tomas, Batangas, Phils.", row.id]
+      );
+      console.log("  Seeded MMTSI company name and address.");
+    } else {
+      console.log(`  Company already set: ${row.name}`);
+    }
+  }
+
   // User OT permission flags
   await addColumnIfMissing("User", "canPrepareOT", "INTEGER NOT NULL DEFAULT 0");
   await addColumnIfMissing("User", "canCheckOT",   "INTEGER NOT NULL DEFAULT 0");

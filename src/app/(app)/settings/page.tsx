@@ -25,6 +25,22 @@ const ROLE_PERMS: Record<Role, string> = {
   EMPLOYEE: "Self-service portal only (/my)",
 };
 
+async function updateCompany(formData: FormData) {
+  "use server";
+  const session = await auth();
+  if (!session) redirect("/login");
+  const actor = await prisma.user.findUnique({ where: { email: session.user!.email! } });
+  if (actor?.role !== "OWNER") redirect("/settings?toast=Only+owners+can+update+company&toastType=error");
+  if (!actor.companyId) redirect("/settings?toast=No+company+found&toastType=error");
+
+  const name    = String(formData.get("companyName") ?? "").trim();
+  const address = String(formData.get("companyAddress") ?? "").trim();
+  if (!name) redirect("/settings?toast=Company+name+required&toastType=error");
+
+  await prisma.company.update({ where: { id: actor.companyId }, data: { name, address } });
+  redirect("/settings?toast=Company+info+updated&toastType=success");
+}
+
 async function updateUserRole(formData: FormData) {
   "use server";
   const session = await auth();
@@ -63,6 +79,8 @@ export default async function SettingsPage() {
   const actor = await prisma.user.findUnique({ where: { email: session.user!.email! } });
   if (actor?.role !== "OWNER") redirect("/dashboard");
 
+  const company = await prisma.company.findUnique({ where: { id: actor.companyId ?? "" } });
+
   const users = await prisma.user.findMany({
     where: { companyId: actor.companyId ?? "" },
     orderBy: { name: "asc" },
@@ -80,6 +98,38 @@ export default async function SettingsPage() {
           <p className="text-sm text-[var(--text-secondary)] mt-0.5">Manage user roles and access.</p>
         </div>
       </div>
+
+      {/* Company info */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Settings className="h-4 w-4 text-[var(--brand)]" />
+            Company information
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-3">
+          <form action={updateCompany} className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-[var(--text-secondary)]">Company name</label>
+              <input
+                name="companyName"
+                defaultValue={company?.name ?? ""}
+                required
+                className="w-full h-9 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--brand)]"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-[var(--text-secondary)]">Address</label>
+              <input
+                name="companyAddress"
+                defaultValue={company?.address ?? ""}
+                className="w-full h-9 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--brand)]"
+              />
+            </div>
+            <SubmitButton size="sm">Save company info</SubmitButton>
+          </form>
+        </CardContent>
+      </Card>
 
       {/* Role reference */}
       <Card>

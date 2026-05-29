@@ -223,21 +223,34 @@ async function fixPayrollPeriodDates() {
       });
     }
 
-    // Process each target period: lowest-gross first so highest-gross survives
     for (const [, periods] of targetMap) {
-      periods.sort((a, b) => a.total - b.total);
       for (const p of periods) {
-        // Remove any records already at the target dates (dedup / conflict prevention)
-        await db.execute(
-          `DELETE FROM "Payroll" WHERE "periodStart"=? AND "periodEnd"=?`,
+        // Check if correct-dated records already exist (e.g. payroll re-run after cutoff fix)
+        const existingRes = await db.execute(
+          `SELECT COALESCE(SUM("grossPay"), 0) AS total FROM "Payroll" WHERE "periodStart"=? AND "periodEnd"=?`,
           [p.newStart, p.newEnd]
         );
-        // Move this batch to correct dates
-        await db.execute(
-          `UPDATE "Payroll" SET "periodStart"=?, "periodEnd"=? WHERE "periodStart"=? AND "periodEnd"=?`,
-          [p.newStart, p.newEnd, p.oldStart, p.oldEnd]
-        );
-        console.log(`  Payroll: ${p.oldStart.slice(0,10)} – ${p.oldEnd.slice(0,10)} → ${p.newStart.slice(0,10)} – ${p.newEnd.slice(0,10)} (₱${p.total.toFixed(0)})`);
+        const existingTotal = Number(existingRes.rows[0]?.total ?? 0);
+
+        if (existingTotal >= p.total) {
+          // Correct-dated records are equal or better — just remove the old ones
+          await db.execute(
+            `DELETE FROM "Payroll" WHERE "periodStart"=? AND "periodEnd"=?`,
+            [p.oldStart, p.oldEnd]
+          );
+          console.log(`  Payroll: deleted stale ${p.oldStart.slice(0,10)} (₱${p.total.toFixed(0)}) — kept existing at ${p.newStart.slice(0,10)} (₱${existingTotal.toFixed(0)})`);
+        } else {
+          // Old records are better (higher gross) — replace target with old
+          await db.execute(
+            `DELETE FROM "Payroll" WHERE "periodStart"=? AND "periodEnd"=?`,
+            [p.newStart, p.newEnd]
+          );
+          await db.execute(
+            `UPDATE "Payroll" SET "periodStart"=?, "periodEnd"=? WHERE "periodStart"=? AND "periodEnd"=?`,
+            [p.newStart, p.newEnd, p.oldStart, p.oldEnd]
+          );
+          console.log(`  Payroll: ${p.oldStart.slice(0,10)} → ${p.newStart.slice(0,10)} (₱${p.total.toFixed(0)} > existing ₱${existingTotal.toFixed(0)})`);
+        }
       }
     }
   }

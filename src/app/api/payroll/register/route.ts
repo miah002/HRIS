@@ -40,15 +40,25 @@ export async function GET(request: NextRequest) {
   const fmt = (d: Date) =>
     d.toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric", timeZone: "Asia/Manila" });
 
+  // Paydate: 11-25 period → 30th of same month; 26-10 period → 15th of next month
+  const startDay = start.getUTCDate();
+  let paydate: Date;
+  if (startDay === 11) {
+    paydate = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 30));
+  } else {
+    // 26-10: end month (June for May 26–Jun 10) + 15th
+    paydate = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 15));
+  }
+
   // Build worksheet as array-of-arrays
   const aoa: (string | number | null)[][] = [];
 
-  // Header block — matches MMTSI Payroll Register template
+  // Header block — matches MMTSI Payroll Register template exactly
   aoa.push([company?.name ?? "Company"]);
   aoa.push([company?.address ?? ""]);
   aoa.push(["Payroll Register"]);
   aoa.push(["Semi-Monthly"]);
-  aoa.push([`Payroll Period ${fmt(start)} – ${fmt(end)}`]);
+  aoa.push([`Payroll Period ${fmt(paydate)}`]);
   aoa.push([]); // blank row
   aoa.push([]); // blank row
 

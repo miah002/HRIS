@@ -15,7 +15,11 @@ async function createEmployee(formData: FormData) {
   const user = await prisma.user.findUnique({ where: { email: session.user!.email! } });
   if (!user?.companyId) redirect("/dashboard");
   const count = await prisma.employee.count({ where: { companyId: user.companyId } });
-  await prisma.employee.create({
+  const dateHired = new Date(String(formData.get("dateHired")));
+  const position = String(formData.get("position"));
+  const department = String(formData.get("department"));
+  const basicMonthlyRate = Number(formData.get("basicMonthlyRate"));
+  const newEmployee = await prisma.employee.create({
     data: {
       companyId: user.companyId,
       employeeNumber: `EMP-${String(count + 1).padStart(4, "0")}`,
@@ -24,17 +28,25 @@ async function createEmployee(formData: FormData) {
       lastName: String(formData.get("lastName")),
       email: (formData.get("email") as string) || null,
       mobile: (formData.get("mobile") as string) || null,
-      dateHired: new Date(String(formData.get("dateHired"))),
-      position: String(formData.get("position")),
-      department: String(formData.get("department")),
+      dateHired,
+      position,
+      department,
       employmentStatus: String(formData.get("employmentStatus")),
-      basicMonthlyRate: Number(formData.get("basicMonthlyRate")),
+      basicMonthlyRate,
       tin: (formData.get("tin") as string) || null,
       sssNumber: (formData.get("sssNumber") as string) || null,
       philHealthNumber: (formData.get("philHealthNumber") as string) || null,
       pagIbigNumber: (formData.get("pagIbigNumber") as string) || null,
       sex: (formData.get("sex") as string) || null,
       civilStatus: (formData.get("civilStatus") as string) || null,
+    },
+  });
+  await prisma.employeeHistory.create({
+    data: {
+      employeeId: newEmployee.id,
+      type: "HIRED",
+      effectiveDate: dateHired,
+      toValue: `${position} · ${department} · ₱${basicMonthlyRate.toLocaleString()}`,
     },
   });
   redirect("/employees?toast=Employee+added+successfully");

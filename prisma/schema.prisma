@@ -103,14 +103,51 @@ model Employee {
   archivedAt       DateTime?
   notes            String?
   hdmfMp2Monthly   Float          @default(0)
+  // Address
+  addressStreet    String?
+  addressCity      String?
+  addressProvince  String?
+  addressZip       String?
+  // Separation
+  separationDate   DateTime?
+  separationType   String?        // RESIGNED | RETIRED | END_OF_CONTRACT | TERMINATED | REDUNDANCY | RETRENCHMENT | DEATH
+  separationNotes  String?
   attendance       Attendance[]
   payrolls         Payroll[]
   leaves           LeaveRequest[]
   documents        Document[]
   loans            Loan[]
   user             User?
+  emergencyContacts EmergencyContact[]
+  history           EmployeeHistory[]
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
+}
+
+model EmergencyContact {
+  id           String   @id @default(cuid())
+  employeeId   String
+  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  name         String
+  relationship String
+  phone        String
+  email        String?
+  isPrimary    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  @@unique([employeeId, isPrimary])
+}
+
+model EmployeeHistory {
+  id            String   @id @default(cuid())
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  type          String   // HIRED | PROMOTION | POSITION_CHANGE | DEPARTMENT_TRANSFER | SALARY_CHANGE | STATUS_CHANGE | SEPARATION
+  effectiveDate DateTime
+  field         String?
+  fromValue     String?
+  toValue       String?
+  notes         String?
+  createdAt     DateTime @default(now())
 }
 
 model Document {
@@ -175,6 +212,11 @@ model Payroll {
   undertimeMinutes      Float              @default(0)
   undertimeDeduction    Float              @default(0)
   hdmfMp2               Float              @default(0)
+  // Payroll Register breakdown (stored at runPayroll time)
+  absenceDeduction      Float              @default(0)
+  sssLoanDeduction      Float              @default(0)
+  hdmfLoanDeduction     Float              @default(0)
+  cashAdvanceDeduction  Float              @default(0)
   status                String             @default("DRAFT") // DRAFT | RELEASED
   adjustments           PayrollAdjustment[]
   createdAt             DateTime           @default(now())
@@ -201,7 +243,10 @@ model LeaveRequest {
   days       Int      @default(1)
   reason     String?
   status     String   @default("PENDING") // PENDING | APPROVED | REJECTED
+  isWithPay  Boolean  @default(true)       // false = without pay; set at approval time
   approverId String?
+  approvedBy String?
+  approvedAt DateTime?
   createdAt  DateTime @default(now())
 }
 

@@ -14,8 +14,48 @@ async function approveLeave(id: string) {
   "use server";
   const session = await auth();
   if (!session) redirect("/login");
-  await prisma.leaveRequest.update({ where: { id }, data: { status: "APPROVED" } });
-  redirect("/leave?toast=Leave+approved");
+
+  const req = await prisma.leaveRequest.findUnique({
+    where: { id },
+    include: { employee: { select: { id: true, employmentStatus: true } } },
+  });
+  if (!req) redirect("/leave?toast=Request+not+found&toastType=error");
+
+  let isWithPay = true;
+
+  // CONTRACTUAL always without pay
+  if (req.employee.employmentStatus === "CONTRACTUAL") {
+    isWithPay = false;
+  } else if (["VL", "SL"].includes(req.leaveType)) {
+    // Check remaining credits (VL/SL = 15 days per year)
+    const yearStart = new Date(req.startDate.getFullYear(), 0, 1);
+    const used = await prisma.leaveRequest.aggregate({
+      where: {
+        employeeId: req.employee.id,
+        leaveType: req.leaveType,
+        status: "APPROVED",
+        isWithPay: true,
+        startDate: { gte: yearStart },
+        NOT: { id: req.id },
+      },
+      _sum: { days: true },
+    });
+    const usedDays = used._sum.days ?? 0;
+    const remaining = Math.max(0, 15 - usedDays);
+    isWithPay = remaining >= req.days;
+  }
+  // MATERNITY / PATERNITY always with pay (statutory)
+
+  await prisma.leaveRequest.update({
+    where: { id },
+    data: {
+      status: "APPROVED",
+      isWithPay,
+      approvedBy: session.user?.name ?? session.user?.email ?? "Admin",
+      approvedAt: new Date(),
+    },
+  });
+  redirect(`/leave?toast=Leave+approved+(${isWithPay ? "With+Pay" : "Without+Pay"})`);
 }
 
 async function rejectLeave(id: string) {
@@ -41,7 +81,8 @@ async function submitLeave(formData: FormData) {
   // VL / SL only in standard form
   if (!["VL", "SL"].includes(leaveType)) redirect("/leave?toast=Invalid+leave+type&toastType=error");
 
-  await prisma.leaveRequest.create({ data: { employeeId, leaveType, startDate, endDate, status: "PENDING" } });
+  const days = Math.max(1, Math.ceil((+endDate - +startDate) / 86400000) + 1);
+  await prisma.leaveRequest.create({ data: { employeeId, leaveType, startDate, endDate, days, status: "PENDING" } });
   redirect("/leave?toast=Leave+request+submitted");
 }
 
@@ -67,7 +108,8 @@ async function submitSpecialLeave(formData: FormData) {
   if (leaveType === "PATERNITY" && emp.sex !== "MALE")
     redirect("/leave?toast=Paternity+leave+is+for+male+employees+only&toastType=error");
 
-  await prisma.leaveRequest.create({ data: { employeeId, leaveType, startDate, endDate, status: "PENDING" } });
+  const days = Math.max(1, Math.ceil((+endDate - +startDate) / 86400000) + 1);
+  await prisma.leaveRequest.create({ data: { employeeId, leaveType, startDate, endDate, days, status: "PENDING" } });
   redirect("/leave?toast=Special+leave+filed");
 }
 
@@ -194,10 +236,18 @@ export default async function LeavePage() {
                       <div className="text-sm font-medium truncate">{r.employee.firstName} {r.employee.lastName}</div>
                       <div className="text-xs text-[var(--text-tertiary)]">
                         {r.leaveType.replace(/_/g, " ")} · {phDate(r.startDate)} → {phDate(r.endDate)} ({days}d)
+                        {r.approvedBy && <span className="ml-1">· {r.approvedBy}</span>}
                       </div>
                     </div>
                   </div>
-                  <Badge variant={STATUS_BADGE[r.status] ?? "neutral"}>{r.status}</Badge>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {r.status === "APPROVED" && (
+                      <Badge variant={r.isWithPay ? "success" : "neutral"}>
+                        {r.isWithPay ? "WITH PAY" : "WITHOUT PAY"}
+                      </Badge>
+                    )}
+                    <Badge variant={STATUS_BADGE[r.status] ?? "neutral"}>{r.status}</Badge>
+                  </div>
                 </div>
               );
             })}

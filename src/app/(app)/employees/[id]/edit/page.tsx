@@ -15,8 +15,23 @@ async function updateEmployee(id: string, formData: FormData) {
   const user = await prisma.user.findUnique({ where: { email: session.user!.email! } });
   const companyId = user?.companyId ?? "";
   if (!companyId) redirect("/dashboard");
-  const target = await prisma.employee.findUnique({ where: { id }, select: { companyId: true } });
-  if (!target || target.companyId !== companyId) redirect("/employees");
+
+  // Capture current values for change-diffing
+  const current = await prisma.employee.findUnique({
+    where: { id },
+    select: { companyId: true, position: true, department: true, employmentStatus: true, basicMonthlyRate: true },
+  });
+  if (!current || current.companyId !== companyId) redirect("/employees");
+
+  const newPosition   = String(formData.get("position"));
+  const newDept       = String(formData.get("department"));
+  const newStatus     = String(formData.get("employmentStatus"));
+  const newRate       = Number(formData.get("basicMonthlyRate"));
+  const effectiveDate = formData.get("effectiveDate")
+    ? new Date(String(formData.get("effectiveDate")))
+    : new Date();
+  const changeNotes   = (formData.get("changeNotes") as string) || undefined;
+
   await prisma.employee.update({
     where: { id },
     data: {
@@ -25,11 +40,12 @@ async function updateEmployee(id: string, formData: FormData) {
       lastName: String(formData.get("lastName")),
       email: (formData.get("email") as string) || null,
       mobile: (formData.get("mobile") as string) || null,
+      birthDate: formData.get("birthDate") ? new Date(String(formData.get("birthDate"))) : null,
       dateHired: new Date(String(formData.get("dateHired"))),
-      position: String(formData.get("position")),
-      department: String(formData.get("department")),
-      employmentStatus: String(formData.get("employmentStatus")),
-      basicMonthlyRate: Number(formData.get("basicMonthlyRate")),
+      position: newPosition,
+      department: newDept,
+      employmentStatus: newStatus,
+      basicMonthlyRate: newRate,
       hdmfMp2Monthly: Number(formData.get("hdmfMp2Monthly")) || 0,
       tin: (formData.get("tin") as string) || null,
       sssNumber: (formData.get("sssNumber") as string) || null,
@@ -37,18 +53,79 @@ async function updateEmployee(id: string, formData: FormData) {
       pagIbigNumber: (formData.get("pagIbigNumber") as string) || null,
       sex:          (formData.get("sex")          as string) || null,
       civilStatus:  (formData.get("civilStatus")  as string) || null,
+      addressStreet:   (formData.get("addressStreet")   as string) || null,
+      addressCity:     (formData.get("addressCity")     as string) || null,
+      addressProvince: (formData.get("addressProvince") as string) || null,
+      addressZip:      (formData.get("addressZip")      as string) || null,
     },
   });
+
+  // Upsert primary emergency contact if name provided
+  const ecName = (formData.get("ecName") as string)?.trim();
+  if (ecName) {
+    await prisma.emergencyContact.upsert({
+      where: { employeeId_isPrimary: { employeeId: id, isPrimary: true } },
+      update: {
+        name: ecName,
+        relationship: (formData.get("ecRelationship") as string) || "",
+        phone: (formData.get("ecPhone") as string) || "",
+        email: (formData.get("ecEmail") as string) || null,
+      },
+      create: {
+        employeeId: id,
+        name: ecName,
+        relationship: (formData.get("ecRelationship") as string) || "",
+        phone: (formData.get("ecPhone") as string) || "",
+        email: (formData.get("ecEmail") as string) || null,
+        isPrimary: true,
+      },
+    });
+  }
+
+  // Change-diffing: build history entries
+  const posChanged  = newPosition !== current.position;
+  const rateChanged = newRate !== current.basicMonthlyRate;
+  const deptChanged = newDept !== current.department;
+  const statChanged = newStatus !== current.employmentStatus;
+
+  if (posChanged && rateChanged) {
+    await prisma.employeeHistory.create({
+      data: {
+        employeeId: id,
+        type: "PROMOTION",
+        effectiveDate,
+        fromValue: `${current.position} | ₱${current.basicMonthlyRate.toLocaleString()}`,
+        toValue:   `${newPosition} | ₱${newRate.toLocaleString()}`,
+        notes: changeNotes,
+      },
+    });
+  } else {
+    const entries: {
+      employeeId: string; type: string; effectiveDate: Date;
+      field?: string; fromValue?: string; toValue?: string; notes?: string;
+    }[] = [];
+    if (posChanged)  entries.push({ employeeId: id, type: "POSITION_CHANGE",     effectiveDate, field: "position",         fromValue: current.position,                          toValue: newPosition,             notes: changeNotes });
+    if (rateChanged) entries.push({ employeeId: id, type: "SALARY_CHANGE",       effectiveDate, field: "basicMonthlyRate", fromValue: `₱${current.basicMonthlyRate.toLocaleString()}`, toValue: `₱${newRate.toLocaleString()}`, notes: changeNotes });
+    if (deptChanged) entries.push({ employeeId: id, type: "DEPARTMENT_TRANSFER", effectiveDate, field: "department",       fromValue: current.department,                        toValue: newDept,                 notes: changeNotes });
+    if (statChanged) entries.push({ employeeId: id, type: "STATUS_CHANGE",       effectiveDate, field: "employmentStatus", fromValue: current.employmentStatus,                  toValue: newStatus,               notes: changeNotes });
+    if (entries.length > 0) await prisma.employeeHistory.createMany({ data: entries });
+  }
+
   redirect(`/employees/${id}?toast=Employee+updated+successfully`);
 }
 
 export default async function EditEmployeePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const e = await prisma.employee.findUnique({ where: { id } });
+  const e = await prisma.employee.findUnique({
+    where: { id },
+    include: { emergencyContacts: { where: { isPrimary: true }, take: 1 } },
+  });
   if (!e) notFound();
+  const primaryEC = e.emergencyContacts[0] ?? null;
 
   const action = updateEmployee.bind(null, id);
-  const dateHiredValue = e.dateHired.toISOString().split("T")[0];
+  const dateHiredValue  = e.dateHired.toISOString().split("T")[0];
+  const birthDateValue  = e.birthDate ? e.birthDate.toISOString().split("T")[0] : "";
 
   return (
     <div className="max-w-2xl mx-auto space-y-5">
@@ -99,6 +176,17 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
               </select>
             </div>
             <F label="Date hired" name="dateHired" type="date" required defaultValue={dateHiredValue} />
+            <F label="Birth date" name="birthDate" type="date" defaultValue={birthDateValue} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Home address</CardTitle></CardHeader>
+          <CardContent className="grid md:grid-cols-2 gap-4">
+            <F label="Street / Barangay" name="addressStreet" className="md:col-span-2" defaultValue={e.addressStreet ?? ""} />
+            <F label="City / Municipality" name="addressCity" defaultValue={e.addressCity ?? ""} />
+            <F label="Province" name="addressProvince" defaultValue={e.addressProvince ?? ""} />
+            <F label="ZIP code" name="addressZip" placeholder="4-digit ZIP" defaultValue={e.addressZip ?? ""} />
           </CardContent>
         </Card>
 
@@ -151,6 +239,14 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
                 />
               </div>
             </div>
+            <F label="Effective date of change" name="effectiveDate" type="date" className="md:col-span-1"
+               defaultValue={new Date().toISOString().split("T")[0]} />
+            <div className="flex flex-col gap-1.5 md:col-span-2">
+              <Label htmlFor="changeNotes">Reason / notes for this change</Label>
+              <textarea id="changeNotes" name="changeNotes" rows={2} placeholder="e.g. Regularization, Annual increment…"
+                className="w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)] resize-none"
+              />
+            </div>
           </CardContent>
         </Card>
 
@@ -164,6 +260,31 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
             <F label="SSS number" name="sssNumber" placeholder="XX-XXXXXXX-X" defaultValue={e.sssNumber ?? ""} />
             <F label="PhilHealth number" name="philHealthNumber" placeholder="XX-XXXXXXXXX-X" defaultValue={e.philHealthNumber ?? ""} />
             <F label="Pag-IBIG (HDMF) number" name="pagIbigNumber" placeholder="XXXX-XXXX-XXXX" defaultValue={e.pagIbigNumber ?? ""} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Emergency contact</CardTitle>
+            <CardDescription>Primary contact in case of emergency.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid md:grid-cols-2 gap-4">
+            <F label="Full name" name="ecName" defaultValue={primaryEC?.name ?? ""} />
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="ecRelationship">Relationship</Label>
+              <select id="ecRelationship" name="ecRelationship" defaultValue={primaryEC?.relationship ?? ""}
+                className="h-10 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-ring)]"
+              >
+                <option value="">— Select —</option>
+                <option value="Spouse">Spouse</option>
+                <option value="Parent">Parent</option>
+                <option value="Sibling">Sibling</option>
+                <option value="Child">Child</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <F label="Mobile number" name="ecPhone" type="tel" placeholder="+639..." defaultValue={primaryEC?.phone ?? ""} />
+            <F label="Email (optional)" name="ecEmail" type="email" defaultValue={primaryEC?.email ?? ""} />
           </CardContent>
         </Card>
 

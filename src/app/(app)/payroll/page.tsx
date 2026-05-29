@@ -10,13 +10,20 @@ import { Table, TableHeader, TableBody, TableRow, Th, Td, TableFooter } from "@/
 import { php, phDate } from "@/lib/format";
 import { computeSemiMonthlyPayroll, OT_RATES, hourlyRate } from "@/lib/ph-payroll";
 import { PlayCircle, Wallet, FileText, Clock, ClipboardCheck } from "lucide-react";
+import { ExportButton } from "./ExportButton";
 
 function currentCutoff(now = new Date()) {
   const year = now.getFullYear();
   const month = now.getMonth();
   const day = now.getDate();
-  if (day <= 15) return { start: new Date(year, month, 1), end: new Date(year, month, 15), label: "1–15" };
-  return { start: new Date(year, month, 16), end: new Date(year, month + 1, 0), label: "16–end" };
+  if (day >= 11 && day <= 25) {
+    return { start: new Date(year, month, 11), end: new Date(year, month, 25), label: "11–25" };
+  } else if (day >= 26) {
+    return { start: new Date(year, month, 26), end: new Date(year, month + 1, 10), label: "26–10" };
+  } else {
+    // day 1–10: we are inside the 26–10 cutoff that started last month
+    return { start: new Date(year, month - 1, 26), end: new Date(year, month, 10), label: "26–10" };
+  }
 }
 
 const OT_STATUS_BADGE: Record<string, "neutral" | "warning" | "success" | "brand"> = {
@@ -35,7 +42,7 @@ async function runPayroll(formData: FormData) {
   if (!companyId) redirect("/dashboard");
   const start = new Date(String(formData.get("start")));
   const end   = new Date(String(formData.get("end")));
-  const isFirstCutoff = start.getDate() <= 15;
+  const isFirstCutoff = start.getDate() === 11; // 11–25 gets PHIC+HDMF; 26–10 gets SSS
 
   // OT pay only counted when the period's OT Approval is APPROVED
   const otApprovalRec = await prisma.oTApproval.findUnique({
@@ -144,15 +151,29 @@ async function runPayroll(formData: FormData) {
     // Active loan deductions, split semi-monthly (monthly deduction / 2), capped at balance
     const loans = await prisma.loan.findMany({ where: { employeeId: e.id, status: "ACTIVE" } });
     let loanDeductions = 0;
+    let sssLoanDeduction = 0;
+    let hdmfLoanDeduction = 0;
+    let cashAdvanceDeduction = 0;
     for (const loan of loans) {
-      const semi = Math.min(loan.monthlyDeduction / 2, loan.balance);
+      const semi = Math.round(Math.min(loan.monthlyDeduction / 2, loan.balance) * 100) / 100;
       loanDeductions += semi;
+      if (loan.type === "SSS_SALARY")   sssLoanDeduction    += semi;
+      else if (loan.type === "PAGIBIG_MPL") hdmfLoanDeduction   += semi;
+      else if (loan.type === "CASH_ADVANCE") cashAdvanceDeduction += semi;
     }
     loanDeductions = Math.round(loanDeductions * 100) / 100;
 
+    // Absence deduction: semi-monthly base minus what basicPay landed at (absences already baked into basicPay)
+    const expectedBasic = Math.round((e.basicMonthlyRate / 2) * 100) / 100;
+    const absenceDeduction = Math.round(Math.max(0, expectedBasic - calc.basicPay) * 100) / 100;
+
     const totalDeductions = Math.round((calc.totalDeductions + loanDeductions) * 100) / 100;
     const netPay = Math.round((calc.grossPay - totalDeductions) * 100) / 100;
-    const data = { ...calc, loanDeductions, totalDeductions, netPay };
+    const data = {
+      ...calc,
+      loanDeductions, totalDeductions, netPay,
+      absenceDeduction, sssLoanDeduction, hdmfLoanDeduction, cashAdvanceDeduction,
+    };
 
     await prisma.payroll.upsert({
       where: { employeeId_periodStart_periodEnd: { employeeId: e.id, periodStart: start, periodEnd: end } },
@@ -317,6 +338,12 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
                   {runs.length ? "Re-run payroll" : "Run payroll"}
                 </Button>
               </form>
+              {runs.length > 0 && (
+                <ExportButton
+                  url={`/api/payroll/register?start=${cutoff.start.toISOString()}&end=${cutoff.end.toISOString()}`}
+                  filename={`Payroll-Register-${cutoff.label}-${cutoff.start.getFullYear()}.xlsx`}
+                />
+              )}
             </>
           )}
         </div>

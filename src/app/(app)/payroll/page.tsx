@@ -203,6 +203,10 @@ async function runPayroll(formData: FormData) {
       absenceDeduction, sssLoanDeduction, hdmfLoanDeduction, cashAdvanceDeduction,
     };
 
+    // Skip employees whose payroll for this period is already RELEASED — never overwrite released records
+    const existingStatus = existing?.status;
+    if (existingStatus === "RELEASED") continue;
+
     await prisma.payroll.upsert({
       where: { employeeId_periodStart_periodEnd: { employeeId: e.id, periodStart: start, periodEnd: end } },
       update: { ...data, status: "DRAFT" },
@@ -313,6 +317,8 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
     orderBy: { employee: { lastName: "asc" } },
   });
 
+  const releasedCount = runs.filter((r) => r.status === "RELEASED").length;
+
   const T = runs.reduce(
     (a, p) => ({
       gross: a.gross + p.grossPay, net: a.net + p.netPay,
@@ -377,6 +383,16 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
           )}
         </div>
       </div>
+
+      {/* Released payroll warning */}
+      {isCurrentCutoff && releasedCount > 0 && (
+        <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--warning)] bg-[var(--warning)]/10 px-4 py-2.5 text-sm text-[var(--warning)]">
+          <ClipboardCheck className="h-4 w-4 flex-shrink-0" />
+          <span>
+            <strong>{releasedCount} released payslip{releasedCount > 1 ? "s" : ""}</strong> in this period — re-running will skip them and only recompute DRAFT records.
+          </span>
+        </div>
+      )}
 
       {/* Hours preview card */}
       <Card>

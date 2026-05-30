@@ -177,6 +177,10 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
     code, hours, rate: OT_RATES[code] ?? 1.25, pay,
   }));
 
+  // Pay date: 26-10 cutoff → 15th of end month; 11-25 cutoff → 30th of end month
+  const payDateDay = payroll.periodStart.getDate() <= 15 ? 30 : 15;
+  const payDate = new Date(payroll.periodEnd.getFullYear(), payroll.periodEnd.getMonth(), payDateDay);
+
   const releaseFn = releasePayroll.bind(null, id);
   const addAdjustmentFn = addAdjustment.bind(null, id);
 
@@ -272,6 +276,9 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
               </Badge>
               <p className="text-xs opacity-75 mt-2">
                 Period: {phDate(payroll.periodStart)} – {phDate(payroll.periodEnd)}
+              </p>
+              <p className="text-xs opacity-90 mt-0.5 font-medium">
+                Pay date: {phDate(payDate)}
               </p>
               {payroll.daysWorked > 0 && (
                 <p className="text-xs opacity-75 mt-0.5">

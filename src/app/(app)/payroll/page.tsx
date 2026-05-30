@@ -434,7 +434,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
                 <Th>Employee</Th>
                 <Th>Days</Th>
                 <Th className="hidden sm:table-cell">Reg hrs</Th>
-                <Th>OT hrs</Th>
+                <Th className="hidden sm:table-cell">OT hrs</Th>
                 <Th className="hidden sm:table-cell">Rate codes</Th>
                 <Th>
                   <span className="hidden sm:inline">Est. </span>OT pay
@@ -456,7 +456,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
                   <Td className="hidden sm:table-cell text-[var(--text-secondary)]">
                     {regHrs > 0 ? `${regHrs.toFixed(1)}h` : <span className="text-[var(--text-tertiary)]">—</span>}
                   </Td>
-                  <Td className="text-[var(--text-secondary)]">
+                  <Td className="hidden sm:table-cell text-[var(--text-secondary)]">
                     {otHrs > 0 ? `${otHrs.toFixed(1)}h` : <span className="text-[var(--text-tertiary)]">—</span>}
                   </Td>
                   <Td className="hidden sm:table-cell">

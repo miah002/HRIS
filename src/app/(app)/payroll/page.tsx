@@ -437,9 +437,9 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
                 <Th>OT hrs</Th>
                 <Th className="hidden sm:table-cell">Rate codes</Th>
                 <Th>
-                  Est. OT pay
+                  <span className="hidden sm:inline">Est. </span>OT pay
                   {!otApprovedForPayroll && (
-                    <span className="block text-[10px] font-normal text-[var(--warning)]">not counted</span>
+                    <span className="hidden sm:block text-[10px] font-normal text-[var(--warning)]">not counted</span>
                   )}
                 </Th>
               </TableRow>
@@ -448,7 +448,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
               {previewRows.map(({ emp, days, regHrs, otHrs, estOtPay, codes }) => (
                 <TableRow key={emp.id}>
                   <Td>
-                    <span className="text-sm font-medium">{emp.lastName}, {emp.firstName}</span>
+                    <span className="text-sm font-medium whitespace-nowrap">{emp.lastName}, {emp.firstName}</span>
                   </Td>
                   <Td className="text-[var(--text-secondary)]">
                     {days > 0 ? days : <span className="text-[var(--text-tertiary)]">—</span>}
@@ -471,7 +471,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
                   </Td>
                   <Td>
                     {days === 0
-                      ? <span className="text-xs text-[var(--text-tertiary)]">fixed ½-month</span>
+                      ? <span className="text-xs text-[var(--text-tertiary)] whitespace-nowrap">fixed ½mo</span>
                       : estOtPay > 0
                         ? <span className="font-medium text-[var(--brand)]">{php(estOtPay)}</span>
                         : <span className="text-[var(--text-tertiary)]">—</span>

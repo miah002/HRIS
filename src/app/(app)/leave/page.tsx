@@ -67,6 +67,36 @@ async function rejectLeave(id: string) {
   redirect("/leave?toast=Leave+rejected");
 }
 
+async function revokeLeave(id: string) {
+  "use server";
+  const session = await auth();
+  if (!session) redirect("/login");
+  await prisma.leaveRequest.update({ where: { id }, data: { status: "PENDING", isWithPay: true, approvedBy: null, approvedAt: null } });
+  redirect("/leave?toast=Leave+revoked+to+pending");
+}
+
+async function togglePay(id: string) {
+  "use server";
+  const session = await auth();
+  if (!session) redirect("/login");
+  const req = await prisma.leaveRequest.findUnique({ where: { id }, select: { isWithPay: true } });
+  if (!req) redirect("/leave");
+  await prisma.leaveRequest.update({ where: { id }, data: { isWithPay: !req.isWithPay } });
+  redirect(`/leave?toast=Changed+to+${!req.isWithPay ? "With+Pay" : "Without+Pay"}`);
+}
+
+async function updateLeave(id: string, formData: FormData) {
+  "use server";
+  const session = await auth();
+  if (!session) redirect("/login");
+  const startDate = new Date(String(formData.get("startDate")));
+  const endDate   = new Date(String(formData.get("endDate")));
+  const isWithPay = formData.get("isWithPay") === "true";
+  const days = Math.max(1, Math.ceil((+endDate - +startDate) / 86400000) + 1);
+  await prisma.leaveRequest.update({ where: { id }, data: { startDate, endDate, days, isWithPay } });
+  redirect("/leave?toast=Leave+updated");
+}
+
 async function submitLeave(formData: FormData) {
   "use server";
   const session = await auth();
@@ -226,30 +256,90 @@ export default async function LeavePage() {
       {history.length > 0 && (
         <Card>
           <CardHeader><CardTitle>Request history</CardTitle></CardHeader>
-          <CardContent className="pt-3 space-y-2">
+          <CardContent className="pt-3 space-y-0">
             {history.map((r) => {
               const days = Math.max(1, Math.ceil((+r.endDate - +r.startDate) / 86400000) + 1);
+              const revokeFn     = revokeLeave.bind(null, r.id);
+              const togglePayFn  = togglePay.bind(null, r.id);
+              const updateFn     = updateLeave.bind(null, r.id);
               return (
-                <div key={r.id} className="flex items-center justify-between gap-3 py-2.5 border-b border-[var(--border)] last:border-0">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Avatar name={`${r.employee.firstName} ${r.employee.lastName}`} size="sm" />
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium truncate">{r.employee.firstName} {r.employee.lastName}</div>
-                      <div className="text-xs text-[var(--text-tertiary)]">
-                        {r.leaveType.replace(/_/g, " ")} · {phDate(r.startDate)} → {phDate(r.endDate)} ({days}d)
-                        {r.approvedBy && <span className="ml-1">· {r.approvedBy}</span>}
+                <details key={r.id} className="group border-b border-[var(--border)] last:border-0">
+                  <summary className="flex items-center justify-between gap-3 py-2.5 cursor-pointer list-none">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Avatar name={`${r.employee.firstName} ${r.employee.lastName}`} size="sm" />
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium truncate">{r.employee.firstName} {r.employee.lastName}</div>
+                        <div className="text-xs text-[var(--text-tertiary)]">
+                          {r.leaveType.replace(/_/g, " ")} · {phDate(r.startDate)} → {phDate(r.endDate)} ({days}d)
+                          {r.approvedBy && <span className="ml-1">· by {r.approvedBy}</span>}
+                        </div>
                       </div>
                     </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {r.status === "APPROVED" && (
+                        <Badge variant={r.isWithPay ? "success" : "neutral"}>
+                          {r.isWithPay ? "WITH PAY" : "WITHOUT PAY"}
+                        </Badge>
+                      )}
+                      <Badge variant={STATUS_BADGE[r.status] ?? "neutral"}>{r.status}</Badge>
+                      <span className="text-[10px] text-[var(--text-tertiary)] ml-1 group-open:hidden">Edit ▾</span>
+                    </div>
+                  </summary>
+
+                  {/* Admin edit panel */}
+                  <div className="pb-3 pl-11 space-y-3">
+                    {/* Quick actions */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {r.status === "APPROVED" && (
+                        <>
+                          <form action={togglePayFn}>
+                            <SubmitButton size="sm" variant="secondary">
+                              Toggle → {r.isWithPay ? "Without Pay" : "With Pay"}
+                            </SubmitButton>
+                          </form>
+                          <form action={revokeFn}>
+                            <SubmitButton size="sm" variant="secondary">Revoke approval</SubmitButton>
+                          </form>
+                        </>
+                      )}
+                      {r.status === "REJECTED" && (
+                        <form action={revokeFn}>
+                          <SubmitButton size="sm" variant="secondary">Re-open as pending</SubmitButton>
+                        </form>
+                      )}
+                    </div>
+
+                    {/* Edit dates + pay */}
+                    <form action={updateFn} className="flex flex-wrap items-end gap-3">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wide">Start date</label>
+                        <input
+                          type="date" name="startDate"
+                          defaultValue={r.startDate.toISOString().slice(0, 10)}
+                          className="h-8 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-subtle)] px-2 text-sm"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wide">End date</label>
+                        <input
+                          type="date" name="endDate"
+                          defaultValue={r.endDate.toISOString().slice(0, 10)}
+                          className="h-8 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-subtle)] px-2 text-sm"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wide">Pay status</label>
+                        <select name="isWithPay" defaultValue={String(r.isWithPay)}
+                          className="h-8 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-subtle)] px-2 text-sm"
+                        >
+                          <option value="true">With Pay</option>
+                          <option value="false">Without Pay</option>
+                        </select>
+                      </div>
+                      <SubmitButton size="sm">Save changes</SubmitButton>
+                    </form>
                   </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {r.status === "APPROVED" && (
-                      <Badge variant={r.isWithPay ? "success" : "neutral"}>
-                        {r.isWithPay ? "WITH PAY" : "WITHOUT PAY"}
-                      </Badge>
-                    )}
-                    <Badge variant={STATUS_BADGE[r.status] ?? "neutral"}>{r.status}</Badge>
-                  </div>
-                </div>
+                </details>
               );
             })}
           </CardContent>

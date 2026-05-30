@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
-import { Settings, ShieldAlert, ClipboardCheck } from "lucide-react";
+import { Settings, ShieldAlert, ClipboardCheck, CalendarDays } from "lucide-react";
+import Link from "next/link";
 
 const ROLES = ["OWNER", "MANAGER", "HR", "EMPLOYEE"] as const;
 type Role = typeof ROLES[number];
@@ -78,6 +79,12 @@ export default async function SettingsPage() {
           </div>
           <p className="text-sm text-[var(--text-secondary)] mt-0.5">Manage user roles and access.</p>
         </div>
+        <Link href="/settings/holidays">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border)] hover:bg-[var(--neutral-bg)] transition-colors text-sm text-[var(--text-secondary)]">
+            <CalendarDays className="h-4 w-4" />
+            Holiday calendar
+          </div>
+        </Link>
       </div>
 
       {/* Role reference */}

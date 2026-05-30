@@ -7,7 +7,8 @@ import { Badge, STATUS_BADGE } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { phDate } from "@/lib/format";
-import { CalendarCheck, PlusCircle, ShieldCheck } from "lucide-react";
+import { CalendarCheck, PlusCircle, ShieldCheck, BarChart2 } from "lucide-react";
+import { Table, TableHeader, TableBody, TableRow, Th, Td } from "@/components/ui/table";
 import { StandardLeaveForm, SpecialLeaveForm } from "./leave-form";
 
 async function approveLeave(id: string) {
@@ -130,6 +131,26 @@ export default async function LeavePage() {
     orderBy: { startDate: "desc" },
     take: 50,
   });
+
+  // Leave balance: approved paid VL/SL days used this calendar year
+  const yearStart = new Date(new Date().getFullYear(), 0, 1);
+  const ytdLeaves = await prisma.leaveRequest.findMany({
+    where: {
+      employee: { companyId: user?.companyId ?? "" },
+      status: "APPROVED",
+      isWithPay: true,
+      leaveType: { in: ["VL", "SL"] },
+      startDate: { gte: yearStart },
+    },
+    select: { employeeId: true, leaveType: true, days: true },
+  });
+  const ENTITLEMENT = 15;
+  const balanceByEmp: Record<string, { vlUsed: number; slUsed: number }> = {};
+  for (const lv of ytdLeaves) {
+    if (!balanceByEmp[lv.employeeId]) balanceByEmp[lv.employeeId] = { vlUsed: 0, slUsed: 0 };
+    if (lv.leaveType === "VL") balanceByEmp[lv.employeeId].vlUsed += lv.days;
+    if (lv.leaveType === "SL") balanceByEmp[lv.employeeId].slUsed += lv.days;
+  }
 
   const pending = requests.filter((r) => r.status === "PENDING");
   const history = requests.filter((r) => r.status !== "PENDING");
@@ -254,6 +275,54 @@ export default async function LeavePage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Leave balances */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart2 className="h-4 w-4 text-[var(--brand)]" />
+            Leave balances — {new Date().getFullYear()}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <Th>Employee</Th>
+                <Th numeric>VL used</Th>
+                <Th numeric>VL remaining</Th>
+                <Th numeric>SL used</Th>
+                <Th numeric>SL remaining</Th>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {employees.map((emp) => {
+                const b = balanceByEmp[emp.id] ?? { vlUsed: 0, slUsed: 0 };
+                const vlRem = Math.max(0, ENTITLEMENT - b.vlUsed);
+                const slRem = Math.max(0, ENTITLEMENT - b.slUsed);
+                return (
+                  <TableRow key={emp.id}>
+                    <Td>
+                      <div className="flex items-center gap-2">
+                        <Avatar name={`${emp.firstName} ${emp.lastName}`} size="sm" />
+                        <span className="text-sm font-medium whitespace-nowrap">{emp.lastName}, {emp.firstName}</span>
+                      </div>
+                    </Td>
+                    <Td numeric className="text-[var(--text-secondary)]">{b.vlUsed}d</Td>
+                    <Td numeric>
+                      <span className={vlRem <= 3 ? "text-[var(--warning)] font-medium" : ""}>{vlRem}d</span>
+                    </Td>
+                    <Td numeric className="text-[var(--text-secondary)]">{b.slUsed}d</Td>
+                    <Td numeric>
+                      <span className={slRem <= 3 ? "text-[var(--warning)] font-medium" : ""}>{slRem}d</span>
+                    </Td>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       {/* Leave reference */}
       <Card>

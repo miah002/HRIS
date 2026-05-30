@@ -74,7 +74,19 @@ model Company {
   loans             Loan[]
   complianceRecords ComplianceRecord[]
   otApprovals       OTApproval[]
+  holidays          Holiday[]
   createdAt         DateTime           @default(now())
+}
+
+model Holiday {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  date      DateTime
+  name      String
+  type      String   // RH | SH (Regular Holiday | Special Non-Working)
+  createdAt DateTime @default(now())
+  @@unique([companyId, date])
 }
 
 model Employee {

@@ -152,6 +152,24 @@ async function main() {
     AND employeeId IN (SELECT id FROM Employee WHERE sex = 'FEMALE' OR sex IS NULL AND lastName = 'Veloso')`);
   console.log("  cleaned up SIL and invalid PATERNITY records");
 
+  // Holiday table
+  if (!(await tableExists("Holiday"))) {
+    await db.execute(`CREATE TABLE "Holiday" (
+      "id"        TEXT NOT NULL PRIMARY KEY,
+      "companyId" TEXT NOT NULL,
+      "date"      DATETIME NOT NULL,
+      "name"      TEXT NOT NULL,
+      "type"      TEXT NOT NULL DEFAULT 'SH',
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "Holiday_companyId_fkey"
+        FOREIGN KEY ("companyId") REFERENCES "Company" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    )`);
+    await db.execute(`CREATE UNIQUE INDEX "Holiday_companyId_date_key" ON "Holiday" ("companyId", "date")`);
+    console.log("  created Holiday table");
+  } else {
+    console.log("  skip Holiday table (exists)");
+  }
+
   console.log("Turso migration: done.");
   process.exit(0);
 }

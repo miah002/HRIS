@@ -8,7 +8,8 @@ import { useTheme } from "next-themes";
 import {
   LayoutDashboard, Users, Clock, Wallet, CalendarCheck,
   ShieldCheck, BarChart3, LogOut, ChevronLeft, ChevronRight,
-  Sun, Moon, Monitor, User, CreditCard, ClipboardCheck, Settings
+  Sun, Moon, Monitor, User, CreditCard, ClipboardCheck, Settings,
+  MoreHorizontal, X
 } from "lucide-react";
 import { cn } from "@/lib/format";
 import { Avatar } from "@/components/ui/avatar";
@@ -156,34 +157,104 @@ export function Sidebar({ userName = "Demo Owner", role = "OWNER" }: { userName?
 
 export function BottomNav({ role = "OWNER" }: { role?: string }) {
   const pathname = usePathname();
-  const NAV = role === "EMPLOYEE"
+  const [moreOpen, setMoreOpen] = React.useState(false);
+
+  const allNav = role === "EMPLOYEE"
     ? EMPLOYEE_NAV
-    : OWNER_NAV.filter((item) => !item.ownerOnly || role === "OWNER").slice(0, 5);
+    : OWNER_NAV.filter((item) => !item.ownerOnly || role === "OWNER");
+
+  const primary = allNav.slice(0, 4);
+  const secondary = allNav.slice(4);
+  const moreActive = secondary.some(({ href }) => pathname === href || pathname.startsWith(href + "/"));
+
+  // Close "More" drawer on navigation
+  React.useEffect(() => { setMoreOpen(false); }, [pathname]);
+
   return (
-    <nav
-      className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[var(--bg-elevated)] border-t border-[var(--border)]"
-      style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0.25rem)" }}
-    >
-      <div className="flex justify-around pt-1">
-        {NAV.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(href + "/");
-          return (
-            <Link
-              key={href}
-              href={href}
+    <>
+      {/* More drawer overlay */}
+      {moreOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+          onClick={() => setMoreOpen(false)}
+        >
+          <div
+            className="absolute bottom-0 inset-x-0 bg-[var(--bg-elevated)] rounded-t-2xl border-t border-[var(--border)] p-4 pb-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm font-semibold text-[var(--text-primary)]">More</span>
+              <button
+                onClick={() => setMoreOpen(false)}
+                className="h-7 w-7 flex items-center justify-center rounded-full bg-[var(--neutral-bg)] text-[var(--text-tertiary)]"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {secondary.map(({ href, label, icon: Icon }) => {
+                const active = pathname === href || pathname.startsWith(href + "/");
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={cn(
+                      "flex flex-col items-center gap-2 py-3 px-2 rounded-[var(--radius-md)] transition-colors",
+                      active
+                        ? "bg-[var(--brand-subtle)] text-[var(--brand)]"
+                        : "bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--neutral-bg)]"
+                    )}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span className="text-xs font-medium text-center leading-tight">{label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bottom nav bar */}
+      <nav
+        className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[var(--bg-elevated)] border-t border-[var(--border)]"
+        style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0.25rem)" }}
+      >
+        <div className="flex justify-around pt-1">
+          {primary.map(({ href, label, icon: Icon }) => {
+            const active = pathname === href || pathname.startsWith(href + "/");
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  "flex flex-col items-center gap-1 flex-1 py-1.5 px-1 min-h-[44px] justify-center",
+                  "text-[10px] font-medium transition-colors duration-fast",
+                  active ? "text-[var(--brand)]" : "text-[var(--text-tertiary)]"
+                )}
+              >
+                <Icon className="h-[18px] w-[18px]" />
+                <span>{label}</span>
+              </Link>
+            );
+          })}
+          {/* More button */}
+          {secondary.length > 0 && (
+            <button
+              onClick={() => setMoreOpen((o) => !o)}
               className={cn(
                 "flex flex-col items-center gap-1 flex-1 py-1.5 px-1 min-h-[44px] justify-center",
                 "text-[10px] font-medium transition-colors duration-fast",
-                active ? "text-[var(--brand)]" : "text-[var(--text-tertiary)]"
+                (moreOpen || moreActive) ? "text-[var(--brand)]" : "text-[var(--text-tertiary)]"
               )}
             >
-              <Icon className="h-[18px] w-[18px]" />
-              <span>{label}</span>
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
+              <MoreHorizontal className="h-[18px] w-[18px]" />
+              <span>More</span>
+            </button>
+          )}
+        </div>
+      </nav>
+    </>
   );
 }
 

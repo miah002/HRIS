@@ -433,9 +433,9 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
               <TableRow>
                 <Th>Employee</Th>
                 <Th>Days</Th>
-                <Th>Reg hrs</Th>
+                <Th className="hidden sm:table-cell">Reg hrs</Th>
                 <Th>OT hrs</Th>
-                <Th>Rate codes</Th>
+                <Th className="hidden sm:table-cell">Rate codes</Th>
                 <Th>
                   Est. OT pay
                   {!otApprovedForPayroll && (
@@ -453,13 +453,13 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
                   <Td className="text-[var(--text-secondary)]">
                     {days > 0 ? days : <span className="text-[var(--text-tertiary)]">—</span>}
                   </Td>
-                  <Td className="text-[var(--text-secondary)]">
+                  <Td className="hidden sm:table-cell text-[var(--text-secondary)]">
                     {regHrs > 0 ? `${regHrs.toFixed(1)}h` : <span className="text-[var(--text-tertiary)]">—</span>}
                   </Td>
                   <Td className="text-[var(--text-secondary)]">
                     {otHrs > 0 ? `${otHrs.toFixed(1)}h` : <span className="text-[var(--text-tertiary)]">—</span>}
                   </Td>
-                  <Td>
+                  <Td className="hidden sm:table-cell">
                     {codes.length > 0
                       ? <div className="flex flex-wrap gap-1">
                           {codes.map((c) => (
@@ -524,10 +524,10 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
                   <Th>Employee</Th>
                   <Th numeric>Gross</Th>
                   <Th numeric>SSS</Th>
-                  <Th numeric>PHIC</Th>
-                  <Th numeric>HDMF</Th>
-                  <Th numeric>WHT</Th>
-                  <Th numeric>Absences</Th>
+                  <Th numeric className="hidden sm:table-cell">PHIC</Th>
+                  <Th numeric className="hidden sm:table-cell">HDMF</Th>
+                  <Th numeric className="hidden sm:table-cell">WHT</Th>
+                  <Th numeric className="hidden sm:table-cell">Absences</Th>
                   <Th numeric>Net pay</Th>
                   <Th></Th>
                 </TableRow>
@@ -536,10 +536,10 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
                 {runs.map((p) => (
                   <TableRow key={p.id}>
                     <Td>
-                      <Link href={`/employees/${p.employeeId}`} className="flex items-center gap-3 group/link">
+                      <Link href={`/employees/${p.employeeId}`} className="flex items-center gap-2 sm:gap-3 group/link">
                         <Avatar name={`${p.employee.firstName} ${p.employee.lastName}`} size="sm" />
                         <div>
-                          <div className="text-sm font-medium group-hover/link:text-[var(--brand)] transition-colors">
+                          <div className="text-sm font-medium whitespace-nowrap group-hover/link:text-[var(--brand)] transition-colors">
                             {p.employee.lastName}, {p.employee.firstName}
                           </div>
                           <div className="text-2xs text-[var(--text-tertiary)]">{p.employee.employeeNumber}</div>
@@ -548,10 +548,10 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
                     </Td>
                     <Td numeric>{php(p.grossPay)}</Td>
                     <Td numeric className="text-[var(--text-secondary)]">{php(p.sssEE)}</Td>
-                    <Td numeric className="text-[var(--text-secondary)]">{php(p.philHealthEE)}</Td>
-                    <Td numeric className="text-[var(--text-secondary)]">{php(p.pagIbigEE)}</Td>
-                    <Td numeric className="text-[var(--text-secondary)]">{php(p.withholdingTax)}</Td>
-                    <Td numeric className="text-[var(--error)]">
+                    <Td numeric className="hidden sm:table-cell text-[var(--text-secondary)]">{php(p.philHealthEE)}</Td>
+                    <Td numeric className="hidden sm:table-cell text-[var(--text-secondary)]">{php(p.pagIbigEE)}</Td>
+                    <Td numeric className="hidden sm:table-cell text-[var(--text-secondary)]">{php(p.withholdingTax)}</Td>
+                    <Td numeric className="hidden sm:table-cell text-[var(--error)]">
                       {p.absenceDeduction > 0 ? `−${php(p.absenceDeduction)}` : <span className="text-[var(--text-tertiary)]">—</span>}
                     </Td>
                     <Td numeric className="font-semibold">{php(p.netPay)}</Td>
@@ -574,10 +574,10 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
                   <Td className="font-medium text-xs text-[var(--text-secondary)] uppercase tracking-wide">Totals</Td>
                   <Td numeric>{php(T.gross)}</Td>
                   <Td numeric>{php(T.sssEE)}</Td>
-                  <Td numeric>{php(T.phicEE)}</Td>
-                  <Td numeric>{php(T.hdmfEE)}</Td>
-                  <Td numeric>{php(T.wht)}</Td>
-                  <Td numeric className="text-[var(--error)]">
+                  <Td numeric className="hidden sm:table-cell">{php(T.phicEE)}</Td>
+                  <Td numeric className="hidden sm:table-cell">{php(T.hdmfEE)}</Td>
+                  <Td numeric className="hidden sm:table-cell">{php(T.wht)}</Td>
+                  <Td numeric className="hidden sm:table-cell text-[var(--error)]">
                     {T.absences > 0 ? `−${php(T.absences)}` : "—"}
                   </Td>
                   <Td numeric className="font-semibold">{php(T.net)}</Td>

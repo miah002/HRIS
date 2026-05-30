@@ -480,10 +480,10 @@ export default async function AttendancePage({
                 <Th>Employee</Th>
                 <Th>Status</Th>
                 <Th>Time in</Th>
-                <Th>Time out</Th>
+                <Th className="hidden sm:table-cell">Time out</Th>
                 <Th className="text-right">Hours</Th>
-                <Th className="text-right">OT</Th>
-                <Th>Rate</Th>
+                <Th className="hidden sm:table-cell text-right">OT</Th>
+                <Th className="hidden sm:table-cell">Rate</Th>
                 <Th></Th>
               </TableRow>
             </TableHeader>
@@ -491,9 +491,9 @@ export default async function AttendancePage({
               {rows.map(({ e, rec, status }) => (
                 <TableRow key={e.id}>
                   <Td>
-                    <div className="flex items-center gap-3">
-                      <Avatar name={`${e.firstName} ${e.lastName}`} size="sm" />
-                      <span className="text-sm font-medium">{e.lastName}, {e.firstName}</span>
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <Avatar name={`${e.firstName} ${e.lastName}`} size="sm" className="hidden xs:flex" />
+                      <span className="text-sm font-medium whitespace-nowrap">{e.lastName}, {e.firstName}</span>
                     </div>
                   </Td>
                   <Td>
@@ -508,15 +508,15 @@ export default async function AttendancePage({
                       {status}
                     </Badge>
                   </Td>
-                  <Td className="tabular text-[var(--text-secondary)]">{fmt(rec?.timeIn ?? null)}</Td>
-                  <Td className="tabular text-[var(--text-secondary)]">{fmt(rec?.timeOut ?? null)}</Td>
+                  <Td className="tabular text-[var(--text-secondary)] whitespace-nowrap">{fmt(rec?.timeIn ?? null)}</Td>
+                  <Td className="hidden sm:table-cell tabular text-[var(--text-secondary)] whitespace-nowrap">{fmt(rec?.timeOut ?? null)}</Td>
                   <Td numeric className="text-[var(--text-secondary)]">
                     {rec?.hoursWorked ? `${rec.hoursWorked.toFixed(1)}h` : "—"}
                   </Td>
-                  <Td numeric className="text-[var(--text-secondary)]">
+                  <Td numeric className="hidden sm:table-cell text-[var(--text-secondary)]">
                     {rec?.otHours ? `${rec.otHours.toFixed(1)}h` : "—"}
                   </Td>
-                  <Td>
+                  <Td className="hidden sm:table-cell">
                     {rec?.otRateCode
                       ? <Badge variant="neutral">{rec.otRateCode.replace(/_/g, " ")}</Badge>
                       : <span className="text-[var(--text-tertiary)]">—</span>
@@ -749,12 +749,12 @@ export default async function AttendancePage({
                     <TableRow>
                       <Th>Employee</Th>
                       <Th>Date</Th>
-                      <Th>Day</Th>
+                      <Th className="hidden sm:table-cell">Day</Th>
                       <Th>Time in</Th>
-                      <Th>Time out</Th>
+                      <Th className="hidden sm:table-cell">Time out</Th>
                       <Th className="text-right">Hrs</Th>
-                      <Th className="text-right">OT</Th>
-                      <Th>Rate</Th>
+                      <Th className="hidden sm:table-cell text-right">OT</Th>
+                      <Th className="hidden sm:table-cell">Rate</Th>
                       <Th>Status</Th>
                       {period === "current" && <Th></Th>}
                     </TableRow>
@@ -819,25 +819,25 @@ export default async function AttendancePage({
                       ) : (
                         <TableRow key={rec.id}>
                           <Td>
-                            <span className="text-sm font-medium">
+                            <span className="text-sm font-medium whitespace-nowrap">
                               {rec.employee.lastName}, {rec.employee.firstName}
                             </span>
                           </Td>
-                          <Td className="text-[var(--text-secondary)]">
+                          <Td className="text-[var(--text-secondary)] whitespace-nowrap">
                             {rec.date.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}
                           </Td>
-                          <Td className="text-[var(--text-secondary)]">
+                          <Td className="hidden sm:table-cell text-[var(--text-secondary)]">
                             {rec.date.toLocaleDateString("en-PH", { weekday: "short" })}
                           </Td>
-                          <Td className="tabular text-[var(--text-secondary)]">{fmt(rec.timeIn)}</Td>
-                          <Td className="tabular text-[var(--text-secondary)]">{fmt(rec.timeOut)}</Td>
+                          <Td className="tabular text-[var(--text-secondary)] whitespace-nowrap">{fmt(rec.timeIn)}</Td>
+                          <Td className="hidden sm:table-cell tabular text-[var(--text-secondary)] whitespace-nowrap">{fmt(rec.timeOut)}</Td>
                           <Td numeric className="text-[var(--text-secondary)]">
                             {rec.hoursWorked ? `${rec.hoursWorked.toFixed(1)}h` : "—"}
                           </Td>
-                          <Td numeric className="text-[var(--text-secondary)]">
+                          <Td numeric className="hidden sm:table-cell text-[var(--text-secondary)]">
                             {rec.otHours ? `${rec.otHours.toFixed(1)}h` : "—"}
                           </Td>
-                          <Td>
+                          <Td className="hidden sm:table-cell">
                             {rec.otRateCode
                               ? <Badge variant="neutral">{rec.otRateCode.replace(/_/g, " ")}</Badge>
                               : <span className="text-[var(--text-tertiary)]">—</span>
@@ -884,13 +884,14 @@ export default async function AttendancePage({
                   </TableBody>
                   <TableFooter>
                     <TableRow>
-                      <Td colSpan={5} className="text-xs text-[var(--text-secondary)] font-medium">
+                      <Td colSpan={3} className="text-xs text-[var(--text-secondary)] font-medium">
                         Totals
                       </Td>
+                      <Td className="hidden sm:table-cell" colSpan={2} />
                       <Td numeric className="font-semibold">
                         {histRecords.reduce((s, r) => s + Math.min(r.hoursWorked, 8), 0).toFixed(1)}h
                       </Td>
-                      <Td numeric className="font-semibold">
+                      <Td numeric className="hidden sm:table-cell font-semibold">
                         {histRecords.reduce((s, r) => s + (r.otHours ?? 0), 0).toFixed(1)}h
                       </Td>
                       <Td colSpan={period === "current" ? 3 : 2} />

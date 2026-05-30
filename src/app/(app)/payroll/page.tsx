@@ -10,7 +10,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Table, TableHeader, TableBody, TableRow, Th, Td, TableFooter } from "@/components/ui/table";
 import { php, phDate, nowPH } from "@/lib/format";
 import { computeSemiMonthlyPayroll, OT_RATES, hourlyRate } from "@/lib/ph-payroll";
-import { PlayCircle, Wallet, FileText, Clock, ClipboardCheck } from "lucide-react";
+import { PlayCircle, Wallet, FileText, Clock, ClipboardCheck, CheckCheck } from "lucide-react";
 import { ExportButton } from "./ExportButton";
 
 function currentCutoff(now = nowPH()) {
@@ -33,6 +33,19 @@ const OT_STATUS_BADGE: Record<string, "neutral" | "warning" | "success" | "brand
   CHECKED:  "warning",
   APPROVED: "success",
 };
+
+async function releaseAllPayroll(formData: FormData) {
+  "use server";
+  const session = await auth();
+  if (!session) redirect("/login");
+  const start = new Date(String(formData.get("start")));
+  const end   = new Date(String(formData.get("end")));
+  await prisma.payroll.updateMany({
+    where: { periodStart: start, periodEnd: end, status: "DRAFT" },
+    data: { status: "RELEASED" },
+  });
+  redirect(`/payroll?toast=All+payslips+released`);
+}
 
 async function runPayroll(formData: FormData) {
   "use server";
@@ -320,7 +333,8 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
     orderBy: { employee: { lastName: "asc" } },
   });
 
-  const releasedCount = runs.filter((r) => r.status === "RELEASED").length;
+  const draftCount    = runs.filter(r => r.status === "DRAFT").length;
+  const releasedCount = runs.filter(r => r.status === "RELEASED").length;
 
   const T = runs.reduce(
     (a, p) => ({
@@ -381,6 +395,16 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
                   url={`/api/payroll/register?start=${cutoff.start.toISOString()}&end=${cutoff.end.toISOString()}`}
                   filename={`Payroll-Register-${cutoff.label}-${cutoff.start.getFullYear()}.xlsx`}
                 />
+              )}
+              {draftCount > 0 && (
+                <form action={releaseAllPayroll}>
+                  <input type="hidden" name="start" value={cutoff.start.toISOString()} />
+                  <input type="hidden" name="end"   value={cutoff.end.toISOString()} />
+                  <Button variant="outline" size="sm" type="submit">
+                    <CheckCheck className="h-4 w-4" />
+                    Release all ({draftCount})
+                  </Button>
+                </form>
               )}
             </>
           )}

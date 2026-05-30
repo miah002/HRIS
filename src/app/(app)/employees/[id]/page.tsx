@@ -13,6 +13,7 @@ import { SeparateModal } from "./SeparateModal";
 import {
   ChevronLeft, Mail, Phone, Building2, Pencil, FileText,
   MapPin, PhoneCall, Briefcase, TrendingUp, DollarSign, ShieldCheck,
+  Paperclip, ExternalLink, Trash2, AlertTriangle,
 } from "lucide-react";
 
 const LOAN_LABELS: Record<string, string> = {
@@ -31,6 +32,30 @@ const HISTORY_BADGE: Record<string, "success" | "brand" | "warning" | "error" | 
   STATUS_CHANGE:       "neutral",
   SEPARATION:          "error",
 };
+
+async function addDocument(formData: FormData) {
+  "use server";
+  const session = await auth();
+  if (!session) redirect("/login");
+  const employeeId = String(formData.get("employeeId"));
+  const name       = String(formData.get("name")).trim();
+  const url        = String(formData.get("url")).trim();
+  const expiresRaw = formData.get("expiresAt") as string | null;
+  if (!name || !url) redirect(`/employees/${employeeId}`);
+  const expiresAt = expiresRaw ? new Date(expiresRaw) : null;
+  await prisma.document.create({ data: { employeeId, name, url, expiresAt } });
+  redirect(`/employees/${employeeId}?toast=Document+added`);
+}
+
+async function deleteDocument(formData: FormData) {
+  "use server";
+  const session = await auth();
+  if (!session) redirect("/login");
+  const docId      = String(formData.get("docId"));
+  const employeeId = String(formData.get("employeeId"));
+  await prisma.document.delete({ where: { id: docId } });
+  redirect(`/employees/${employeeId}?toast=Document+removed`);
+}
 
 async function editLoan(formData: FormData) {
   "use server";
@@ -85,9 +110,13 @@ export default async function EmployeeDetail({ params }: { params: Promise<{ id:
           lateDeduction: true, undertimeDeduction: true,
         },
       },
-      leaves: { orderBy: { startDate: "desc" }, take: 5 },
+      leaves: {
+        where: { startDate: { gte: new Date(new Date().getFullYear(), 0, 1) } },
+        orderBy: { startDate: "desc" },
+      },
       emergencyContacts: { orderBy: { isPrimary: "desc" } },
       history: { orderBy: { effectiveDate: "desc" } },
+      documents: { orderBy: { uploadedAt: "desc" } },
     },
   });
   if (!e) notFound();
@@ -215,6 +244,34 @@ export default async function EmployeeDetail({ params }: { params: Promise<{ id:
                 <div className="text-sm text-[var(--text-secondary)]">{primaryEC.phone}{primaryEC.email ? ` · ${primaryEC.email}` : ""}</div>
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Leave credits */}
+        <Card>
+          <CardHeader><CardTitle>Leave credits — {new Date().getFullYear()}</CardTitle></CardHeader>
+          <CardContent className="pt-3 space-y-2 text-sm">
+            {(["VL", "SL"] as const).map((type) => {
+              const used = leaveUsedMap[type] ?? 0;
+              const rem  = Math.max(0, 15 - used);
+              const pct  = Math.round((used / 15) * 100);
+              return (
+                <div key={type} className="space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="font-medium">{type === "VL" ? "Vacation Leave" : "Sick Leave"}</span>
+                    <span className={rem <= 3 ? "text-[var(--warning)] font-medium" : "text-[var(--text-secondary)]"}>
+                      {used} used · <strong>{rem}</strong> remaining
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-[var(--neutral-bg)] overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${used >= 15 ? "bg-[var(--error)]" : used > 10 ? "bg-[var(--warning)]" : "bg-[var(--brand)]"}`}
+                      style={{ width: `${Math.min(100, pct)}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </CardContent>
         </Card>
 
@@ -378,6 +435,71 @@ export default async function EmployeeDetail({ params }: { params: Promise<{ id:
           </CardContent>
         </Card>
       )}
+
+      {/* Documents */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Paperclip className="h-4 w-4" />Documents
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-3 space-y-3">
+          {e.documents.length === 0 && (
+            <p className="text-sm text-[var(--text-tertiary)]">No documents attached yet.</p>
+          )}
+          {e.documents.map((doc) => {
+            const expired = doc.expiresAt && doc.expiresAt < new Date();
+            const expiringSoon = doc.expiresAt && !expired && (doc.expiresAt.getTime() - Date.now()) < 30 * 86400000;
+            const delFn = deleteDocument.bind(null);
+            return (
+              <div key={doc.id} className="flex items-center justify-between gap-3 py-2 border-b border-[var(--border)] last:border-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <FileText className="h-4 w-4 text-[var(--text-tertiary)] flex-shrink-0" />
+                  <div className="min-w-0">
+                    <a href={doc.url} target="_blank" rel="noopener noreferrer"
+                      className="text-sm font-medium hover:text-[var(--brand)] flex items-center gap-1">
+                      {doc.name} <ExternalLink className="h-3 w-3" />
+                    </a>
+                    {doc.expiresAt && (
+                      <div className={`text-xs flex items-center gap-1 ${expired ? "text-[var(--error)]" : expiringSoon ? "text-[var(--warning)]" : "text-[var(--text-tertiary)]"}`}>
+                        {(expired || expiringSoon) && <AlertTriangle className="h-3 w-3" />}
+                        Expires {phDate(doc.expiresAt)}{expired ? " — EXPIRED" : expiringSoon ? " — expiring soon" : ""}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <form action={delFn}>
+                  <input type="hidden" name="docId" value={doc.id} />
+                  <input type="hidden" name="employeeId" value={e.id} />
+                  <SubmitButton size="sm" variant="secondary" className="text-[var(--error)]">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </SubmitButton>
+                </form>
+              </div>
+            );
+          })}
+          {/* Add document form */}
+          <form action={addDocument} className="border-t border-dashed border-[var(--border)] pt-3 flex flex-wrap gap-2 items-end">
+            <input type="hidden" name="employeeId" value={e.id} />
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-[var(--text-tertiary)]">Document name</label>
+              <input type="text" name="name" placeholder="e.g. Employment Contract" required
+                className="h-8 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-subtle)] px-2 text-sm w-48 focus:outline-none focus:border-[var(--brand)]" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-[var(--text-tertiary)]">Link (Google Drive, etc.)</label>
+              <input type="url" name="url" placeholder="https://drive.google.com/..." required
+                className="h-8 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-subtle)] px-2 text-sm w-64 focus:outline-none focus:border-[var(--brand)]" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-[var(--text-tertiary)]">Expiry date (optional)</label>
+              <input type="date" name="expiresAt"
+                className="h-8 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-subtle)] px-2 text-sm focus:outline-none focus:border-[var(--brand)]" />
+            </div>
+            <SubmitButton size="sm"><Paperclip className="h-3.5 w-3.5" />Attach</SubmitButton>
+          </form>
+        </CardContent>
+      </Card>
 
       {/* Active loans */}
       {activeLoans.length > 0 && (

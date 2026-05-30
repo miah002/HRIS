@@ -1,0 +1,253 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e62]:
+    - complementary [ref=e63]:
+      - generic [ref=e64]:
+        - link "MMTSI MMTSI" [ref=e65] [cursor=pointer]:
+          - /url: /dashboard
+          - img "MMTSI" [ref=e66]
+          - generic [ref=e67]: MMTSI
+        - generic [ref=e68]:
+          - button "Toggle theme" [ref=e69] [cursor=pointer]:
+            - img [ref=e70]
+          - button "Collapse" [ref=e72] [cursor=pointer]:
+            - img [ref=e73]
+      - navigation [ref=e75]:
+        - link "Dashboard" [ref=e76] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e79]
+          - generic [ref=e85]: Dashboard
+        - link "Employees Mga Empleyado" [ref=e86] [cursor=pointer]:
+          - /url: /employees
+          - img [ref=e87]
+          - generic [ref=e92]:
+            - generic [ref=e93]: Employees
+            - generic [ref=e94]: Mga Empleyado
+        - link "Attendance DTR" [ref=e95] [cursor=pointer]:
+          - /url: /attendance
+          - img [ref=e96]
+          - generic [ref=e99]:
+            - generic [ref=e100]: Attendance
+            - generic [ref=e101]: DTR
+        - link "Payroll Sweldo" [ref=e102] [cursor=pointer]:
+          - /url: /payroll
+          - img [ref=e103]
+          - generic [ref=e106]:
+            - generic [ref=e107]: Payroll
+            - generic [ref=e108]: Sweldo
+        - link "OT Approval Prepare · Check · Approve" [ref=e109] [cursor=pointer]:
+          - /url: /ot-approval
+          - img [ref=e110]
+          - generic [ref=e114]:
+            - generic [ref=e115]: OT Approval
+            - generic [ref=e116]: Prepare · Check · Approve
+        - link "Leave Bakasyon" [ref=e117] [cursor=pointer]:
+          - /url: /leave
+          - img [ref=e118]
+          - generic [ref=e121]:
+            - generic [ref=e122]: Leave
+            - generic [ref=e123]: Bakasyon
+        - link "Loans Salary loans" [ref=e124] [cursor=pointer]:
+          - /url: /loans
+          - img [ref=e125]
+          - generic [ref=e127]:
+            - generic [ref=e128]: Loans
+            - generic [ref=e129]: Salary loans
+        - link "Compliance DOLE/BIR" [ref=e130] [cursor=pointer]:
+          - /url: /compliance
+          - img [ref=e131]
+          - generic [ref=e134]:
+            - generic [ref=e135]: Compliance
+            - generic [ref=e136]: DOLE/BIR
+        - link "Reports Analytics" [ref=e137] [cursor=pointer]:
+          - /url: /reports
+          - img [ref=e138]
+          - generic [ref=e140]:
+            - generic [ref=e141]: Reports
+            - generic [ref=e142]: Analytics
+        - link "Settings Roles & access" [ref=e143] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e144]
+          - generic [ref=e147]:
+            - generic [ref=e148]: Settings
+            - generic [ref=e149]: Roles & access
+      - generic [ref=e151]:
+        - generic "Demo Owner" [ref=e152]: DO
+        - generic [ref=e153]:
+          - generic [ref=e154]: Demo Owner
+          - generic [ref=e155]: Owner
+        - link "Sign out" [ref=e156] [cursor=pointer]:
+          - /url: /api/auth/signout
+          - img [ref=e157]
+    - main [ref=e160]:
+      - generic [ref=e162]:
+        - generic [ref=e163]:
+          - paragraph [ref=e164]:
+            - generic [ref=e165]: Magandang umaga, Demo
+          - paragraph [ref=e166]: May 01, 2026 – May 31, 2026
+        - generic [ref=e167]:
+          - generic [ref=e168]:
+            - generic [ref=e169]:
+              - generic [ref=e170]: Employees
+              - generic [ref=e171]: Mga Empleyado
+            - generic [ref=e172]:
+              - generic [ref=e173]: "9"
+              - generic [ref=e174]:
+                - img [ref=e175]
+                - generic [ref=e178]: 2.3% vs last month
+            - generic:
+              - generic:
+                - generic:
+                  - img
+          - generic [ref=e179]:
+            - generic [ref=e180]:
+              - generic [ref=e181]: Monthly payroll
+              - generic [ref=e182]: Gross
+            - generic [ref=e183]:
+              - generic [ref=e184]: ₱207k
+              - generic [ref=e185]:
+                - img [ref=e186]
+                - generic [ref=e189]: 1.8% vs last month
+            - generic:
+              - generic:
+                - generic:
+                  - img
+          - generic [ref=e190]:
+            - generic [ref=e191]:
+              - generic [ref=e192]: Pending leaves
+              - generic [ref=e193]: Bakasyon
+            - generic [ref=e194]:
+              - generic [ref=e195]: "0"
+              - generic [ref=e196]:
+                - img [ref=e197]
+                - generic [ref=e198]: 0.0% vs last month
+          - generic [ref=e199]:
+            - generic [ref=e200]:
+              - generic [ref=e201]: Days to deadline
+              - generic [ref=e202]: SSS contribution
+            - generic [ref=e204]: 1d
+        - generic [ref=e205]:
+          - link "Run payroll" [ref=e206] [cursor=pointer]:
+            - /url: /payroll
+            - button "Run payroll" [ref=e207]:
+              - img [ref=e208]
+              - text: Run payroll
+          - link "Add employee" [ref=e211] [cursor=pointer]:
+            - /url: /employees/new
+            - button "Add employee" [ref=e212]:
+              - img [ref=e213]
+              - text: Add employee
+          - link "Approve leaves" [ref=e216] [cursor=pointer]:
+            - /url: /leave
+            - button "Approve leaves" [ref=e217]:
+              - img [ref=e218]
+              - text: Approve leaves
+        - generic [ref=e221]:
+          - heading "Premium hours — May 16–end" [level=3] [ref=e223]:
+            - img [ref=e224]
+            - text: Premium hours — May 16–end
+          - generic [ref=e227]:
+            - generic [ref=e228]:
+              - generic [ref=e229]:
+                - generic [ref=e230]: Overtime
+                - generic [ref=e231]: (3 emp · 3.0h · ₱641.79)
+              - generic [ref=e232]:
+                - generic [ref=e233]:
+                  - generic [ref=e234]: Emnase, John Andrew
+                  - generic [ref=e235]:
+                    - generic [ref=e236]: 1.0h
+                    - generic [ref=e237]: ₱143.68
+                - generic [ref=e238]:
+                  - generic [ref=e239]: Castillo, Louie
+                  - generic [ref=e240]:
+                    - generic [ref=e241]: 1.0h
+                    - generic [ref=e242]: ₱323.28
+                - generic [ref=e243]:
+                  - generic [ref=e244]: Espanola, Ailyn
+                  - generic [ref=e245]:
+                    - generic [ref=e246]: 1.0h
+                    - generic [ref=e247]: ₱174.83
+            - generic [ref=e249]:
+              - generic [ref=e250]: Rest Day work
+              - generic [ref=e251]: 3 emp · 17.0h · ×1.30 premium
+            - generic [ref=e253]:
+              - generic [ref=e254]: Holiday work
+              - generic [ref=e255]: None this cutoff
+        - generic [ref=e256]:
+          - generic [ref=e259]:
+            - heading "Payroll cost trend" [level=3] [ref=e261]
+            - img [ref=e265]:
+              - generic [ref=e269]:
+                - generic [ref=e271]: Dec
+                - generic [ref=e273]: Jan
+                - generic [ref=e275]: Feb
+                - generic [ref=e277]: Mar
+                - generic [ref=e279]: Apr
+                - generic [ref=e281]: May
+              - generic [ref=e283]:
+                - generic [ref=e285]: ₱0k
+                - generic [ref=e287]: ₱55k
+                - generic [ref=e289]: ₱110k
+                - generic [ref=e291]: ₱165k
+                - generic [ref=e293]: ₱220k
+          - generic [ref=e300]:
+            - heading "Upcoming deadlines" [level=3] [ref=e302]
+            - generic [ref=e304]:
+              - generic [ref=e305]:
+                - img [ref=e306]
+                - generic [ref=e308]:
+                  - generic [ref=e309]: SSS contribution
+                  - generic [ref=e310]: PRN-based payment
+              - generic [ref=e311]: Tomorrow
+        - generic [ref=e313]:
+          - heading "Recent team members" [level=3] [ref=e315]
+          - generic [ref=e316]:
+            - link "Carlos Reyes Carlos Reyes Accounting Staff · Finance PROBATIONARY May 30, 2026" [ref=e317] [cursor=pointer]:
+              - /url: /employees/cmpr54kpg000p71hopvdeejyf
+              - generic "Carlos Reyes" [ref=e318]: CR
+              - generic [ref=e319]:
+                - generic [ref=e320]: Carlos Reyes
+                - generic [ref=e321]: Accounting Staff · Finance
+              - generic [ref=e322]:
+                - generic [ref=e323]: PROBATIONARY
+                - generic [ref=e325]: May 30, 2026
+            - link "Jane Ocampo Jane Ocampo Accounting Staff · Finance REGULAR Jan 06, 2025" [ref=e326] [cursor=pointer]:
+              - /url: /employees/cmpin5nyu002152t2nr4xjn6a
+              - generic "Jane Ocampo" [ref=e327]: JO
+              - generic [ref=e328]:
+                - generic [ref=e329]: Jane Ocampo
+                - generic [ref=e330]: Accounting Staff · Finance
+              - generic [ref=e331]:
+                - generic [ref=e332]: REGULAR
+                - generic [ref=e334]: Jan 06, 2025
+            - link "Reyniel Emnase Reyniel Emnase Admin Staff - Part-Time · Admin CONTRACTUAL Feb 05, 2024" [ref=e335] [cursor=pointer]:
+              - /url: /employees/cmpin5ny9001r52t2jrikrbf2
+              - generic "Reyniel Emnase" [ref=e336]: RE
+              - generic [ref=e337]:
+                - generic [ref=e338]: Reyniel Emnase
+                - generic [ref=e339]: Admin Staff - Part-Time · Admin
+              - generic [ref=e340]:
+                - generic [ref=e341]: CONTRACTUAL
+                - generic [ref=e343]: Feb 05, 2024
+            - link "Jay Lloyd Sale Jay Lloyd Sale Admin Staff - Sto. Tomas · Admin REGULAR Jul 17, 2023" [ref=e344] [cursor=pointer]:
+              - /url: /employees/cmpin5nxo001h52t2qojd78ld
+              - generic "Jay Lloyd Sale" [ref=e345]: JL
+              - generic [ref=e346]:
+                - generic [ref=e347]: Jay Lloyd Sale
+                - generic [ref=e348]: Admin Staff - Sto. Tomas · Admin
+              - generic [ref=e349]:
+                - generic [ref=e350]: REGULAR
+                - generic [ref=e352]: Jul 17, 2023
+            - link "Ailyn Espanola Ailyn Espanola Admin Staff · Admin REGULAR Apr 03, 2023" [ref=e353] [cursor=pointer]:
+              - /url: /employees/cmpin5nx2001752t21vg7gnsg
+              - generic "Ailyn Espanola" [ref=e354]: AE
+              - generic [ref=e355]:
+                - generic [ref=e356]: Ailyn Espanola
+                - generic [ref=e357]: Admin Staff · Admin
+              - generic [ref=e358]:
+                - generic [ref=e359]: REGULAR
+                - generic [ref=e361]: Apr 03, 2023
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e33] [cursor=pointer]:
+    - img [ref=e34]
+  - alert [ref=e27]
+  - generic [ref=e362]: ₱0k

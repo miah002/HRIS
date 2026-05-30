@@ -1,0 +1,35 @@
+- generic [active] [ref=e1]:
+  - main [ref=e37]:
+    - generic [ref=e38]:
+      - link "MMTSI MMTSI HRIS" [ref=e40] [cursor=pointer]:
+        - /url: /
+        - img "MMTSI" [ref=e41]
+        - generic [ref=e42]: MMTSI HRIS
+      - generic [ref=e43]:
+        - generic [ref=e44]:
+          - heading "Sign in" [level=3] [ref=e45]
+          - paragraph [ref=e46]:
+            - text: "Demo:"
+            - code [ref=e47]: owner@demo.ph
+            - text: /
+            - code [ref=e48]: demo1234
+        - generic [ref=e49]:
+          - generic [ref=e50]:
+            - generic [ref=e51]:
+              - generic [ref=e52]: Email address
+              - textbox "Email address" [ref=e53]: owner@demo.ph
+            - generic [ref=e54]:
+              - generic [ref=e55]: Password
+              - textbox "Password" [ref=e56]: demo1234
+            - button "Sign in" [ref=e57] [cursor=pointer]
+          - paragraph [ref=e58]:
+            - text: No account?
+            - link "Create one free" [ref=e59] [cursor=pointer]:
+              - /url: /register
+          - paragraph [ref=e60]:
+            - link "← Back to home" [ref=e61] [cursor=pointer]:
+              - /url: /
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e33] [cursor=pointer]:
+    - img [ref=e34]
+  - alert [ref=e27]

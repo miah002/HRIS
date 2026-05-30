@@ -1,0 +1,295 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - link "MMTSI MMTSI" [ref=e5] [cursor=pointer]:
+          - /url: /dashboard
+          - img "MMTSI" [ref=e6]
+          - generic [ref=e7]: MMTSI
+        - generic [ref=e8]:
+          - button "Toggle theme" [ref=e9] [cursor=pointer]:
+            - img [ref=e10]
+          - button "Collapse" [ref=e12] [cursor=pointer]:
+            - img [ref=e13]
+      - navigation [ref=e15]:
+        - link "Dashboard Overview" [ref=e16] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e17]
+          - generic [ref=e22]:
+            - generic [ref=e23]: Dashboard
+            - generic [ref=e24]: Overview
+        - link "Employees Mga Empleyado" [ref=e25] [cursor=pointer]:
+          - /url: /employees
+          - img [ref=e26]
+          - generic [ref=e31]:
+            - generic [ref=e32]: Employees
+            - generic [ref=e33]: Mga Empleyado
+        - link "Attendance DTR" [ref=e34] [cursor=pointer]:
+          - /url: /attendance
+          - img [ref=e35]
+          - generic [ref=e38]:
+            - generic [ref=e39]: Attendance
+            - generic [ref=e40]: DTR
+        - link "Payroll Sweldo" [ref=e41] [cursor=pointer]:
+          - /url: /payroll
+          - img [ref=e42]
+          - generic [ref=e45]:
+            - generic [ref=e46]: Payroll
+            - generic [ref=e47]: Sweldo
+        - link "OT Approval Prepare · Check · Approve" [ref=e48] [cursor=pointer]:
+          - /url: /ot-approval
+          - img [ref=e49]
+          - generic [ref=e53]:
+            - generic [ref=e54]: OT Approval
+            - generic [ref=e55]: Prepare · Check · Approve
+        - link "Leave" [ref=e56] [cursor=pointer]:
+          - /url: /leave
+          - img [ref=e59]
+          - generic [ref=e63]: Leave
+        - link "Loans Salary loans" [ref=e64] [cursor=pointer]:
+          - /url: /loans
+          - img [ref=e65]
+          - generic [ref=e67]:
+            - generic [ref=e68]: Loans
+            - generic [ref=e69]: Salary loans
+        - link "Compliance DOLE/BIR" [ref=e70] [cursor=pointer]:
+          - /url: /compliance
+          - img [ref=e71]
+          - generic [ref=e74]:
+            - generic [ref=e75]: Compliance
+            - generic [ref=e76]: DOLE/BIR
+        - link "Reports Analytics" [ref=e77] [cursor=pointer]:
+          - /url: /reports
+          - img [ref=e78]
+          - generic [ref=e80]:
+            - generic [ref=e81]: Reports
+            - generic [ref=e82]: Analytics
+        - link "Settings Roles & access" [ref=e83] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e84]
+          - generic [ref=e87]:
+            - generic [ref=e88]: Settings
+            - generic [ref=e89]: Roles & access
+      - generic [ref=e91]:
+        - generic "Demo Owner" [ref=e92]: DO
+        - generic [ref=e93]:
+          - generic [ref=e94]: Demo Owner
+          - generic [ref=e95]: Owner
+        - link "Sign out" [ref=e96] [cursor=pointer]:
+          - /url: /api/auth/signout
+          - img [ref=e97]
+    - main [ref=e100]:
+      - generic [ref=e102]:
+        - generic [ref=e104]:
+          - generic [ref=e105]:
+            - img [ref=e106]
+            - heading "Leave management" [level=1] [ref=e109]
+          - paragraph [ref=e110]: Bakasyon — request, approve, and track balances.
+        - generic [ref=e111]:
+          - heading "File a leave request — Vacation Leave / Sick Leave" [level=3] [ref=e113]:
+            - img [ref=e114]
+            - text: File a leave request
+            - generic [ref=e116]: — Vacation Leave / Sick Leave
+          - generic [ref=e118]:
+            - generic [ref=e119]:
+              - generic [ref=e120]: Employee
+              - combobox [ref=e121]:
+                - option "Select employee…" [selected]
+                - option "Ailyn Espanola"
+                - option "Angela Luz Veloso"
+                - option "Carlos Reyes"
+                - option "Ella Queenly Domingo"
+                - option "Jane Ocampo"
+                - option "Jay Lloyd Sale"
+                - option "John Andrew Emnase"
+                - option "Louie Castillo"
+                - option "Reyniel Emnase"
+            - generic [ref=e122]:
+              - generic [ref=e123]: Leave type
+              - combobox [ref=e124]:
+                - option "Vacation Leave (VL)" [selected]
+                - option "Sick Leave (SL)"
+            - generic [ref=e125]:
+              - generic [ref=e126]: Start date
+              - textbox [ref=e127]
+            - generic [ref=e128]:
+              - generic [ref=e129]: End date
+              - textbox [ref=e130]
+            - button "Submit request" [ref=e132] [cursor=pointer]
+        - generic [ref=e133]:
+          - heading "Special leave — admin Maternity · Paternity" [level=3] [ref=e135]:
+            - img [ref=e136]
+            - text: Special leave — admin
+            - generic [ref=e139]: Maternity · Paternity
+          - generic [ref=e140]:
+            - paragraph [ref=e141]: Maternity leave is available only to female employees (RA 11210 — 105 days). Paternity leave is available only to male employees (RA 8187 — 7 days).
+            - generic [ref=e142]:
+              - generic [ref=e143]:
+                - generic [ref=e144]: Employee
+                - combobox [ref=e145]:
+                  - option "Select employee…" [selected]
+                  - option "Ailyn Espanola"
+                  - option "Angela Luz Veloso"
+                  - option "Carlos Reyes"
+                  - option "Ella Queenly Domingo"
+                  - option "Jane Ocampo"
+                  - option "Jay Lloyd Sale"
+                  - option "John Andrew Emnase"
+                  - option "Louie Castillo"
+                  - option "Reyniel Emnase"
+              - generic [ref=e146]:
+                - generic [ref=e147]: Leave type
+                - combobox [disabled] [ref=e148]:
+                  - option "— select employee first —" [selected]
+              - generic [ref=e149]:
+                - generic [ref=e150]: Start date
+                - textbox [ref=e151]
+              - generic [ref=e152]:
+                - generic [ref=e153]: End date
+                - textbox [ref=e154]
+              - generic [ref=e155]:
+                - button "File special leave" [disabled]
+        - generic [ref=e156]:
+          - heading "Pending requests" [level=3] [ref=e158]
+          - paragraph [ref=e160]: No pending requests. All clear!
+        - generic [ref=e161]:
+          - heading "Leave balances — 2026" [level=3] [ref=e163]:
+            - img [ref=e164]
+            - text: Leave balances — 2026
+          - table [ref=e167]:
+            - rowgroup [ref=e168]:
+              - row "Employee VL used VL remaining SL used SL remaining" [ref=e169]:
+                - columnheader "Employee" [ref=e170]:
+                  - generic [ref=e171]: Employee
+                - columnheader "VL used" [ref=e172]:
+                  - generic [ref=e173]: VL used
+                - columnheader "VL remaining" [ref=e174]:
+                  - generic [ref=e175]: VL remaining
+                - columnheader "SL used" [ref=e176]:
+                  - generic [ref=e177]: SL used
+                - columnheader "SL remaining" [ref=e178]:
+                  - generic [ref=e179]: SL remaining
+            - rowgroup [ref=e180]:
+              - row "Ailyn Espanola Espanola, Ailyn 0d 15d 0d 15d" [ref=e181]:
+                - cell "Ailyn Espanola Espanola, Ailyn" [ref=e182]:
+                  - generic [ref=e183]:
+                    - generic "Ailyn Espanola" [ref=e184]: AE
+                    - generic [ref=e185]: Espanola, Ailyn
+                - cell "0d" [ref=e186]
+                - cell "15d" [ref=e187]:
+                  - generic [ref=e188]: 15d
+                - cell "0d" [ref=e189]
+                - cell "15d" [ref=e190]:
+                  - generic [ref=e191]: 15d
+              - row "Angela Luz Veloso Veloso, Angela Luz 0d 15d 0d 15d" [ref=e192]:
+                - cell "Angela Luz Veloso Veloso, Angela Luz" [ref=e193]:
+                  - generic [ref=e194]:
+                    - generic "Angela Luz Veloso" [ref=e195]: AL
+                    - generic [ref=e196]: Veloso, Angela Luz
+                - cell "0d" [ref=e197]
+                - cell "15d" [ref=e198]:
+                  - generic [ref=e199]: 15d
+                - cell "0d" [ref=e200]
+                - cell "15d" [ref=e201]:
+                  - generic [ref=e202]: 15d
+              - row "Carlos Reyes Reyes, Carlos 0d 15d 0d 15d" [ref=e203]:
+                - cell "Carlos Reyes Reyes, Carlos" [ref=e204]:
+                  - generic [ref=e205]:
+                    - generic "Carlos Reyes" [ref=e206]: CR
+                    - generic [ref=e207]: Reyes, Carlos
+                - cell "0d" [ref=e208]
+                - cell "15d" [ref=e209]:
+                  - generic [ref=e210]: 15d
+                - cell "0d" [ref=e211]
+                - cell "15d" [ref=e212]:
+                  - generic [ref=e213]: 15d
+              - row "Ella Queenly Domingo Domingo, Ella Queenly 0d 15d 0d 15d" [ref=e214]:
+                - cell "Ella Queenly Domingo Domingo, Ella Queenly" [ref=e215]:
+                  - generic [ref=e216]:
+                    - generic "Ella Queenly Domingo" [ref=e217]: EQ
+                    - generic [ref=e218]: Domingo, Ella Queenly
+                - cell "0d" [ref=e219]
+                - cell "15d" [ref=e220]:
+                  - generic [ref=e221]: 15d
+                - cell "0d" [ref=e222]
+                - cell "15d" [ref=e223]:
+                  - generic [ref=e224]: 15d
+              - row "Jane Ocampo Ocampo, Jane 0d 15d 0d 15d" [ref=e225]:
+                - cell "Jane Ocampo Ocampo, Jane" [ref=e226]:
+                  - generic [ref=e227]:
+                    - generic "Jane Ocampo" [ref=e228]: JO
+                    - generic [ref=e229]: Ocampo, Jane
+                - cell "0d" [ref=e230]
+                - cell "15d" [ref=e231]:
+                  - generic [ref=e232]: 15d
+                - cell "0d" [ref=e233]
+                - cell "15d" [ref=e234]:
+                  - generic [ref=e235]: 15d
+              - row "Jay Lloyd Sale Sale, Jay Lloyd 0d 15d 0d 15d" [ref=e236]:
+                - cell "Jay Lloyd Sale Sale, Jay Lloyd" [ref=e237]:
+                  - generic [ref=e238]:
+                    - generic "Jay Lloyd Sale" [ref=e239]: JL
+                    - generic [ref=e240]: Sale, Jay Lloyd
+                - cell "0d" [ref=e241]
+                - cell "15d" [ref=e242]:
+                  - generic [ref=e243]: 15d
+                - cell "0d" [ref=e244]
+                - cell "15d" [ref=e245]:
+                  - generic [ref=e246]: 15d
+              - row "John Andrew Emnase Emnase, John Andrew 0d 15d 0d 15d" [ref=e247]:
+                - cell "John Andrew Emnase Emnase, John Andrew" [ref=e248]:
+                  - generic [ref=e249]:
+                    - generic "John Andrew Emnase" [ref=e250]: JA
+                    - generic [ref=e251]: Emnase, John Andrew
+                - cell "0d" [ref=e252]
+                - cell "15d" [ref=e253]:
+                  - generic [ref=e254]: 15d
+                - cell "0d" [ref=e255]
+                - cell "15d" [ref=e256]:
+                  - generic [ref=e257]: 15d
+              - row "Louie Castillo Castillo, Louie 0d 15d 0d 15d" [ref=e258]:
+                - cell "Louie Castillo Castillo, Louie" [ref=e259]:
+                  - generic [ref=e260]:
+                    - generic "Louie Castillo" [ref=e261]: LC
+                    - generic [ref=e262]: Castillo, Louie
+                - cell "0d" [ref=e263]
+                - cell "15d" [ref=e264]:
+                  - generic [ref=e265]: 15d
+                - cell "0d" [ref=e266]
+                - cell "15d" [ref=e267]:
+                  - generic [ref=e268]: 15d
+              - row "Reyniel Emnase Emnase, Reyniel 0d 15d 0d 15d" [ref=e269]:
+                - cell "Reyniel Emnase Emnase, Reyniel" [ref=e270]:
+                  - generic [ref=e271]:
+                    - generic "Reyniel Emnase" [ref=e272]: RE
+                    - generic [ref=e273]: Emnase, Reyniel
+                - cell "0d" [ref=e274]
+                - cell "15d" [ref=e275]:
+                  - generic [ref=e276]: 15d
+                - cell "0d" [ref=e277]
+                - cell "15d" [ref=e278]:
+                  - generic [ref=e279]: 15d
+        - generic [ref=e280]:
+          - heading "Leave entitlement reference" [level=3] [ref=e282]
+          - generic [ref=e283]:
+            - generic [ref=e284]:
+              - generic [ref=e285]:
+                - generic [ref=e286]: Vacation Leave
+                - generic [ref=e287]: 15d
+              - paragraph [ref=e289]: Company policy
+            - generic [ref=e290]:
+              - generic [ref=e291]:
+                - generic [ref=e292]: Sick Leave
+                - generic [ref=e293]: 15d
+              - paragraph [ref=e295]: Company policy
+            - generic [ref=e296]:
+              - generic [ref=e297]:
+                - generic [ref=e298]: Maternity Leave (Female)
+                - generic [ref=e299]: 105d
+              - paragraph [ref=e301]: RA 11210 — Expanded Maternity Leave
+            - generic [ref=e302]:
+              - generic [ref=e303]:
+                - generic [ref=e304]: Paternity Leave (Male)
+                - generic [ref=e305]: 7d
+              - paragraph [ref=e307]: RA 8187 — Paternity Leave Act
+  - region "Notifications alt+T"

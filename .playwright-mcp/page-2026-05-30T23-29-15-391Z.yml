@@ -1,0 +1,33 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - link "MMTSI MMTSI HRIS" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - img "MMTSI" [ref=e6]
+        - generic [ref=e7]: MMTSI HRIS
+      - generic [ref=e8]:
+        - generic [ref=e9]:
+          - heading "Sign in" [level=3] [ref=e10]
+          - paragraph [ref=e11]:
+            - text: "Demo:"
+            - code [ref=e12]: owner@demo.ph
+            - text: /
+            - code [ref=e13]: demo1234
+        - generic [ref=e14]:
+          - generic [ref=e15]:
+            - generic [ref=e16]:
+              - generic [ref=e17]: Email address
+              - textbox "Email address" [ref=e18]: owner@demo.ph
+            - generic [ref=e19]:
+              - generic [ref=e20]: Password
+              - textbox "Password" [ref=e21]: demo1234
+            - button "Sign in" [ref=e22] [cursor=pointer]
+          - paragraph [ref=e23]:
+            - text: No account?
+            - link "Create one free" [ref=e24] [cursor=pointer]:
+              - /url: /register
+          - paragraph [ref=e25]:
+            - link "← Back to home" [ref=e26] [cursor=pointer]:
+              - /url: /
+  - region "Notifications alt+T"
+  - alert [ref=e27]

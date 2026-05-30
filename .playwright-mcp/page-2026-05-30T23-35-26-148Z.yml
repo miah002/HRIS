@@ -1,0 +1,397 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - link "MMTSI MMTSI" [ref=e5] [cursor=pointer]:
+          - /url: /dashboard
+          - img "MMTSI" [ref=e6]
+          - generic [ref=e7]: MMTSI
+        - generic [ref=e8]:
+          - button "Toggle theme" [ref=e9] [cursor=pointer]:
+            - img [ref=e10]
+          - button "Collapse" [ref=e12] [cursor=pointer]:
+            - img [ref=e13]
+      - navigation [ref=e15]:
+        - link "Dashboard Overview" [ref=e16] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e17]
+          - generic [ref=e22]:
+            - generic [ref=e23]: Dashboard
+            - generic [ref=e24]: Overview
+        - link "Employees" [ref=e25] [cursor=pointer]:
+          - /url: /employees
+          - img [ref=e28]
+          - generic [ref=e34]: Employees
+        - link "Attendance DTR" [ref=e35] [cursor=pointer]:
+          - /url: /attendance
+          - img [ref=e36]
+          - generic [ref=e39]:
+            - generic [ref=e40]: Attendance
+            - generic [ref=e41]: DTR
+        - link "Payroll Sweldo" [ref=e42] [cursor=pointer]:
+          - /url: /payroll
+          - img [ref=e43]
+          - generic [ref=e46]:
+            - generic [ref=e47]: Payroll
+            - generic [ref=e48]: Sweldo
+        - link "OT Approval Prepare · Check · Approve" [ref=e49] [cursor=pointer]:
+          - /url: /ot-approval
+          - img [ref=e50]
+          - generic [ref=e54]:
+            - generic [ref=e55]: OT Approval
+            - generic [ref=e56]: Prepare · Check · Approve
+        - link "Leave Bakasyon" [ref=e57] [cursor=pointer]:
+          - /url: /leave
+          - img [ref=e58]
+          - generic [ref=e61]:
+            - generic [ref=e62]: Leave
+            - generic [ref=e63]: Bakasyon
+        - link "Loans Salary loans" [ref=e64] [cursor=pointer]:
+          - /url: /loans
+          - img [ref=e65]
+          - generic [ref=e67]:
+            - generic [ref=e68]: Loans
+            - generic [ref=e69]: Salary loans
+        - link "Compliance DOLE/BIR" [ref=e70] [cursor=pointer]:
+          - /url: /compliance
+          - img [ref=e71]
+          - generic [ref=e74]:
+            - generic [ref=e75]: Compliance
+            - generic [ref=e76]: DOLE/BIR
+        - link "Reports Analytics" [ref=e77] [cursor=pointer]:
+          - /url: /reports
+          - img [ref=e78]
+          - generic [ref=e80]:
+            - generic [ref=e81]: Reports
+            - generic [ref=e82]: Analytics
+        - link "Settings Roles & access" [ref=e83] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e84]
+          - generic [ref=e87]:
+            - generic [ref=e88]: Settings
+            - generic [ref=e89]: Roles & access
+      - generic [ref=e91]:
+        - generic "Demo Owner" [ref=e92]: DO
+        - generic [ref=e93]:
+          - generic [ref=e94]: Demo Owner
+          - generic [ref=e95]: Owner
+        - link "Sign out" [ref=e96] [cursor=pointer]:
+          - /url: /api/auth/signout
+          - img [ref=e97]
+    - main [ref=e100]:
+      - generic [ref=e102]:
+        - link "Back to employees" [ref=e103] [cursor=pointer]:
+          - /url: /employees
+          - img [ref=e104]
+          - text: Back to employees
+        - generic [ref=e106]:
+          - generic [ref=e107]:
+            - generic "Louie Castillo" [ref=e108]: LC
+            - generic [ref=e109]:
+              - heading "Louie Padawan Castillo" [level=1] [ref=e110]
+              - generic [ref=e111]:
+                - generic [ref=e112]: Operations Manager
+                - generic [ref=e113]: ·
+                - generic [ref=e114]: Finance
+                - generic [ref=e116]: REGULAR
+              - generic [ref=e118]:
+                - generic [ref=e119]:
+                  - img [ref=e120]
+                  - text: louie.castillo@mmtsi.ph
+                - generic [ref=e123]:
+                  - img [ref=e124]
+                  - text: MMTSI2019-002
+          - generic [ref=e128]:
+            - link "COE" [ref=e129] [cursor=pointer]:
+              - /url: /employees/cmpin5nv9000d52t2pka2v4cs/coe
+              - button "COE" [ref=e130]:
+                - img [ref=e131]
+                - text: COE
+            - link "BIR 2316" [ref=e134] [cursor=pointer]:
+              - /url: /employees/cmpin5nv9000d52t2pka2v4cs/2316
+              - button "BIR 2316" [ref=e135]:
+                - img [ref=e136]
+                - text: BIR 2316
+            - link "Edit" [ref=e139] [cursor=pointer]:
+              - /url: /employees/cmpin5nv9000d52t2pka2v4cs/edit
+              - button "Edit" [ref=e140]:
+                - img [ref=e141]
+                - text: Edit
+            - button "Separate" [ref=e144] [cursor=pointer]:
+              - img [ref=e145]
+              - text: Separate
+        - generic [ref=e150]:
+          - generic [ref=e151]:
+            - generic [ref=e152]: Years of service
+            - generic [ref=e153]: 7.2y
+          - generic [ref=e154]:
+            - generic [ref=e155]: Basic rate / mo
+            - generic [ref=e156]: ₱45,000.00
+          - generic [ref=e157]:
+            - generic [ref=e158]: Hire date
+            - generic [ref=e159]: Mar 15, 2019
+          - generic [ref=e160]:
+            - generic [ref=e161]: Status
+            - generic [ref=e162]: REGULAR
+          - generic [ref=e163]:
+            - generic [ref=e164]: Payroll periods
+            - generic [ref=e165]: "4"
+          - generic [ref=e166]:
+            - generic [ref=e167]: YTD gross
+            - generic [ref=e168]: ₱83,323.28
+        - generic [ref=e169]:
+          - generic [ref=e170]:
+            - heading "201 File" [level=3] [ref=e172]
+            - generic [ref=e173]:
+              - generic [ref=e174]:
+                - generic [ref=e175]:
+                  - generic [ref=e176]: Date hired
+                  - generic [ref=e177]: Mar 15, 2019
+                - generic [ref=e178]:
+                  - generic [ref=e179]: Years of service
+                  - generic [ref=e180]: 7.2 years
+                - generic [ref=e181]:
+                  - generic [ref=e182]: Birth date
+                  - generic [ref=e183]: —
+                - generic [ref=e184]:
+                  - generic [ref=e185]: Sex
+                  - generic [ref=e186]: —
+                - generic [ref=e187]:
+                  - generic [ref=e188]: Civil status
+                  - generic [ref=e189]: —
+                - generic [ref=e190]:
+                  - generic [ref=e191]: TIN
+                  - generic [ref=e192]: 000-000-000-000
+                - generic [ref=e193]:
+                  - generic [ref=e194]: SSS number
+                  - generic [ref=e195]: 00-0000000-0
+                - generic [ref=e196]:
+                  - generic [ref=e197]: PhilHealth
+                  - generic [ref=e198]: 00-000000000-0
+                - generic [ref=e199]:
+                  - generic [ref=e200]: Pag-IBIG (HDMF)
+                  - generic [ref=e201]: 0000-0000-0000
+              - generic [ref=e202]:
+                - generic [ref=e203]:
+                  - img [ref=e204]
+                  - text: Home address
+                - paragraph [ref=e207]: 123 Rizal St, Brgy. San Jose, Quezon City, Metro Manila, 1100
+              - generic [ref=e208]:
+                - generic [ref=e209]:
+                  - img [ref=e210]
+                  - text: Emergency contact
+                - generic [ref=e214]:
+                  - text: Maria Castillo
+                  - generic [ref=e215]: (Spouse)
+                - generic [ref=e216]: "+639171234567"
+          - generic [ref=e217]:
+            - heading "Leave credits — 2026" [level=3] [ref=e219]
+            - generic [ref=e220]:
+              - generic [ref=e222]:
+                - generic [ref=e223]: Vacation Leave
+                - generic [ref=e224]:
+                  - text: 0 used ·
+                  - strong [ref=e225]: "15"
+                  - text: remaining
+              - generic [ref=e228]:
+                - generic [ref=e229]: Sick Leave
+                - generic [ref=e230]:
+                  - text: 0 used ·
+                  - strong [ref=e231]: "15"
+                  - text: remaining
+          - generic [ref=e233]:
+            - heading "Semi-monthly payslip" [level=3] [ref=e235]
+            - generic [ref=e236]:
+              - generic [ref=e237]:
+                - generic [ref=e238]: Basic (½ month)
+                - generic [ref=e239]: ₱22,500.00
+              - generic [ref=e241]:
+                - generic [ref=e242]: SSS (employee)
+                - generic [ref=e243]: −₱1,575.00
+              - generic [ref=e244]:
+                - generic [ref=e245]: PhilHealth (EE)
+                - generic [ref=e246]: −₱0.00
+              - generic [ref=e247]:
+                - generic [ref=e248]: Pag-IBIG (EE)
+                - generic [ref=e249]: −₱0.00
+              - generic [ref=e250]:
+                - generic [ref=e251]: WHT (BIR TRAIN)
+                - generic [ref=e252]: −₱1,814.20
+              - generic [ref=e254]:
+                - generic [ref=e255]: Net pay
+                - generic [ref=e256]: ₱19,110.80
+              - generic [ref=e257]:
+                - generic [ref=e258]: Employer counterpart / cutoff
+                - generic [ref=e259]:
+                  - generic [ref=e260]: SSS (ER)
+                  - generic [ref=e261]: ₱3,500.00
+                - generic [ref=e262]:
+                  - generic [ref=e263]: PHIC (ER)
+                  - generic [ref=e264]: ₱0.00
+                - generic [ref=e265]:
+                  - generic [ref=e266]: Pag-IBIG (ER)
+                  - generic [ref=e267]: ₱0.00
+        - generic [ref=e268]:
+          - heading "Career timeline" [level=3] [ref=e270]:
+            - img [ref=e271]
+            - text: Career timeline
+          - list [ref=e275]:
+            - listitem [ref=e276]:
+              - generic [ref=e278]:
+                - generic [ref=e279]: PROMOTION
+                - generic [ref=e281]: May 29, 2026
+              - generic [ref=e282]: Accounting Team Leader | ₱38,000→Operations Manager | ₱45,000
+              - paragraph [ref=e283]: Annual promotion and merit increase
+            - listitem [ref=e284]:
+              - generic [ref=e286]:
+                - generic [ref=e287]: HIRED
+                - generic [ref=e289]: Mar 15, 2019
+              - generic [ref=e290]: Accounting Team Leader · Finance · ₱38,000
+        - generic [ref=e291]:
+          - heading "Leave balances — 2026" [level=3] [ref=e293]
+          - generic [ref=e294]:
+            - generic [ref=e295]:
+              - generic [ref=e296]:
+                - generic [ref=e297]: VL
+                - generic [ref=e298]: 15/15d
+              - generic [ref=e302]:
+                - generic [ref=e303]: 0d used
+                - generic [ref=e304]: 15d left
+            - generic [ref=e305]:
+              - generic [ref=e306]:
+                - generic [ref=e307]: SL
+                - generic [ref=e308]: 15/15d
+              - generic [ref=e312]:
+                - generic [ref=e313]: 0d used
+                - generic [ref=e314]: 15d left
+        - generic [ref=e315]:
+          - heading "Pay history" [level=3] [ref=e317]:
+            - img [ref=e318]
+            - text: Pay history
+          - generic [ref=e321]:
+            - generic [ref=e322]:
+              - generic [ref=e323]:
+                - generic [ref=e324]: YTD Gross
+                - generic [ref=e325]: ₱83,323.28
+              - generic [ref=e326]:
+                - generic [ref=e327]: YTD Net
+                - generic [ref=e328]: ₱70,241.82
+              - generic [ref=e329]:
+                - generic [ref=e330]: YTD OT Pay
+                - generic [ref=e331]: ₱323.28
+              - generic [ref=e332]:
+                - generic [ref=e333]: YTD Night Diff
+                - generic [ref=e334]: ₱0.00
+            - generic [ref=e335]:
+              - generic [ref=e336]:
+                - generic [ref=e337]:
+                  - generic [ref=e338]: May 26, 2026 – Jun 10, 2026
+                  - generic [ref=e339]: Basic ₱22,500.00 · OT ₱0.00 · Gross ₱22,500.00
+                - generic [ref=e340]:
+                  - generic [ref=e341]: ₱18,485.80
+                  - generic [ref=e342]: RELEASED
+              - generic [ref=e344]:
+                - generic [ref=e345]:
+                  - generic [ref=e346]: May 16, 2026 – May 31, 2026
+                  - generic [ref=e347]: Basic ₱22,500.00 · OT ₱323.28 · Gross ₱22,823.28
+                - generic [ref=e348]:
+                  - generic [ref=e349]: ₱18,744.42
+                  - generic [ref=e350]: DRAFT
+              - generic [ref=e352]:
+                - generic [ref=e353]:
+                  - generic [ref=e354]: Apr 16, 2026 – Apr 30, 2026
+                  - generic [ref=e355]: Basic ₱19,000.00 · OT ₱0.00 · Gross ₱19,000.00
+                - generic [ref=e356]:
+                  - generic [ref=e357]: ₱16,505.80
+                  - generic [ref=e358]: RELEASED
+              - generic [ref=e360]:
+                - generic [ref=e361]:
+                  - generic [ref=e362]: Apr 01, 2026 – Apr 15, 2026
+                  - generic [ref=e363]: Basic ₱19,000.00 · OT ₱0.00 · Gross ₱19,000.00
+                - generic [ref=e364]:
+                  - generic [ref=e365]: ₱16,505.80
+                  - generic [ref=e366]: RELEASED
+        - generic [ref=e368]:
+          - heading "Philippine taxes & contributions — YTD 2026" [level=3] [ref=e370]:
+            - img [ref=e371]
+            - text: Philippine taxes & contributions — YTD 2026
+          - table [ref=e376]:
+            - rowgroup [ref=e377]:
+              - row "Type EE Share ER Share Total" [ref=e378]:
+                - columnheader "Type" [ref=e379]
+                - columnheader "EE Share" [ref=e380]
+                - columnheader "ER Share" [ref=e381]
+                - columnheader "Total" [ref=e382]
+            - rowgroup [ref=e383]:
+              - row "SSS ₱4,725.00 ₱10,500.00 ₱15,225.00" [ref=e384]:
+                - cell "SSS" [ref=e385]
+                - cell "₱4,725.00" [ref=e386]
+                - cell "₱10,500.00" [ref=e387]
+                - cell "₱15,225.00" [ref=e388]
+              - row "PhilHealth ₱950.00 ₱950.00 ₱1,900.00" [ref=e389]:
+                - cell "PhilHealth" [ref=e390]
+                - cell "₱950.00" [ref=e391]
+                - cell "₱950.00" [ref=e392]
+                - cell "₱1,900.00" [ref=e393]
+              - row "Pag-IBIG ₱200.00 ₱200.00 ₱400.00" [ref=e394]:
+                - cell "Pag-IBIG" [ref=e395]
+                - cell "₱200.00" [ref=e396]
+                - cell "₱200.00" [ref=e397]
+                - cell "₱400.00" [ref=e398]
+              - row "BIR WHT ₱5,956.46 — ₱5,956.46" [ref=e399]:
+                - cell "BIR WHT" [ref=e400]
+                - cell "₱5,956.46" [ref=e401]
+                - cell "—" [ref=e402]
+                - cell "₱5,956.46" [ref=e403]
+            - rowgroup [ref=e404]:
+              - row "TOTAL ₱11,831.46 ₱11,650.00 ₱23,481.46" [ref=e405]:
+                - cell "TOTAL" [ref=e406]
+                - cell "₱11,831.46" [ref=e407]
+                - cell "₱11,650.00" [ref=e408]
+                - cell "₱23,481.46" [ref=e409]
+        - generic [ref=e410]:
+          - heading "Documents" [level=3] [ref=e412]:
+            - img [ref=e413]
+            - text: Documents
+          - generic [ref=e415]:
+            - paragraph [ref=e416]: No documents attached yet.
+            - generic [ref=e417]:
+              - generic [ref=e418]:
+                - generic [ref=e419]: Document name
+                - textbox "e.g. Employment Contract" [ref=e420]
+              - generic [ref=e421]:
+                - generic [ref=e422]: Link (Google Drive, etc.)
+                - textbox "https://drive.google.com/..." [ref=e423]
+              - generic [ref=e424]:
+                - generic [ref=e425]: Expiry date (optional)
+                - textbox [ref=e426]
+              - button "Attach" [ref=e427] [cursor=pointer]:
+                - img [ref=e428]
+                - text: Attach
+        - generic [ref=e430]:
+          - heading "Active loans & deductions" [level=3] [ref=e432]:
+            - img [ref=e433]
+            - text: Active loans & deductions
+          - generic [ref=e436]:
+            - generic [ref=e437]:
+              - generic [ref=e438]:
+                - generic [ref=e439]: Pag-IBIG Multi-Purpose Loan
+                - generic [ref=e440]: Pag-IBIG multi-purpose loan
+              - generic [ref=e441]:
+                - generic [ref=e442]: "Balance: ₱18,000.00"
+                - generic [ref=e443]: ₱1,250.00/mo deduction
+            - generic [ref=e444]:
+              - generic [ref=e445]:
+                - generic [ref=e446]: Balance
+                - spinbutton [ref=e447]: "18000"
+              - generic [ref=e448]:
+                - generic [ref=e449]: Monthly deduction
+                - spinbutton [ref=e450]: "1250"
+              - generic [ref=e451]:
+                - generic [ref=e452]: Status
+                - combobox [ref=e453]:
+                  - option "Active" [selected]
+                  - option "Paid"
+                  - option "Cancelled"
+              - button "Update loan" [ref=e454] [cursor=pointer]
+  - region "Notifications alt+T"

@@ -1,0 +1,168 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - link "MMTSI MMTSI" [ref=e5] [cursor=pointer]:
+          - /url: /dashboard
+          - img "MMTSI" [ref=e6]
+          - generic [ref=e7]: MMTSI
+        - generic [ref=e8]:
+          - button "Toggle theme" [ref=e9] [cursor=pointer]:
+            - img [ref=e10]
+          - button "Collapse" [ref=e12] [cursor=pointer]:
+            - img [ref=e13]
+      - navigation [ref=e15]:
+        - link "Dashboard Overview" [ref=e16] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e17]
+          - generic [ref=e22]:
+            - generic [ref=e23]: Dashboard
+            - generic [ref=e24]: Overview
+        - link "Employees Mga Empleyado" [ref=e25] [cursor=pointer]:
+          - /url: /employees
+          - img [ref=e26]
+          - generic [ref=e31]:
+            - generic [ref=e32]: Employees
+            - generic [ref=e33]: Mga Empleyado
+        - link "Attendance DTR" [ref=e34] [cursor=pointer]:
+          - /url: /attendance
+          - img [ref=e35]
+          - generic [ref=e38]:
+            - generic [ref=e39]: Attendance
+            - generic [ref=e40]: DTR
+        - link "Payroll Sweldo" [ref=e41] [cursor=pointer]:
+          - /url: /payroll
+          - img [ref=e42]
+          - generic [ref=e45]:
+            - generic [ref=e46]: Payroll
+            - generic [ref=e47]: Sweldo
+        - link "OT Approval Prepare · Check · Approve" [ref=e48] [cursor=pointer]:
+          - /url: /ot-approval
+          - img [ref=e49]
+          - generic [ref=e53]:
+            - generic [ref=e54]: OT Approval
+            - generic [ref=e55]: Prepare · Check · Approve
+        - link "Leave Bakasyon" [ref=e56] [cursor=pointer]:
+          - /url: /leave
+          - img [ref=e57]
+          - generic [ref=e60]:
+            - generic [ref=e61]: Leave
+            - generic [ref=e62]: Bakasyon
+        - link "Loans Salary loans" [ref=e63] [cursor=pointer]:
+          - /url: /loans
+          - img [ref=e64]
+          - generic [ref=e66]:
+            - generic [ref=e67]: Loans
+            - generic [ref=e68]: Salary loans
+        - link "Compliance DOLE/BIR" [ref=e69] [cursor=pointer]:
+          - /url: /compliance
+          - img [ref=e70]
+          - generic [ref=e73]:
+            - generic [ref=e74]: Compliance
+            - generic [ref=e75]: DOLE/BIR
+        - link "Reports Analytics" [ref=e76] [cursor=pointer]:
+          - /url: /reports
+          - img [ref=e77]
+          - generic [ref=e79]:
+            - generic [ref=e80]: Reports
+            - generic [ref=e81]: Analytics
+        - link "Settings" [ref=e82] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e85]
+          - generic [ref=e89]: Settings
+      - generic [ref=e91]:
+        - generic "Demo Owner" [ref=e92]: DO
+        - generic [ref=e93]:
+          - generic [ref=e94]: Demo Owner
+          - generic [ref=e95]: Owner
+        - link "Sign out" [ref=e96] [cursor=pointer]:
+          - /url: /api/auth/signout
+          - img [ref=e97]
+    - main [ref=e100]:
+      - generic [ref=e102]:
+        - generic [ref=e103]:
+          - generic [ref=e104]:
+            - generic [ref=e105]:
+              - img [ref=e106]
+              - heading "Holiday calendar" [level=1] [ref=e108]
+            - paragraph [ref=e109]: PH official holidays + custom proclamations. Used for OT rate auto-detection in attendance.
+          - link "← Settings" [ref=e110] [cursor=pointer]:
+            - /url: /settings
+        - generic [ref=e111]:
+          - heading "Add custom / local holiday" [level=3] [ref=e113]:
+            - img [ref=e114]
+            - text: Add custom / local holiday
+          - generic [ref=e116]:
+            - generic [ref=e117]:
+              - generic [ref=e118]: Date
+              - textbox [ref=e119]
+            - generic [ref=e120]:
+              - generic [ref=e121]: Holiday name
+              - textbox "e.g. Founder's Day" [ref=e122]
+            - generic [ref=e123]:
+              - generic [ref=e124]: Type
+              - combobox [ref=e125]:
+                - option "Regular Holiday"
+                - option "Special Non-Working" [selected]
+            - button "Add holiday" [ref=e126] [cursor=pointer]:
+              - img [ref=e127]
+              - text: Add holiday
+        - generic [ref=e128]:
+          - heading "PH official holidays — upcoming" [level=3] [ref=e130]
+          - generic [ref=e131]:
+            - generic [ref=e132]:
+              - generic [ref=e133]: RH
+              - generic [ref=e135]:
+                - generic [ref=e136]: Independence Day
+                - generic [ref=e137]: 2026-06-12
+            - generic [ref=e138]:
+              - generic [ref=e139]: SH
+              - generic [ref=e141]:
+                - generic [ref=e142]: Ninoy Aquino Day
+                - generic [ref=e143]: 2026-08-21
+            - generic [ref=e144]:
+              - generic [ref=e145]: RH
+              - generic [ref=e147]:
+                - generic [ref=e148]: National Heroes Day
+                - generic [ref=e149]: 2026-08-31
+            - generic [ref=e150]:
+              - generic [ref=e151]: SH
+              - generic [ref=e153]:
+                - generic [ref=e154]: All Saints' Day
+                - generic [ref=e155]: 2026-11-01
+            - generic [ref=e156]:
+              - generic [ref=e157]: SH
+              - generic [ref=e159]:
+                - generic [ref=e160]: All Souls' Day
+                - generic [ref=e161]: 2026-11-02
+            - generic [ref=e162]:
+              - generic [ref=e163]: RH
+              - generic [ref=e165]:
+                - generic [ref=e166]: Bonifacio Day
+                - generic [ref=e167]: 2026-11-30
+            - generic [ref=e168]:
+              - generic [ref=e169]: SH
+              - generic [ref=e171]:
+                - generic [ref=e172]: Feast of the Immaculate Conception
+                - generic [ref=e173]: 2026-12-08
+            - generic [ref=e174]:
+              - generic [ref=e175]: SH
+              - generic [ref=e177]:
+                - generic [ref=e178]: Christmas Eve
+                - generic [ref=e179]: 2026-12-24
+            - generic [ref=e180]:
+              - generic [ref=e181]: RH
+              - generic [ref=e183]:
+                - generic [ref=e184]: Christmas Day
+                - generic [ref=e185]: 2026-12-25
+            - generic [ref=e186]:
+              - generic [ref=e187]: RH
+              - generic [ref=e189]:
+                - generic [ref=e190]: Rizal Day
+                - generic [ref=e191]: 2026-12-30
+            - generic [ref=e192]:
+              - generic [ref=e193]: SH
+              - generic [ref=e195]:
+                - generic [ref=e196]: New Year's Eve
+                - generic [ref=e197]: 2026-12-31
+  - region "Notifications alt+T"

@@ -152,6 +152,25 @@ async function main() {
     AND employeeId IN (SELECT id FROM Employee WHERE sex = 'FEMALE' OR sex IS NULL AND lastName = 'Veloso')`);
   console.log("  cleaned up SIL and invalid PATERNITY records");
 
+  // Document table
+  if (!(await tableExists("Document"))) {
+    await db.execute(`CREATE TABLE "Document" (
+      "id"         TEXT NOT NULL PRIMARY KEY,
+      "employeeId" TEXT NOT NULL,
+      "name"       TEXT NOT NULL,
+      "url"        TEXT NOT NULL,
+      "expiresAt"  DATETIME,
+      "uploadedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "Document_employeeId_fkey"
+        FOREIGN KEY ("employeeId") REFERENCES "Employee" ("id")
+        ON DELETE CASCADE ON UPDATE CASCADE
+    )`);
+    await db.execute(`CREATE INDEX "Document_employeeId_idx" ON "Document" ("employeeId")`);
+    console.log("  created Document table");
+  } else {
+    console.log("  skip Document table (exists)");
+  }
+
   // Holiday table
   if (!(await tableExists("Holiday"))) {
     await db.execute(`CREATE TABLE "Holiday" (

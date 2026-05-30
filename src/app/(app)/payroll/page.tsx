@@ -414,11 +414,11 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
             <TableHeader>
               <TableRow>
                 <Th>Employee</Th>
-                <Th numeric>Days</Th>
-                <Th numeric>Reg hrs</Th>
-                <Th numeric>OT hrs</Th>
+                <Th>Days</Th>
+                <Th>Reg hrs</Th>
+                <Th>OT hrs</Th>
                 <Th>Rate codes</Th>
-                <Th numeric>
+                <Th>
                   Est. OT pay
                   {!otApprovedForPayroll && (
                     <span className="block text-[10px] font-normal text-[var(--warning)]">not counted</span>
@@ -432,13 +432,13 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
                   <Td>
                     <span className="text-sm font-medium">{emp.lastName}, {emp.firstName}</span>
                   </Td>
-                  <Td numeric className="text-[var(--text-secondary)]">
+                  <Td className="text-[var(--text-secondary)]">
                     {days > 0 ? days : <span className="text-[var(--text-tertiary)]">—</span>}
                   </Td>
-                  <Td numeric className="text-[var(--text-secondary)]">
+                  <Td className="text-[var(--text-secondary)]">
                     {regHrs > 0 ? `${regHrs.toFixed(1)}h` : <span className="text-[var(--text-tertiary)]">—</span>}
                   </Td>
-                  <Td numeric className="text-[var(--text-secondary)]">
+                  <Td className="text-[var(--text-secondary)]">
                     {otHrs > 0 ? `${otHrs.toFixed(1)}h` : <span className="text-[var(--text-tertiary)]">—</span>}
                   </Td>
                   <Td>
@@ -451,7 +451,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
                       : <span className="text-[var(--text-tertiary)] text-xs">—</span>
                     }
                   </Td>
-                  <Td numeric>
+                  <Td>
                     {days === 0
                       ? <span className="text-xs text-[var(--text-tertiary)]">fixed ½-month</span>
                       : estOtPay > 0

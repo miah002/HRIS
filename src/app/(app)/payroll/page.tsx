@@ -414,11 +414,11 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
             <TableHeader>
               <TableRow>
                 <Th>Employee</Th>
-                <Th className="text-right">Days</Th>
-                <Th className="text-right">Reg hrs</Th>
-                <Th className="text-right">OT hrs</Th>
+                <Th numeric>Days</Th>
+                <Th numeric>Reg hrs</Th>
+                <Th numeric>OT hrs</Th>
                 <Th>Rate codes</Th>
-                <Th className="text-right">
+                <Th numeric>
                   Est. OT pay
                   {!otApprovedForPayroll && (
                     <span className="block text-[10px] font-normal text-[var(--warning)]">not counted</span>

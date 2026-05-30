@@ -149,8 +149,9 @@ async function runPayroll(formData: FormData) {
       where: { employeeId_periodStart_periodEnd: { employeeId: e.id, periodStart: start, periodEnd: end } },
       include: { adjustments: true },
     });
-    const taxableAdj = existing?.adjustments.filter(a => a.type === "TAXABLE").reduce((s, a) => s + a.amount, 0) ?? 0;
-    const nonTaxableAdj = existing?.adjustments.filter(a => a.type === "NON_TAXABLE").reduce((s, a) => s + a.amount, 0) ?? 0;
+    const adjs = existing?.adjustments ?? [];
+    const taxableAdj    = adjs.filter(a => a.type === "TAXABLE").reduce((s, a) => s + a.amount, 0);
+    const nonTaxableAdj = adjs.filter(a => a.type === "NON_TAXABLE").reduce((s, a) => s + a.amount, 0);
 
     // SSS MSC basis: basic + OT + de minimis projected to monthly
     const sssEarningsMonthly = e.basicMonthlyRate + (overtimePayIn + nonTaxableAdj) * 2;

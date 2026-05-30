@@ -67,10 +67,16 @@ function n(row, col, def = 0) {
 
 function toIso(val) {
   if (!val) throw new Error("Missing date value");
-  // Excel serial number
+  // Excel serial number — use UTC epoch offset to avoid local-TZ off-by-one on UTC+8 servers
   if (typeof val === "number") {
-    const d = utils.numToDate ? utils.numToDate(val) : new Date((val - 25569) * 86400 * 1000);
-    return d.toISOString().slice(0, 10).replace(/(\d{4}-\d{2}-\d{2})/, "$1T00:00:00+00:00");
+    // (val - 25569) converts Excel serial to days since 1970-01-01 UTC; multiply by ms/day
+    const utcMs = (val - 25569) * 86400 * 1000;
+    const d = new Date(utcMs);
+    // Extract UTC date parts directly — never use getFullYear/getMonth (local TZ)
+    const yyyy = d.getUTCFullYear();
+    const mm   = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const dd   = String(d.getUTCDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}T00:00:00+00:00`;
   }
   // String like "2026-01-11" or "01/11/2026"
   const s = String(val).trim();

@@ -10,6 +10,55 @@ import { PrintButton } from "@/components/print-button";
 import { computeSemiMonthlyPayroll, OT_RATES, hourlyRate } from "@/lib/ph-payroll";
 import { Table, TableHeader, TableBody, TableRow, Th, Td, TableFooter } from "@/components/ui/table";
 
+// ── Shared helpers ─────────────────────────────────────────────────────────
+
+type PayrollWithIncludes = NonNullable<Awaited<ReturnType<typeof prisma.payroll.findUnique>>> & {
+  employee: { basicMonthlyRate: number; id: string };
+  adjustments: { type: string; amount: number }[];
+};
+
+function sumAdj(adjustments: { type: string; amount: number }[], type: string): number {
+  return adjustments.filter((a) => a.type === type).reduce((s, a) => s + a.amount, 0);
+}
+
+async function recalcPayroll(payroll: PayrollWithIncludes) {
+  const taxableAdj    = sumAdj(payroll.adjustments, "TAXABLE");
+  const nonTaxableAdj = sumAdj(payroll.adjustments, "NON_TAXABLE");
+  const isFirstCutoff = payroll.periodStart.getDate() <= 15;
+  const sssEarningsMonthly = payroll.employee.basicMonthlyRate + (payroll.overtimePay + nonTaxableAdj) * 2;
+
+  const calc = computeSemiMonthlyPayroll({
+    monthlyRate:           payroll.employee.basicMonthlyRate,
+    periodStart:           payroll.periodStart,
+    periodEnd:             payroll.periodEnd,
+    isFirstCutoff,
+    sssEarningsMonthly,
+    daysWorked:            payroll.daysWorked > 0 ? payroll.daysWorked : undefined,
+    regularHours:          payroll.regularHours,
+    overtimePayIn:         payroll.overtimePay,
+    holidayPayIn:          payroll.holidayPay,
+    nightDiffPayIn:        payroll.nightDiffPay,
+    taxableAdjustments:    taxableAdj,
+    nonTaxableAdjustments: nonTaxableAdj,
+    lateMinutesIn:         payroll.lateMinutes,
+    lateDeductionIn:       payroll.lateDeduction,
+    undertimeMinutesIn:    payroll.undertimeMinutes,
+    undertimeDeductionIn:  payroll.undertimeDeduction,
+    hdmfMp2In:             payroll.hdmfMp2,
+  });
+
+  const loans = await prisma.loan.findMany({ where: { employeeId: payroll.employeeId, status: "ACTIVE" } });
+  let loanDeductions = 0;
+  for (const loan of loans) loanDeductions += Math.min(loan.monthlyDeduction / 2, loan.balance);
+  loanDeductions = Math.round(loanDeductions * 100) / 100;
+
+  const totalDeductions = Math.round((calc.totalDeductions + loanDeductions + payroll.absenceDeduction) * 100) / 100;
+  const netPay = Math.round((calc.grossPay - totalDeductions) * 100) / 100;
+  return { calc, loanDeductions, totalDeductions, netPay };
+}
+
+// ── Server actions ──────────────────────────────────────────────────────────
+
 async function releasePayroll(id: string) {
   "use server";
   const session = await auth();
@@ -23,54 +72,17 @@ async function addAdjustment(id: string, formData: FormData) {
   const session = await auth();
   if (!session) redirect("/login");
 
-  const type = String(formData.get("type")); // TAXABLE | NON_TAXABLE
+  const type        = String(formData.get("type"));
   const description = String(formData.get("description")).trim();
-  const amount = parseFloat(String(formData.get("amount"))) || 0;
+  const amount      = parseFloat(String(formData.get("amount"))) || 0;
   if (!description || amount === 0) redirect(`/payroll/${id}`);
 
   await prisma.payrollAdjustment.create({ data: { payrollId: id, type, description, amount } });
 
-  // Recalculate payroll totals
-  const payroll = await prisma.payroll.findUnique({
-    where: { id },
-    include: { employee: true, adjustments: true },
-  });
+  const payroll = await prisma.payroll.findUnique({ where: { id }, include: { employee: true, adjustments: true } });
   if (!payroll) redirect("/payroll");
 
-  const taxableAdj = payroll.adjustments.filter(a => a.type === "TAXABLE").reduce((s, a) => s + a.amount, 0);
-  const nonTaxableAdj = payroll.adjustments.filter(a => a.type === "NON_TAXABLE").reduce((s, a) => s + a.amount, 0);
-
-  const isFirstCutoff = payroll.periodStart.getDate() <= 15;
-  const sssEarningsMonthly = payroll.employee.basicMonthlyRate + (payroll.overtimePay + nonTaxableAdj) * 2;
-
-  const calc = computeSemiMonthlyPayroll({
-    monthlyRate: payroll.employee.basicMonthlyRate,
-    periodStart: payroll.periodStart,
-    periodEnd: payroll.periodEnd,
-    isFirstCutoff,
-    sssEarningsMonthly,
-    daysWorked: payroll.daysWorked > 0 ? payroll.daysWorked : undefined,
-    regularHours: payroll.regularHours,
-    overtimePayIn:  payroll.overtimePay,
-    holidayPayIn:   payroll.holidayPay,
-    nightDiffPayIn: payroll.nightDiffPay,
-    taxableAdjustments: taxableAdj,
-    nonTaxableAdjustments: nonTaxableAdj,
-    lateMinutesIn: payroll.lateMinutes,
-    lateDeductionIn: payroll.lateDeduction,
-    undertimeMinutesIn: payroll.undertimeMinutes,
-    undertimeDeductionIn: payroll.undertimeDeduction,
-    hdmfMp2In: payroll.hdmfMp2,
-  });
-
-  const loans = await prisma.loan.findMany({ where: { employeeId: payroll.employeeId, status: "ACTIVE" } });
-  let loanDeductions = 0;
-  for (const loan of loans) loanDeductions += Math.min(loan.monthlyDeduction / 2, loan.balance);
-  loanDeductions = Math.round(loanDeductions * 100) / 100;
-
-  const totalDeductions = Math.round((calc.totalDeductions + loanDeductions + payroll.absenceDeduction) * 100) / 100;
-  const netPay = Math.round((calc.grossPay - totalDeductions) * 100) / 100;
-
+  const { calc, loanDeductions, totalDeductions, netPay } = await recalcPayroll(payroll);
   await prisma.payroll.update({ where: { id }, data: { ...calc, loanDeductions, totalDeductions, netPay } });
   redirect(`/payroll/${id}`);
 }
@@ -82,47 +94,10 @@ async function removeAdjustment(adjustmentId: string, payrollId: string) {
 
   await prisma.payrollAdjustment.delete({ where: { id: adjustmentId } });
 
-  // Recalculate after removal
-  const payroll = await prisma.payroll.findUnique({
-    where: { id: payrollId },
-    include: { employee: true, adjustments: true },
-  });
+  const payroll = await prisma.payroll.findUnique({ where: { id: payrollId }, include: { employee: true, adjustments: true } });
   if (!payroll) redirect("/payroll");
 
-  const taxableAdj = payroll.adjustments.filter(a => a.type === "TAXABLE").reduce((s, a) => s + a.amount, 0);
-  const nonTaxableAdj = payroll.adjustments.filter(a => a.type === "NON_TAXABLE").reduce((s, a) => s + a.amount, 0);
-
-  const isFirstCutoff = payroll.periodStart.getDate() <= 15;
-  const sssEarningsMonthly = payroll.employee.basicMonthlyRate + (payroll.overtimePay + nonTaxableAdj) * 2;
-
-  const calc = computeSemiMonthlyPayroll({
-    monthlyRate: payroll.employee.basicMonthlyRate,
-    periodStart: payroll.periodStart,
-    periodEnd: payroll.periodEnd,
-    isFirstCutoff,
-    sssEarningsMonthly,
-    daysWorked: payroll.daysWorked > 0 ? payroll.daysWorked : undefined,
-    regularHours: payroll.regularHours,
-    overtimePayIn:  payroll.overtimePay,
-    holidayPayIn:   payroll.holidayPay,
-    nightDiffPayIn: payroll.nightDiffPay,
-    taxableAdjustments: taxableAdj,
-    nonTaxableAdjustments: nonTaxableAdj,
-    lateMinutesIn: payroll.lateMinutes,
-    lateDeductionIn: payroll.lateDeduction,
-    undertimeMinutesIn: payroll.undertimeMinutes,
-    undertimeDeductionIn: payroll.undertimeDeduction,
-    hdmfMp2In: payroll.hdmfMp2,
-  });
-
-  const loans = await prisma.loan.findMany({ where: { employeeId: payroll.employeeId, status: "ACTIVE" } });
-  let loanDeductions = 0;
-  for (const loan of loans) loanDeductions += Math.min(loan.monthlyDeduction / 2, loan.balance);
-  loanDeductions = Math.round(loanDeductions * 100) / 100;
-
-  const totalDeductions = Math.round((calc.totalDeductions + loanDeductions + payroll.absenceDeduction) * 100) / 100;
-  const netPay = Math.round((calc.grossPay - totalDeductions) * 100) / 100;
-
+  const { calc, loanDeductions, totalDeductions, netPay } = await recalcPayroll(payroll);
   await prisma.payroll.update({ where: { id: payrollId }, data: { ...calc, loanDeductions, totalDeductions, netPay } });
   redirect(`/payroll/${payrollId}`);
 }
@@ -177,9 +152,14 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
     code, hours, rate: OT_RATES[code] ?? 1.25, pay,
   }));
 
-  // Pay date: 26-10 cutoff → 15th of end month; 11-25 cutoff → 30th of end month
-  const payDateDay = payroll.periodStart.getDate() <= 15 ? 30 : 15;
-  const payDate = new Date(payroll.periodEnd.getFullYear(), payroll.periodEnd.getMonth(), payDateDay);
+  // Pay date: 11-25 cutoff → 30th (or last day) of end month; 26-10 cutoff → 15th of end month
+  const isFirstCutoffSlip = payroll.periodStart.getDate() <= 15;
+  const payYear = payroll.periodEnd.getFullYear();
+  const payMonth = payroll.periodEnd.getMonth();
+  // Clamp to last day of month — prevents Feb overflow (day 30 → Mar 2)
+  const lastDayOfMonth = new Date(payYear, payMonth + 1, 0).getDate();
+  const payDateDay = isFirstCutoffSlip ? Math.min(30, lastDayOfMonth) : 15;
+  const payDate = new Date(payYear, payMonth, payDateDay);
 
   const releaseFn = releasePayroll.bind(null, id);
   const addAdjustmentFn = addAdjustment.bind(null, id);

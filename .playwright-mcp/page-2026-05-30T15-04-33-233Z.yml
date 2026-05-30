@@ -1,0 +1,212 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - link "MMTSI MMTSI" [ref=e5] [cursor=pointer]:
+          - /url: /dashboard
+          - img "MMTSI" [ref=e6]
+          - generic [ref=e7]: MMTSI
+        - generic [ref=e8]:
+          - button "Toggle theme" [ref=e9] [cursor=pointer]:
+            - img [ref=e10]
+          - button "Collapse" [ref=e12] [cursor=pointer]:
+            - img [ref=e13]
+      - navigation [ref=e15]:
+        - link "Dashboard Overview" [ref=e16] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e17]
+          - generic [ref=e22]:
+            - generic [ref=e23]: Dashboard
+            - generic [ref=e24]: Overview
+        - link "Employees Mga Empleyado" [ref=e25] [cursor=pointer]:
+          - /url: /employees
+          - img [ref=e26]
+          - generic [ref=e31]:
+            - generic [ref=e32]: Employees
+            - generic [ref=e33]: Mga Empleyado
+        - link "Attendance DTR" [ref=e34] [cursor=pointer]:
+          - /url: /attendance
+          - img [ref=e35]
+          - generic [ref=e38]:
+            - generic [ref=e39]: Attendance
+            - generic [ref=e40]: DTR
+        - link "Payroll" [ref=e41] [cursor=pointer]:
+          - /url: /payroll
+          - img [ref=e44]
+          - generic [ref=e48]: Payroll
+        - link "OT Approval Prepare · Check · Approve" [ref=e49] [cursor=pointer]:
+          - /url: /ot-approval
+          - img [ref=e50]
+          - generic [ref=e54]:
+            - generic [ref=e55]: OT Approval
+            - generic [ref=e56]: Prepare · Check · Approve
+        - link "Leave Bakasyon" [ref=e57] [cursor=pointer]:
+          - /url: /leave
+          - img [ref=e58]
+          - generic [ref=e61]:
+            - generic [ref=e62]: Leave
+            - generic [ref=e63]: Bakasyon
+        - link "Loans Salary loans" [ref=e64] [cursor=pointer]:
+          - /url: /loans
+          - img [ref=e65]
+          - generic [ref=e67]:
+            - generic [ref=e68]: Loans
+            - generic [ref=e69]: Salary loans
+        - link "Compliance DOLE/BIR" [ref=e70] [cursor=pointer]:
+          - /url: /compliance
+          - img [ref=e71]
+          - generic [ref=e74]:
+            - generic [ref=e75]: Compliance
+            - generic [ref=e76]: DOLE/BIR
+        - link "Reports Analytics" [ref=e77] [cursor=pointer]:
+          - /url: /reports
+          - img [ref=e78]
+          - generic [ref=e80]:
+            - generic [ref=e81]: Reports
+            - generic [ref=e82]: Analytics
+        - link "Settings Roles & access" [ref=e83] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e84]
+          - generic [ref=e87]:
+            - generic [ref=e88]: Settings
+            - generic [ref=e89]: Roles & access
+      - generic [ref=e91]:
+        - generic "Admin" [ref=e92]: A
+        - generic [ref=e93]:
+          - generic [ref=e94]: Admin
+          - generic [ref=e95]: Owner
+        - link "Sign out" [ref=e96] [cursor=pointer]:
+          - /url: /api/auth/signout
+          - img [ref=e97]
+    - main [ref=e100]:
+      - generic [ref=e103]:
+        - generic [ref=e104]:
+          - generic [ref=e105]:
+            - status "Loading…" [ref=e106]
+            - status "Loading…" [ref=e107]
+          - status "Loading…" [ref=e108]
+        - generic [ref=e109]:
+          - generic [ref=e111]:
+            - status "Loading…" [ref=e112]
+            - status "Loading…" [ref=e113]
+          - generic [ref=e115]:
+            - status "Loading…" [ref=e116]
+            - status "Loading…" [ref=e117]
+          - generic [ref=e119]:
+            - status "Loading…" [ref=e120]
+            - status "Loading…" [ref=e121]
+          - generic [ref=e123]:
+            - status "Loading…" [ref=e124]
+            - status "Loading…" [ref=e125]
+        - generic [ref=e126]:
+          - status "Loading…" [ref=e128]
+          - table [ref=e130]:
+            - rowgroup [ref=e131]:
+              - row "Loading… Loading… Loading… Loading… Loading… Loading… Loading… Loading…" [ref=e132]:
+                - columnheader "Loading…" [ref=e133]:
+                  - status "Loading…" [ref=e134]
+                - columnheader "Loading…" [ref=e135]:
+                  - status "Loading…" [ref=e136]
+                - columnheader "Loading…" [ref=e137]:
+                  - status "Loading…" [ref=e138]
+                - columnheader "Loading…" [ref=e139]:
+                  - status "Loading…" [ref=e140]
+                - columnheader "Loading…" [ref=e141]:
+                  - status "Loading…" [ref=e142]
+                - columnheader "Loading…" [ref=e143]:
+                  - status "Loading…" [ref=e144]
+                - columnheader "Loading…" [ref=e145]:
+                  - status "Loading…" [ref=e146]
+                - columnheader "Loading…" [ref=e147]:
+                  - status "Loading…" [ref=e148]
+            - rowgroup [ref=e149]:
+              - row "Loading… Loading… Loading… Loading… Loading…" [ref=e150]:
+                - cell "Loading…" [ref=e151]:
+                  - status "Loading…" [ref=e152]
+                - cell "Loading…" [ref=e153]:
+                  - status "Loading…" [ref=e154]
+                - cell "Loading…" [ref=e155]:
+                  - status "Loading…" [ref=e156]
+                - cell "Loading…" [ref=e157]:
+                  - status "Loading…" [ref=e158]
+                - cell "Loading…" [ref=e159]:
+                  - status "Loading…" [ref=e160]
+              - row "Loading… Loading… Loading… Loading… Loading…" [ref=e161]:
+                - cell "Loading…" [ref=e162]:
+                  - status "Loading…" [ref=e163]
+                - cell "Loading…" [ref=e164]:
+                  - status "Loading…" [ref=e165]
+                - cell "Loading…" [ref=e166]:
+                  - status "Loading…" [ref=e167]
+                - cell "Loading…" [ref=e168]:
+                  - status "Loading…" [ref=e169]
+                - cell "Loading…" [ref=e170]:
+                  - status "Loading…" [ref=e171]
+              - row "Loading… Loading… Loading… Loading… Loading…" [ref=e172]:
+                - cell "Loading…" [ref=e173]:
+                  - status "Loading…" [ref=e174]
+                - cell "Loading…" [ref=e175]:
+                  - status "Loading…" [ref=e176]
+                - cell "Loading…" [ref=e177]:
+                  - status "Loading…" [ref=e178]
+                - cell "Loading…" [ref=e179]:
+                  - status "Loading…" [ref=e180]
+                - cell "Loading…" [ref=e181]:
+                  - status "Loading…" [ref=e182]
+              - row "Loading… Loading… Loading… Loading… Loading…" [ref=e183]:
+                - cell "Loading…" [ref=e184]:
+                  - status "Loading…" [ref=e185]
+                - cell "Loading…" [ref=e186]:
+                  - status "Loading…" [ref=e187]
+                - cell "Loading…" [ref=e188]:
+                  - status "Loading…" [ref=e189]
+                - cell "Loading…" [ref=e190]:
+                  - status "Loading…" [ref=e191]
+                - cell "Loading…" [ref=e192]:
+                  - status "Loading…" [ref=e193]
+              - row "Loading… Loading… Loading… Loading… Loading…" [ref=e194]:
+                - cell "Loading…" [ref=e195]:
+                  - status "Loading…" [ref=e196]
+                - cell "Loading…" [ref=e197]:
+                  - status "Loading…" [ref=e198]
+                - cell "Loading…" [ref=e199]:
+                  - status "Loading…" [ref=e200]
+                - cell "Loading…" [ref=e201]:
+                  - status "Loading…" [ref=e202]
+                - cell "Loading…" [ref=e203]:
+                  - status "Loading…" [ref=e204]
+              - row "Loading… Loading… Loading… Loading… Loading…" [ref=e205]:
+                - cell "Loading…" [ref=e206]:
+                  - status "Loading…" [ref=e207]
+                - cell "Loading…" [ref=e208]:
+                  - status "Loading…" [ref=e209]
+                - cell "Loading…" [ref=e210]:
+                  - status "Loading…" [ref=e211]
+                - cell "Loading…" [ref=e212]:
+                  - status "Loading…" [ref=e213]
+                - cell "Loading…" [ref=e214]:
+                  - status "Loading…" [ref=e215]
+              - row "Loading… Loading… Loading… Loading… Loading…" [ref=e216]:
+                - cell "Loading…" [ref=e217]:
+                  - status "Loading…" [ref=e218]
+                - cell "Loading…" [ref=e219]:
+                  - status "Loading…" [ref=e220]
+                - cell "Loading…" [ref=e221]:
+                  - status "Loading…" [ref=e222]
+                - cell "Loading…" [ref=e223]:
+                  - status "Loading…" [ref=e224]
+                - cell "Loading…" [ref=e225]:
+                  - status "Loading…" [ref=e226]
+              - row "Loading… Loading… Loading… Loading… Loading…" [ref=e227]:
+                - cell "Loading…" [ref=e228]:
+                  - status "Loading…" [ref=e229]
+                - cell "Loading…" [ref=e230]:
+                  - status "Loading…" [ref=e231]
+                - cell "Loading…" [ref=e232]:
+                  - status "Loading…" [ref=e233]
+                - cell "Loading…" [ref=e234]:
+                  - status "Loading…" [ref=e235]
+                - cell "Loading…" [ref=e236]:
+                  - status "Loading…" [ref=e237]
+  - region "Notifications alt+T"
+  - alert [ref=e238]

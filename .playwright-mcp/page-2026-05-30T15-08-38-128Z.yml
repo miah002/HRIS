@@ -1,0 +1,226 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - link "MMTSI MMTSI" [ref=e5] [cursor=pointer]:
+          - /url: /dashboard
+          - img "MMTSI" [ref=e6]
+          - generic [ref=e7]: MMTSI
+        - generic [ref=e8]:
+          - button "Toggle theme" [ref=e9] [cursor=pointer]:
+            - img [ref=e10]
+          - button "Collapse" [ref=e12] [cursor=pointer]:
+            - img [ref=e13]
+      - navigation [ref=e15]:
+        - link "Dashboard Overview" [ref=e16] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e17]
+          - generic [ref=e22]:
+            - generic [ref=e23]: Dashboard
+            - generic [ref=e24]: Overview
+        - link "Employees Mga Empleyado" [ref=e25] [cursor=pointer]:
+          - /url: /employees
+          - img [ref=e26]
+          - generic [ref=e31]:
+            - generic [ref=e32]: Employees
+            - generic [ref=e33]: Mga Empleyado
+        - link "Attendance DTR" [ref=e34] [cursor=pointer]:
+          - /url: /attendance
+          - img [ref=e35]
+          - generic [ref=e38]:
+            - generic [ref=e39]: Attendance
+            - generic [ref=e40]: DTR
+        - link "Payroll" [ref=e41] [cursor=pointer]:
+          - /url: /payroll
+          - img [ref=e44]
+          - generic [ref=e48]: Payroll
+        - link "OT Approval Prepare · Check · Approve" [ref=e49] [cursor=pointer]:
+          - /url: /ot-approval
+          - img [ref=e50]
+          - generic [ref=e54]:
+            - generic [ref=e55]: OT Approval
+            - generic [ref=e56]: Prepare · Check · Approve
+        - link "Leave Bakasyon" [ref=e57] [cursor=pointer]:
+          - /url: /leave
+          - img [ref=e58]
+          - generic [ref=e61]:
+            - generic [ref=e62]: Leave
+            - generic [ref=e63]: Bakasyon
+        - link "Loans Salary loans" [ref=e64] [cursor=pointer]:
+          - /url: /loans
+          - img [ref=e65]
+          - generic [ref=e67]:
+            - generic [ref=e68]: Loans
+            - generic [ref=e69]: Salary loans
+        - link "Compliance DOLE/BIR" [ref=e70] [cursor=pointer]:
+          - /url: /compliance
+          - img [ref=e71]
+          - generic [ref=e74]:
+            - generic [ref=e75]: Compliance
+            - generic [ref=e76]: DOLE/BIR
+        - link "Reports Analytics" [ref=e77] [cursor=pointer]:
+          - /url: /reports
+          - img [ref=e78]
+          - generic [ref=e80]:
+            - generic [ref=e81]: Reports
+            - generic [ref=e82]: Analytics
+        - link "Settings Roles & access" [ref=e83] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e84]
+          - generic [ref=e87]:
+            - generic [ref=e88]: Settings
+            - generic [ref=e89]: Roles & access
+      - generic [ref=e91]:
+        - generic "Admin" [ref=e92]: A
+        - generic [ref=e93]:
+          - generic [ref=e94]: Admin
+          - generic [ref=e95]: Owner
+        - link "Sign out" [ref=e96] [cursor=pointer]:
+          - /url: /api/auth/signout
+          - img [ref=e97]
+    - main [ref=e100]:
+      - generic [ref=e103]:
+        - generic [ref=e104]:
+          - generic [ref=e105]:
+            - generic [ref=e106]:
+              - img [ref=e107]
+              - heading "Payroll" [level=1] [ref=e110]
+            - paragraph [ref=e111]: Current cutoff 26–10 · May 26, 2026 – Jun 10, 2026
+          - generic [ref=e112]:
+            - 'link "OT: APPROVED" [ref=e113] [cursor=pointer]':
+              - /url: /ot-approval
+              - img [ref=e114]
+              - generic [ref=e118]: "OT: APPROVED"
+            - generic [ref=e119]:
+              - button "Run payroll" [disabled]:
+                - img
+                - text: Run payroll
+        - generic [ref=e124]:
+          - heading "Attendance summary — 26–10" [level=3] [ref=e126]:
+            - img [ref=e127]
+            - text: Attendance summary — 26–10
+          - table [ref=e132]:
+            - rowgroup [ref=e133]:
+              - row "Employee Days Reg hrs OT hrs Rate codes Est. OT pay" [ref=e134]:
+                - columnheader "Employee" [ref=e135]:
+                  - generic [ref=e136]: Employee
+                - columnheader "Days" [ref=e137]:
+                  - generic [ref=e138]: Days
+                - columnheader "Reg hrs" [ref=e139]:
+                  - generic [ref=e140]: Reg hrs
+                - columnheader "OT hrs" [ref=e141]:
+                  - generic [ref=e142]: OT hrs
+                - columnheader "Rate codes" [ref=e143]:
+                  - generic [ref=e144]: Rate codes
+                - columnheader "Est. OT pay" [ref=e145]:
+                  - generic [ref=e146]: Est. OT pay
+            - rowgroup [ref=e147]:
+              - row "Castillo, Louie 5 40.0h — — —" [ref=e148]:
+                - cell "Castillo, Louie" [ref=e149]:
+                  - generic [ref=e150]: Castillo, Louie
+                - cell "5" [ref=e151]
+                - cell "40.0h" [ref=e152]
+                - cell "—" [ref=e153]
+                - cell "—" [ref=e154]
+                - cell "—" [ref=e155]
+              - row "Domingo, Ella Queenly 5 40.0h — — —" [ref=e156]:
+                - cell "Domingo, Ella Queenly" [ref=e157]:
+                  - generic [ref=e158]: Domingo, Ella Queenly
+                - cell "5" [ref=e159]
+                - cell "40.0h" [ref=e160]
+                - cell "—" [ref=e161]
+                - cell "—" [ref=e162]
+                - cell "—" [ref=e163]
+              - row "Emnase, John Andrew 5 40.0h — — —" [ref=e164]:
+                - cell "Emnase, John Andrew" [ref=e165]:
+                  - generic [ref=e166]: Emnase, John Andrew
+                - cell "5" [ref=e167]
+                - cell "40.0h" [ref=e168]
+                - cell "—" [ref=e169]
+                - cell "—" [ref=e170]
+                - cell "—" [ref=e171]
+              - row "Emnase, Reyniel 5 40.0h — — —" [ref=e172]:
+                - cell "Emnase, Reyniel" [ref=e173]:
+                  - generic [ref=e174]: Emnase, Reyniel
+                - cell "5" [ref=e175]
+                - cell "40.0h" [ref=e176]
+                - cell "—" [ref=e177]
+                - cell "—" [ref=e178]
+                - cell "—" [ref=e179]
+              - row "Espanola, Ailyn 5 40.0h — — —" [ref=e180]:
+                - cell "Espanola, Ailyn" [ref=e181]:
+                  - generic [ref=e182]: Espanola, Ailyn
+                - cell "5" [ref=e183]
+                - cell "40.0h" [ref=e184]
+                - cell "—" [ref=e185]
+                - cell "—" [ref=e186]
+                - cell "—" [ref=e187]
+              - row "Ocampo, Jane 5 40.0h — — —" [ref=e188]:
+                - cell "Ocampo, Jane" [ref=e189]:
+                  - generic [ref=e190]: Ocampo, Jane
+                - cell "5" [ref=e191]
+                - cell "40.0h" [ref=e192]
+                - cell "—" [ref=e193]
+                - cell "—" [ref=e194]
+                - cell "—" [ref=e195]
+              - row "Sale, Jay Lloyd 5 40.0h — — —" [ref=e196]:
+                - cell "Sale, Jay Lloyd" [ref=e197]:
+                  - generic [ref=e198]: Sale, Jay Lloyd
+                - cell "5" [ref=e199]
+                - cell "40.0h" [ref=e200]
+                - cell "—" [ref=e201]
+                - cell "—" [ref=e202]
+                - cell "—" [ref=e203]
+              - row "Veloso, Angela Luz 5 40.0h 2.0h R OT ₱459.77" [ref=e204]:
+                - cell "Veloso, Angela Luz" [ref=e205]:
+                  - generic [ref=e206]: Veloso, Angela Luz
+                - cell "5" [ref=e207]
+                - cell "40.0h" [ref=e208]
+                - cell "2.0h" [ref=e209]
+                - cell "R OT" [ref=e210]:
+                  - generic [ref=e212]: R OT
+                - cell "₱459.77" [ref=e214]
+        - generic [ref=e215]:
+          - generic [ref=e217]:
+            - generic [ref=e218]: Gross pay
+            - generic [ref=e219]: ₱0.00
+          - generic [ref=e221]:
+            - generic [ref=e222]: Net pay
+            - generic [ref=e223]: ₱0.00
+          - generic [ref=e225]:
+            - generic [ref=e226]: De Minimis
+            - generic [ref=e227]: ₱0.00
+          - generic [ref=e229]:
+            - generic [ref=e230]: WHT (BIR)
+            - generic [ref=e231]: ₱0.00
+          - generic [ref=e233]:
+            - generic [ref=e234]: SSS EE
+            - generic [ref=e235]: ₱0.00
+          - generic [ref=e237]:
+            - generic [ref=e238]: PHIC EE
+            - generic [ref=e239]: ₱0.00
+          - generic [ref=e241]:
+            - generic [ref=e242]: HDMF EE
+            - generic [ref=e243]: ₱0.00
+        - generic [ref=e245]:
+          - img [ref=e247]
+          - paragraph [ref=e250]: No payroll computed yet
+          - paragraph [ref=e251]:
+            - text: Click
+            - strong [ref=e252]: Run payroll
+            - text: to compute this cutoff.
+        - generic [ref=e253]:
+          - heading "Employer counterpart (this cutoff)" [level=3] [ref=e255]
+          - generic [ref=e256]:
+            - generic [ref=e257]:
+              - generic [ref=e258]: SSS (employer)
+              - generic [ref=e259]: ₱0.00
+            - generic [ref=e260]:
+              - generic [ref=e261]: PhilHealth (employer)
+              - generic [ref=e262]: ₱0.00
+            - generic [ref=e263]:
+              - generic [ref=e264]: Pag-IBIG (employer)
+              - generic [ref=e265]: ₱0.00
+        - paragraph [ref=e266]: Computed using TRAIN Law (BIR RR 11-2018), SSS 2025 schedule (RA 11199), PhilHealth 5% (RA 11223), HDMF 2%/2% (Circular 460).
+  - region "Notifications alt+T"
+  - alert [ref=e267]

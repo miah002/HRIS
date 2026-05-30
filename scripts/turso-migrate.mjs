@@ -88,9 +88,53 @@ async function main() {
   await addColumnIfMissing("LeaveRequest", "approvedBy", "TEXT");
   await addColumnIfMissing("LeaveRequest", "approvedAt", "DATETIME");
 
-  // OTApproval table
+  // OTApproval table — preparedBy/checkedBy/approvedBy are nullable (no hardcoded defaults)
   if (await tableExists("OTApproval")) {
-    console.log("  skip OTApproval table (exists)");
+    // Fix: if old table has hardcoded NOT NULL defaults on workflow fields, recreate it
+    const otaCols = await db.execute(`PRAGMA table_info("OTApproval")`);
+    const preparedByCol = otaCols.rows.find(r => r.name === "preparedBy");
+    if (preparedByCol && preparedByCol.notnull === 1) {
+      console.log("  OTApproval: fixing hardcoded name defaults → nullable...");
+      const existing = await db.execute(`SELECT * FROM "OTApproval"`);
+      await db.execute(`DROP TABLE "OTApproval"`);
+      await db.execute(`
+        CREATE TABLE "OTApproval" (
+          "id"          TEXT NOT NULL PRIMARY KEY,
+          "companyId"   TEXT NOT NULL,
+          "periodStart" DATETIME NOT NULL,
+          "periodEnd"   DATETIME NOT NULL,
+          "status"      TEXT NOT NULL DEFAULT 'PENDING',
+          "preparedBy"  TEXT,
+          "preparedAt"  DATETIME,
+          "checkedBy"   TEXT,
+          "checkedAt"   DATETIME,
+          "approvedBy"  TEXT,
+          "approvedAt"  DATETIME,
+          "notes"       TEXT,
+          "createdAt"   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT "OTApproval_companyId_fkey"
+            FOREIGN KEY ("companyId") REFERENCES "Company" ("id")
+            ON DELETE RESTRICT ON UPDATE CASCADE
+        )
+      `);
+      await db.execute(`
+        CREATE UNIQUE INDEX "OTApproval_companyId_periodStart_periodEnd_key"
+          ON "OTApproval" ("companyId", "periodStart", "periodEnd")
+      `);
+      for (const row of existing.rows) {
+        await db.execute(
+          `INSERT INTO "OTApproval" VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [row.id, row.companyId, row.periodStart, row.periodEnd, row.status,
+           row.preparedBy || null, row.preparedAt || null,
+           row.checkedBy || null, row.checkedAt || null,
+           row.approvedBy || null, row.approvedAt || null,
+           row.notes || null, row.createdAt]
+        );
+      }
+      console.log(`  OTApproval: recreated with nullable fields (${existing.rows.length} rows preserved)`);
+    } else {
+      console.log("  skip OTApproval table (already correct)");
+    }
   } else {
     await db.execute(`
       CREATE TABLE "OTApproval" (
@@ -99,11 +143,11 @@ async function main() {
         "periodStart" DATETIME NOT NULL,
         "periodEnd"   DATETIME NOT NULL,
         "status"      TEXT NOT NULL DEFAULT 'PENDING',
-        "preparedBy"  TEXT NOT NULL DEFAULT 'Ailyn',
+        "preparedBy"  TEXT,
         "preparedAt"  DATETIME,
-        "checkedBy"   TEXT NOT NULL DEFAULT 'Angela',
+        "checkedBy"   TEXT,
         "checkedAt"   DATETIME,
-        "approvedBy"  TEXT NOT NULL DEFAULT 'Louie',
+        "approvedBy"  TEXT,
         "approvedAt"  DATETIME,
         "notes"       TEXT,
         "createdAt"   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -118,6 +162,15 @@ async function main() {
     `);
     console.log("  created OTApproval table");
   }
+
+  // Performance indexes (idempotent — IF NOT EXISTS)
+  await db.execute(`CREATE INDEX IF NOT EXISTS "idx_leave_emp_status" ON "LeaveRequest"("employeeId","status")`);
+  await db.execute(`CREATE INDEX IF NOT EXISTS "idx_leave_period" ON "LeaveRequest"("employeeId","startDate","endDate")`);
+  await db.execute(`CREATE INDEX IF NOT EXISTS "idx_loan_emp_status" ON "Loan"("employeeId","status")`);
+  await db.execute(`CREATE INDEX IF NOT EXISTS "idx_employee_company" ON "Employee"("companyId","archived")`);
+  await db.execute(`CREATE INDEX IF NOT EXISTS "idx_payroll_period" ON "Payroll"("periodStart","periodEnd")`);
+  await db.execute(`CREATE INDEX IF NOT EXISTS "idx_attendance_emp" ON "Attendance"("employeeId")`);
+  console.log("  performance indexes ensured");
 
   // EmergencyContact table
   if (!(await tableExists("EmergencyContact"))) {

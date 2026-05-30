@@ -122,11 +122,13 @@ async function runPayroll(formData: FormData) {
       if (ndHrs > 0) nightDiffPayIn += Math.round(ndHrs * hr * 0.10 * 100) / 100;
 
       // Compute late / undertime only for present days
+      // timeIn is stored as UTC midnight of the PH work date (date + clock offset).
+      // getUTCHours/getUTCMinutes read the stored clock time correctly regardless of server TZ.
       if (row.hoursWorked > 0) {
         let rowLate = 0;
         if (row.timeIn) {
           const t = new Date(row.timeIn);
-          const tinMin = t.getHours() * 60 + t.getMinutes();
+          const tinMin = t.getUTCHours() * 60 + t.getUTCMinutes();
           rowLate = Math.max(0, tinMin - SCHEDULE_START_MIN - GRACE_MINUTES);
         }
         totalLateMinutes += rowLate;

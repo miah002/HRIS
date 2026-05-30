@@ -1,0 +1,440 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - link "MMTSI MMTSI" [ref=e5] [cursor=pointer]:
+          - /url: /dashboard
+          - img "MMTSI" [ref=e6]
+          - generic [ref=e7]: MMTSI
+        - generic [ref=e8]:
+          - button "Toggle theme" [ref=e9] [cursor=pointer]:
+            - img [ref=e10]
+          - button "Collapse" [ref=e12] [cursor=pointer]:
+            - img [ref=e13]
+      - navigation [ref=e15]:
+        - link "Dashboard Overview" [ref=e16] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e17]
+          - generic [ref=e22]:
+            - generic [ref=e23]: Dashboard
+            - generic [ref=e24]: Overview
+        - link "Employees Mga Empleyado" [ref=e25] [cursor=pointer]:
+          - /url: /employees
+          - img [ref=e26]
+          - generic [ref=e31]:
+            - generic [ref=e32]: Employees
+            - generic [ref=e33]: Mga Empleyado
+        - link "Attendance DTR" [ref=e34] [cursor=pointer]:
+          - /url: /attendance
+          - img [ref=e35]
+          - generic [ref=e38]:
+            - generic [ref=e39]: Attendance
+            - generic [ref=e40]: DTR
+        - link "Payroll" [ref=e41] [cursor=pointer]:
+          - /url: /payroll
+          - img [ref=e44]
+          - generic [ref=e48]: Payroll
+        - link "OT Approval Prepare · Check · Approve" [ref=e49] [cursor=pointer]:
+          - /url: /ot-approval
+          - img [ref=e50]
+          - generic [ref=e54]:
+            - generic [ref=e55]: OT Approval
+            - generic [ref=e56]: Prepare · Check · Approve
+        - link "Leave Bakasyon" [ref=e57] [cursor=pointer]:
+          - /url: /leave
+          - img [ref=e58]
+          - generic [ref=e61]:
+            - generic [ref=e62]: Leave
+            - generic [ref=e63]: Bakasyon
+        - link "Loans Salary loans" [ref=e64] [cursor=pointer]:
+          - /url: /loans
+          - img [ref=e65]
+          - generic [ref=e67]:
+            - generic [ref=e68]: Loans
+            - generic [ref=e69]: Salary loans
+        - link "Compliance DOLE/BIR" [ref=e70] [cursor=pointer]:
+          - /url: /compliance
+          - img [ref=e71]
+          - generic [ref=e74]:
+            - generic [ref=e75]: Compliance
+            - generic [ref=e76]: DOLE/BIR
+        - link "Reports Analytics" [ref=e77] [cursor=pointer]:
+          - /url: /reports
+          - img [ref=e78]
+          - generic [ref=e80]:
+            - generic [ref=e81]: Reports
+            - generic [ref=e82]: Analytics
+        - link "Settings Roles & access" [ref=e83] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e84]
+          - generic [ref=e87]:
+            - generic [ref=e88]: Settings
+            - generic [ref=e89]: Roles & access
+      - generic [ref=e91]:
+        - generic "Admin" [ref=e92]: A
+        - generic [ref=e93]:
+          - generic [ref=e94]: Admin
+          - generic [ref=e95]: Owner
+        - link "Sign out" [ref=e96] [cursor=pointer]:
+          - /url: /api/auth/signout
+          - img [ref=e97]
+    - main [ref=e100]:
+      - generic [ref=e408]:
+        - generic [ref=e409]:
+          - generic [ref=e410]:
+            - generic [ref=e411]:
+              - img [ref=e412]
+              - heading "Payroll" [level=1] [ref=e415]
+            - paragraph [ref=e416]: Current cutoff 26–10 · May 26, 2026 – Jun 10, 2026
+          - generic [ref=e417]:
+            - 'link "OT: no record" [ref=e418] [cursor=pointer]':
+              - /url: /ot-approval
+              - img [ref=e419]
+              - generic [ref=e423]: "OT: no record"
+            - button "Re-run payroll" [ref=e425] [cursor=pointer]:
+              - img [ref=e426]
+              - text: Re-run payroll
+            - button "Export" [ref=e429] [cursor=pointer]:
+              - img [ref=e430]
+              - text: Export
+        - generic [ref=e433]:
+          - heading "Attendance summary — 26–10" [level=3] [ref=e435]:
+            - img [ref=e436]
+            - text: Attendance summary — 26–10
+          - generic [ref=e439]:
+            - img [ref=e440]
+            - generic [ref=e444]:
+              - text: "OT pay not counted — approval status:"
+              - strong [ref=e445]: no record
+              - text: .
+              - link "Approve OT" [ref=e446] [cursor=pointer]:
+                - /url: /ot-approval
+              - text: to include in payroll.
+          - table [ref=e449]:
+            - rowgroup [ref=e450]:
+              - row "Employee Days Reg hrs OT hrs Rate codes Est. OT pay not counted" [ref=e451]:
+                - columnheader "Employee" [ref=e452]:
+                  - generic [ref=e453]: Employee
+                - columnheader "Days" [ref=e454]:
+                  - generic [ref=e455]: Days
+                - columnheader "Reg hrs" [ref=e456]:
+                  - generic [ref=e457]: Reg hrs
+                - columnheader "OT hrs" [ref=e458]:
+                  - generic [ref=e459]: OT hrs
+                - columnheader "Rate codes" [ref=e460]:
+                  - generic [ref=e461]: Rate codes
+                - columnheader "Est. OT pay not counted" [ref=e462]:
+                  - generic [ref=e463]:
+                    - text: Est. OT pay
+                    - generic [ref=e464]: not counted
+            - rowgroup [ref=e465]:
+              - row "Castillo, Louie 5 40.0h — — —" [ref=e466]:
+                - cell "Castillo, Louie" [ref=e467]:
+                  - generic [ref=e468]: Castillo, Louie
+                - cell "5" [ref=e469]
+                - cell "40.0h" [ref=e470]
+                - cell "—" [ref=e471]
+                - cell "—" [ref=e472]
+                - cell "—" [ref=e473]
+              - row "Domingo, Ella Queenly 5 40.0h — — —" [ref=e474]:
+                - cell "Domingo, Ella Queenly" [ref=e475]:
+                  - generic [ref=e476]: Domingo, Ella Queenly
+                - cell "5" [ref=e477]
+                - cell "40.0h" [ref=e478]
+                - cell "—" [ref=e479]
+                - cell "—" [ref=e480]
+                - cell "—" [ref=e481]
+              - row "Emnase, John Andrew 5 40.0h — — —" [ref=e482]:
+                - cell "Emnase, John Andrew" [ref=e483]:
+                  - generic [ref=e484]: Emnase, John Andrew
+                - cell "5" [ref=e485]
+                - cell "40.0h" [ref=e486]
+                - cell "—" [ref=e487]
+                - cell "—" [ref=e488]
+                - cell "—" [ref=e489]
+              - row "Emnase, Reyniel 5 40.0h — — —" [ref=e490]:
+                - cell "Emnase, Reyniel" [ref=e491]:
+                  - generic [ref=e492]: Emnase, Reyniel
+                - cell "5" [ref=e493]
+                - cell "40.0h" [ref=e494]
+                - cell "—" [ref=e495]
+                - cell "—" [ref=e496]
+                - cell "—" [ref=e497]
+              - row "Espanola, Ailyn 5 40.0h — — —" [ref=e498]:
+                - cell "Espanola, Ailyn" [ref=e499]:
+                  - generic [ref=e500]: Espanola, Ailyn
+                - cell "5" [ref=e501]
+                - cell "40.0h" [ref=e502]
+                - cell "—" [ref=e503]
+                - cell "—" [ref=e504]
+                - cell "—" [ref=e505]
+              - row "Ocampo, Jane 5 40.0h — — —" [ref=e506]:
+                - cell "Ocampo, Jane" [ref=e507]:
+                  - generic [ref=e508]: Ocampo, Jane
+                - cell "5" [ref=e509]
+                - cell "40.0h" [ref=e510]
+                - cell "—" [ref=e511]
+                - cell "—" [ref=e512]
+                - cell "—" [ref=e513]
+              - row "Sale, Jay Lloyd 5 40.0h — — —" [ref=e514]:
+                - cell "Sale, Jay Lloyd" [ref=e515]:
+                  - generic [ref=e516]: Sale, Jay Lloyd
+                - cell "5" [ref=e517]
+                - cell "40.0h" [ref=e518]
+                - cell "—" [ref=e519]
+                - cell "—" [ref=e520]
+                - cell "—" [ref=e521]
+              - row "Veloso, Angela Luz 5 40.0h 2.0h R OT ₱459.77" [ref=e522]:
+                - cell "Veloso, Angela Luz" [ref=e523]:
+                  - generic [ref=e524]: Veloso, Angela Luz
+                - cell "5" [ref=e525]
+                - cell "40.0h" [ref=e526]
+                - cell "2.0h" [ref=e527]
+                - cell "R OT" [ref=e528]:
+                  - generic [ref=e530]: R OT
+                - cell "₱459.77" [ref=e532]
+        - generic [ref=e533]:
+          - generic [ref=e535]:
+            - generic [ref=e536]: Gross pay
+            - generic [ref=e537]: ₱101,000.00
+          - generic [ref=e539]:
+            - generic [ref=e540]: Net pay
+            - generic [ref=e541]: ₱86,948.60
+          - generic [ref=e543]:
+            - generic [ref=e544]: De Minimis
+            - generic [ref=e545]: ₱0.00
+          - generic [ref=e547]:
+            - generic [ref=e548]: WHT (BIR)
+            - generic [ref=e549]: ₱3,931.23
+          - generic [ref=e551]:
+            - generic [ref=e552]: SSS EE
+            - generic [ref=e553]: ₱7,965.00
+          - generic [ref=e555]:
+            - generic [ref=e556]: PHIC EE
+            - generic [ref=e557]: ₱0.00
+          - generic [ref=e559]:
+            - generic [ref=e560]: HDMF EE
+            - generic [ref=e561]: ₱0.00
+        - table [ref=e565]:
+          - rowgroup [ref=e566]:
+            - row "Employee Gross SSS PHIC HDMF WHT Absences Net pay" [ref=e567]:
+              - columnheader "Employee" [ref=e568]:
+                - generic [ref=e569]: Employee
+              - columnheader "Gross" [ref=e570]:
+                - generic [ref=e571]: Gross
+              - columnheader "SSS" [ref=e572]:
+                - generic [ref=e573]: SSS
+              - columnheader "PHIC" [ref=e574]:
+                - generic [ref=e575]: PHIC
+              - columnheader "HDMF" [ref=e576]:
+                - generic [ref=e577]: HDMF
+              - columnheader "WHT" [ref=e578]:
+                - generic [ref=e579]: WHT
+              - columnheader "Absences" [ref=e580]:
+                - generic [ref=e581]: Absences
+              - columnheader "Net pay" [ref=e582]:
+                - generic [ref=e583]: Net pay
+              - columnheader [ref=e584]
+          - rowgroup [ref=e585]:
+            - row "Louie Castillo Castillo, Louie MMTSI2019-002 ₱30,000.00 ₱1,575.00 ₱0.00 ₱0.00 ₱3,276.70 — ₱25,148.30 DRAFT Payslip" [ref=e586]:
+              - cell "Louie Castillo Castillo, Louie MMTSI2019-002" [ref=e587]:
+                - link "Louie Castillo Castillo, Louie MMTSI2019-002" [ref=e588] [cursor=pointer]:
+                  - /url: /employees/cmpip3upr000d70t7x3tj3x5c
+                  - generic "Louie Castillo" [ref=e589]: LC
+                  - generic [ref=e590]:
+                    - generic [ref=e591]: Castillo, Louie
+                    - generic [ref=e592]: MMTSI2019-002
+              - cell "₱30,000.00" [ref=e593]
+              - cell "₱1,575.00" [ref=e594]
+              - cell "₱0.00" [ref=e595]
+              - cell "₱0.00" [ref=e596]
+              - cell "₱3,276.70" [ref=e597]
+              - cell "—" [ref=e598]
+              - cell "₱25,148.30" [ref=e599]
+              - cell "DRAFT Payslip" [ref=e600]:
+                - generic [ref=e601]:
+                  - generic [ref=e602]: DRAFT
+                  - link "Payslip" [ref=e604] [cursor=pointer]:
+                    - /url: /payroll/cmpshf1ap00037saqn0wjda65
+                    - img [ref=e605]
+                    - text: Payslip
+            - row "Ella Queenly Domingo Domingo, Ella Queenly MMTSI2022-006 ₱10,000.00 ₱900.00 ₱0.00 ₱0.00 ₱0.00 — ₱9,100.00 DRAFT Payslip" [ref=e608]:
+              - cell "Ella Queenly Domingo Domingo, Ella Queenly MMTSI2022-006" [ref=e609]:
+                - link "Ella Queenly Domingo Domingo, Ella Queenly MMTSI2022-006" [ref=e610] [cursor=pointer]:
+                  - /url: /employees/cmpip3vk6000x70t7sekepav9
+                  - generic "Ella Queenly Domingo" [ref=e611]: EQ
+                  - generic [ref=e612]:
+                    - generic [ref=e613]: Domingo, Ella Queenly
+                    - generic [ref=e614]: MMTSI2022-006
+              - cell "₱10,000.00" [ref=e615]
+              - cell "₱900.00" [ref=e616]
+              - cell "₱0.00" [ref=e617]
+              - cell "₱0.00" [ref=e618]
+              - cell "₱0.00" [ref=e619]
+              - cell "—" [ref=e620]
+              - cell "₱9,100.00" [ref=e621]
+              - cell "DRAFT Payslip" [ref=e622]:
+                - generic [ref=e623]:
+                  - generic [ref=e624]: DRAFT
+                  - link "Payslip" [ref=e626] [cursor=pointer]:
+                    - /url: /payroll/cmpshf2jl00077saq67elwi2q
+                    - img [ref=e627]
+                    - text: Payslip
+            - row "John Andrew Emnase Emnase, John Andrew MMTSI2021-004 ₱10,000.00 ₱900.00 ₱0.00 ₱0.00 ₱0.00 — ₱9,100.00 DRAFT Payslip" [ref=e630]:
+              - cell "John Andrew Emnase Emnase, John Andrew MMTSI2021-004" [ref=e631]:
+                - link "John Andrew Emnase Emnase, John Andrew MMTSI2021-004" [ref=e632] [cursor=pointer]:
+                  - /url: /employees/cmpip3ua8000370t70hrupi7q
+                  - generic "John Andrew Emnase" [ref=e633]: JA
+                  - generic [ref=e634]:
+                    - generic [ref=e635]: Emnase, John Andrew
+                    - generic [ref=e636]: MMTSI2021-004
+              - cell "₱10,000.00" [ref=e637]
+              - cell "₱900.00" [ref=e638]
+              - cell "₱0.00" [ref=e639]
+              - cell "₱0.00" [ref=e640]
+              - cell "₱0.00" [ref=e641]
+              - cell "—" [ref=e642]
+              - cell "₱9,100.00" [ref=e643]
+              - cell "DRAFT Payslip" [ref=e644]:
+                - generic [ref=e645]:
+                  - generic [ref=e646]: DRAFT
+                  - link "Payslip" [ref=e648] [cursor=pointer]:
+                    - /url: /payroll/cmpshf0mg00017saqn3yle4a9
+                    - img [ref=e649]
+                    - text: Payslip
+            - row "Reyniel Emnase Emnase, Reyniel MMTSI2024-012 ₱6,000.00 ₱540.00 ₱0.00 ₱0.00 ₱0.00 −₱1,655.17 ₱3,804.83 DRAFT Payslip" [ref=e652]:
+              - cell "Reyniel Emnase Emnase, Reyniel MMTSI2024-012" [ref=e653]:
+                - link "Reyniel Emnase Emnase, Reyniel MMTSI2024-012" [ref=e654] [cursor=pointer]:
+                  - /url: /employees/cmpip3wt6001r70t7qdnalbj7
+                  - generic "Reyniel Emnase" [ref=e655]: RE
+                  - generic [ref=e656]:
+                    - generic [ref=e657]: Emnase, Reyniel
+                    - generic [ref=e658]: MMTSI2024-012
+              - cell "₱6,000.00" [ref=e659]
+              - cell "₱540.00" [ref=e660]
+              - cell "₱0.00" [ref=e661]
+              - cell "₱0.00" [ref=e662]
+              - cell "₱0.00" [ref=e663]
+              - cell "−₱1,655.17" [ref=e664]
+              - cell "₱3,804.83" [ref=e665]
+              - cell "DRAFT Payslip" [ref=e666]:
+                - generic [ref=e667]:
+                  - generic [ref=e668]: DRAFT
+                  - link "Payslip" [ref=e670] [cursor=pointer]:
+                    - /url: /payroll/cmpshf4hp000d7saqhiq1kqcr
+                    - img [ref=e671]
+                    - text: Payslip
+            - row "Ailyn Espanola Espanola, Ailyn MMTSI2023-010 ₱9,000.00 ₱810.00 ₱0.00 ₱0.00 ₱0.00 — ₱8,190.00 DRAFT Payslip" [ref=e674]:
+              - cell "Ailyn Espanola Espanola, Ailyn MMTSI2023-010" [ref=e675]:
+                - link "Ailyn Espanola Espanola, Ailyn MMTSI2023-010" [ref=e676] [cursor=pointer]:
+                  - /url: /employees/cmpip3vzc001770t71tqg9e14
+                  - generic "Ailyn Espanola" [ref=e677]: AE
+                  - generic [ref=e678]:
+                    - generic [ref=e679]: Espanola, Ailyn
+                    - generic [ref=e680]: MMTSI2023-010
+              - cell "₱9,000.00" [ref=e681]
+              - cell "₱810.00" [ref=e682]
+              - cell "₱0.00" [ref=e683]
+              - cell "₱0.00" [ref=e684]
+              - cell "₱0.00" [ref=e685]
+              - cell "—" [ref=e686]
+              - cell "₱8,190.00" [ref=e687]
+              - cell "DRAFT Payslip" [ref=e688]:
+                - generic [ref=e689]:
+                  - generic [ref=e690]: DRAFT
+                  - link "Payslip" [ref=e692] [cursor=pointer]:
+                    - /url: /payroll/cmpshf37500097saqfgy6goyh
+                    - img [ref=e693]
+                    - text: Payslip
+            - row "Jane Ocampo Ocampo, Jane MMTSI2025-013 ₱11,000.00 ₱990.00 ₱0.00 ₱0.00 ₱0.00 — ₱10,010.00 DRAFT Payslip" [ref=e696]:
+              - cell "Jane Ocampo Ocampo, Jane MMTSI2025-013" [ref=e697]:
+                - link "Jane Ocampo Ocampo, Jane MMTSI2025-013" [ref=e698] [cursor=pointer]:
+                  - /url: /employees/cmpip3x7l002170t7qu3eucd7
+                  - generic "Jane Ocampo" [ref=e699]: JO
+                  - generic [ref=e700]:
+                    - generic [ref=e701]: Ocampo, Jane
+                    - generic [ref=e702]: MMTSI2025-013
+              - cell "₱11,000.00" [ref=e703]
+              - cell "₱990.00" [ref=e704]
+              - cell "₱0.00" [ref=e705]
+              - cell "₱0.00" [ref=e706]
+              - cell "₱0.00" [ref=e707]
+              - cell "—" [ref=e708]
+              - cell "₱10,010.00" [ref=e709]
+              - cell "DRAFT Payslip" [ref=e710]:
+                - generic [ref=e711]:
+                  - generic [ref=e712]: DRAFT
+                  - link "Payslip" [ref=e714] [cursor=pointer]:
+                    - /url: /payroll/cmpshf55e000f7saqy1klhshe
+                    - img [ref=e715]
+                    - text: Payslip
+            - row "Jay Lloyd Sale Sale, Jay Lloyd MMTSI2023-011 ₱9,000.00 ₱810.00 ₱0.00 ₱0.00 ₱0.00 — ₱7,690.00 DRAFT Payslip" [ref=e718]:
+              - cell "Jay Lloyd Sale Sale, Jay Lloyd MMTSI2023-011" [ref=e719]:
+                - link "Jay Lloyd Sale Sale, Jay Lloyd MMTSI2023-011" [ref=e720] [cursor=pointer]:
+                  - /url: /employees/cmpip3wec001h70t7sitaqilj
+                  - generic "Jay Lloyd Sale" [ref=e721]: JL
+                  - generic [ref=e722]:
+                    - generic [ref=e723]: Sale, Jay Lloyd
+                    - generic [ref=e724]: MMTSI2023-011
+              - cell "₱9,000.00" [ref=e725]
+              - cell "₱810.00" [ref=e726]
+              - cell "₱0.00" [ref=e727]
+              - cell "₱0.00" [ref=e728]
+              - cell "₱0.00" [ref=e729]
+              - cell "—" [ref=e730]
+              - cell "₱7,690.00" [ref=e731]
+              - cell "DRAFT Payslip" [ref=e732]:
+                - generic [ref=e733]:
+                  - generic [ref=e734]: DRAFT
+                  - link "Payslip" [ref=e736] [cursor=pointer]:
+                    - /url: /payroll/cmpshf3uc000b7saq7gdfr9ix
+                    - img [ref=e737]
+                    - text: Payslip
+            - row "Angela Luz Veloso Veloso, Angela Luz MMTSI2019-003 ₱16,000.00 ₱1,440.00 ₱0.00 ₱0.00 ₱654.53 — ₱13,905.47 DRAFT Payslip" [ref=e740]:
+              - cell "Angela Luz Veloso Veloso, Angela Luz MMTSI2019-003" [ref=e741]:
+                - link "Angela Luz Veloso Veloso, Angela Luz MMTSI2019-003" [ref=e742] [cursor=pointer]:
+                  - /url: /employees/cmpip3v5j000n70t7ln0foqpw
+                  - generic "Angela Luz Veloso" [ref=e743]: AL
+                  - generic [ref=e744]:
+                    - generic [ref=e745]: Veloso, Angela Luz
+                    - generic [ref=e746]: MMTSI2019-003
+              - cell "₱16,000.00" [ref=e747]
+              - cell "₱1,440.00" [ref=e748]
+              - cell "₱0.00" [ref=e749]
+              - cell "₱0.00" [ref=e750]
+              - cell "₱654.53" [ref=e751]
+              - cell "—" [ref=e752]
+              - cell "₱13,905.47" [ref=e753]
+              - cell "DRAFT Payslip" [ref=e754]:
+                - generic [ref=e755]:
+                  - generic [ref=e756]: DRAFT
+                  - link "Payslip" [ref=e758] [cursor=pointer]:
+                    - /url: /payroll/cmpshf1we00057saq6us2w51h
+                    - img [ref=e759]
+                    - text: Payslip
+          - rowgroup [ref=e762]:
+            - row "Totals ₱101,000.00 ₱7,965.00 ₱0.00 ₱0.00 ₱3,931.23 −₱1,655.17 ₱86,948.60" [ref=e763]:
+              - cell "Totals" [ref=e764]
+              - cell "₱101,000.00" [ref=e765]
+              - cell "₱7,965.00" [ref=e766]
+              - cell "₱0.00" [ref=e767]
+              - cell "₱0.00" [ref=e768]
+              - cell "₱3,931.23" [ref=e769]
+              - cell "−₱1,655.17" [ref=e770]
+              - cell "₱86,948.60" [ref=e771]
+              - cell [ref=e772]
+        - generic [ref=e773]:
+          - heading "Employer counterpart (this cutoff)" [level=3] [ref=e775]
+          - generic [ref=e776]:
+            - generic [ref=e777]:
+              - generic [ref=e778]: SSS (employer)
+              - generic [ref=e779]: ₱17,700.00
+            - generic [ref=e780]:
+              - generic [ref=e781]: PhilHealth (employer)
+              - generic [ref=e782]: ₱0.00
+            - generic [ref=e783]:
+              - generic [ref=e784]: Pag-IBIG (employer)
+              - generic [ref=e785]: ₱0.00
+        - paragraph [ref=e786]: Computed using TRAIN Law (BIR RR 11-2018), SSS 2025 schedule (RA 11199), PhilHealth 5% (RA 11223), HDMF 2%/2% (Circular 460).
+  - region "Notifications alt+T"
+  - alert [ref=e238]

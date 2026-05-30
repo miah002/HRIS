@@ -70,12 +70,13 @@ function toIso(val) {
   // Excel serial number
   if (typeof val === "number") {
     const d = utils.numToDate ? utils.numToDate(val) : new Date((val - 25569) * 86400 * 1000);
-    return d.toISOString().replace(/T.*/, "T00:00:00.000Z");
+    return d.toISOString().slice(0, 10).replace(/(\d{4}-\d{2}-\d{2})/, "$1T00:00:00+00:00");
   }
   // String like "2026-01-11" or "01/11/2026"
   const s = String(val).trim();
   const iso = s.match(/^\d{4}-\d{2}-\d{2}$/) ? s : new Date(s).toISOString().slice(0, 10);
-  return `${iso}T00:00:00.000Z`;
+  // Use +00:00 format to match Prisma/libSQL serialization (not .000Z — different string in SQLite)
+  return `${iso}T00:00:00+00:00`;
 }
 
 // ── load Excel ────────────────────────────────────────────────────────────────

@@ -274,11 +274,11 @@ model OTApproval {
   periodStart DateTime
   periodEnd   DateTime
   status      String    @default("PENDING") // PENDING | PREPARED | CHECKED | APPROVED
-  preparedBy  String    @default("Ailyn")
+  preparedBy  String?
   preparedAt  DateTime?
-  checkedBy   String    @default("Angela")
+  checkedBy   String?
   checkedAt   DateTime?
-  approvedBy  String    @default("Louie")
+  approvedBy  String?
   approvedAt  DateTime?
   notes       String?
   createdAt   DateTime  @default(now())

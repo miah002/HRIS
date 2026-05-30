@@ -321,8 +321,9 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
       hdmfEE: a.hdmfEE + p.pagIbigEE,   hdmfER: a.hdmfER + p.pagIbigER,
       wht: a.wht + p.withholdingTax,
       deminimis: a.deminimis + p.nonTaxableAdjustments,
+      absences: a.absences + p.absenceDeduction,
     }),
-    { gross: 0, net: 0, sssEE: 0, sssER: 0, phicEE: 0, phicER: 0, hdmfEE: 0, hdmfER: 0, wht: 0, deminimis: 0 }
+    { gross: 0, net: 0, sssEE: 0, sssER: 0, phicEE: 0, phicER: 0, hdmfEE: 0, hdmfER: 0, wht: 0, deminimis: 0, absences: 0 }
   );
 
   return (
@@ -508,6 +509,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
                   <Th numeric>PHIC</Th>
                   <Th numeric>HDMF</Th>
                   <Th numeric>WHT</Th>
+                  <Th numeric>Absences</Th>
                   <Th numeric>Net pay</Th>
                   <Th></Th>
                 </TableRow>
@@ -531,6 +533,9 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
                     <Td numeric className="text-[var(--text-secondary)]">{php(p.philHealthEE)}</Td>
                     <Td numeric className="text-[var(--text-secondary)]">{php(p.pagIbigEE)}</Td>
                     <Td numeric className="text-[var(--text-secondary)]">{php(p.withholdingTax)}</Td>
+                    <Td numeric className="text-[var(--error)]">
+                      {p.absenceDeduction > 0 ? `−${php(p.absenceDeduction)}` : <span className="text-[var(--text-tertiary)]">—</span>}
+                    </Td>
                     <Td numeric className="font-semibold">{php(p.netPay)}</Td>
                     <Td>
                       <div className="flex items-center gap-2 flex-wrap">
@@ -554,6 +559,9 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
                   <Td numeric>{php(T.phicEE)}</Td>
                   <Td numeric>{php(T.hdmfEE)}</Td>
                   <Td numeric>{php(T.wht)}</Td>
+                  <Td numeric className="text-[var(--error)]">
+                    {T.absences > 0 ? `−${php(T.absences)}` : "—"}
+                  </Td>
                   <Td numeric className="font-semibold">{php(T.net)}</Td>
                   <Td></Td>
                 </TableRow>

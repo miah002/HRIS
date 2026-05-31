@@ -34,8 +34,7 @@
  */
 
 import { createClient } from "@libsql/client";
-import { readFileSync } from "fs";
-import { read, utils } from "xlsx";
+import ExcelJS from "exceljs";
 import { randomUUID } from "crypto";
 
 const filePath = process.argv[2];
@@ -67,12 +66,17 @@ function n(row, col, def = 0) {
 
 function toIso(val) {
   if (!val) throw new Error("Missing date value");
-  // Excel serial number — use UTC epoch offset to avoid local-TZ off-by-one on UTC+8 servers
+  // ExcelJS returns JS Date for date cells — use UTC parts to avoid local-TZ off-by-one
+  if (val instanceof Date) {
+    const yyyy = val.getUTCFullYear();
+    const mm   = String(val.getUTCMonth() + 1).padStart(2, "0");
+    const dd   = String(val.getUTCDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}T00:00:00+00:00`;
+  }
+  // Excel serial number fallback (shouldn't occur with ExcelJS but keep for safety)
   if (typeof val === "number") {
-    // (val - 25569) converts Excel serial to days since 1970-01-01 UTC; multiply by ms/day
     const utcMs = (val - 25569) * 86400 * 1000;
     const d = new Date(utcMs);
-    // Extract UTC date parts directly — never use getFullYear/getMonth (local TZ)
     const yyyy = d.getUTCFullYear();
     const mm   = String(d.getUTCMonth() + 1).padStart(2, "0");
     const dd   = String(d.getUTCDate()).padStart(2, "0");
@@ -81,15 +85,40 @@ function toIso(val) {
   // String like "2026-01-11" or "01/11/2026"
   const s = String(val).trim();
   const iso = s.match(/^\d{4}-\d{2}-\d{2}$/) ? s : new Date(s).toISOString().slice(0, 10);
-  // Use +00:00 format to match Prisma/libSQL serialization (not .000Z — different string in SQLite)
   return `${iso}T00:00:00+00:00`;
 }
 
 // ── load Excel ────────────────────────────────────────────────────────────────
 
-const wb    = read(readFileSync(filePath));
-const ws    = wb.Sheets[wb.SheetNames[0]];
-const rows  = utils.sheet_to_json(ws, { defval: "" });
+const wb = new ExcelJS.Workbook();
+await wb.xlsx.readFile(filePath);
+const ws = wb.worksheets[0];
+if (!ws) { console.error("No worksheet found in file"); process.exit(1); }
+
+// Build header map from row 1
+const headerMap = {};
+ws.getRow(1).eachCell((cell, col) => {
+  const v = cell.value != null ? String(cell.value).trim() : "";
+  if (v) headerMap[col] = v;
+});
+
+// Convert each data row to a plain object keyed by header name
+const rows = [];
+ws.eachRow((row, rowIdx) => {
+  if (rowIdx === 1) return;
+  const obj = {};
+  row.eachCell({ includeEmpty: true }, (cell, col) => {
+    const key = headerMap[col];
+    if (key) {
+      // ExcelJS wraps rich text — unwrap to plain value
+      const v = cell.value && typeof cell.value === "object" && "richText" in cell.value
+        ? cell.value.richText.map((r) => r.text).join("")
+        : cell.value;
+      obj[key] = v ?? "";
+    }
+  });
+  rows.push(obj);
+});
 
 console.log(`Loaded ${rows.length} rows from ${filePath}${dryRun ? " [DRY RUN]" : ""}`);
 

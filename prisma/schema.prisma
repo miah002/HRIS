@@ -28,6 +28,8 @@ model User {
   employee      Employee? @relation(fields: [employeeId], references: [id])
   accounts      Account[]
   sessions      Session[]
+  loginAttempts Int       @default(0)
+  lockedUntil   DateTime?
   createdAt     DateTime  @default(now())
 }
 
@@ -310,4 +312,15 @@ model ComplianceRecord {
   notes     String?
   createdAt DateTime  @default(now())
   @@unique([companyId, type, period])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  companyId String?
+  userId    String?
+  action    String   // LOGIN | PAYROLL_RUN | PAYROLL_RELEASE | PAYROLL_RELEASE_ALL | EMPLOYEE_SEPARATE | DOCUMENT_ADD | DOCUMENT_DELETE | LEAVE_APPROVE | LEAVE_REJECT | LEAVE_REVOKE | ROLE_CHANGE | COMPANY_UPDATE
+  target    String?
+  targetId  String?
+  meta      String?  // JSON string for extra context
+  createdAt DateTime @default(now())
 }

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Avatar } from "@/components/ui/avatar";
-import { Settings, ShieldAlert, ClipboardCheck, CalendarDays } from "lucide-react";
+import { Settings, ShieldAlert, ClipboardCheck, CalendarDays, Activity } from "lucide-react";
 import Link from "next/link";
 
 const ROLES = ["OWNER", "MANAGER", "HR", "EMPLOYEE"] as const;
@@ -86,6 +86,12 @@ export default async function SettingsPage() {
     where: { companyId: actor.companyId ?? "" },
     orderBy: { name: "asc" },
     select: { id: true, name: true, email: true, role: true, canPrepareOT: true, canCheckOT: true, canApproveOT: true },
+  });
+
+  const auditLogs = await prisma.auditLog.findMany({
+    where: { companyId: actor.companyId ?? "" },
+    orderBy: { createdAt: "desc" },
+    take: 50,
   });
 
   return (
@@ -227,6 +233,34 @@ export default async function SettingsPage() {
                 </div>
               );
             })
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Audit log */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Activity className="h-4 w-4 text-[var(--brand)]" />
+            Audit log (last 50)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-3">
+          {auditLogs.length === 0 ? (
+            <p className="text-sm text-[var(--text-tertiary)] text-center py-4">No activity recorded yet.</p>
+          ) : (
+            <div className="space-y-0 text-xs font-mono">
+              {auditLogs.map((log) => (
+                <div key={log.id} className="flex items-start gap-3 py-1.5 border-b border-[var(--border)] last:border-0">
+                  <span className="text-[var(--text-tertiary)] whitespace-nowrap shrink-0">
+                    {new Date(log.createdAt).toLocaleString("en-PH", { dateStyle: "short", timeStyle: "short" })}
+                  </span>
+                  <span className="font-medium text-[var(--brand)] shrink-0">{log.action}</span>
+                  {log.target && <span className="text-[var(--text-secondary)]">{log.target}{log.targetId ? ` · ${log.targetId.slice(-8)}` : ""}</span>}
+                  {log.userId && <span className="text-[var(--text-tertiary)] truncate">uid:{log.userId.slice(-8)}</span>}
+                </div>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>

@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { logAudit } from "@/lib/audit";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, STATUS_BADGE } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,6 +44,11 @@ async function getActorCompanyId(email: string): Promise<string | null> {
   return user?.companyId ?? null;
 }
 
+async function getActor(email: string): Promise<{ id: string | null; companyId: string | null }> {
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true, companyId: true } });
+  return { id: user?.id ?? null, companyId: user?.companyId ?? null };
+}
+
 async function addDocument(formData: FormData) {
   "use server";
   const session = await auth();
@@ -50,13 +58,14 @@ async function addDocument(formData: FormData) {
   const url        = String(formData.get("url")).trim();
   const expiresRaw = formData.get("expiresAt") as string | null;
   if (!employeeId || !name || !url) redirect(`/employees/${employeeId}`);
-  const companyId = await getActorCompanyId(session.user!.email!);
-  if (!companyId) redirect("/dashboard");
-  const emp = await prisma.employee.findFirst({ where: { id: employeeId, companyId } });
+  const actor = await getActor(session.user!.email!);
+  if (!actor.companyId) redirect("/dashboard");
+  const emp = await prisma.employee.findFirst({ where: { id: employeeId, companyId: actor.companyId } });
   if (!emp) redirect("/employees");
   const expiresAt = expiresRaw ? new Date(expiresRaw) : null;
   if (expiresAt && isNaN(expiresAt.getTime())) redirect(`/employees/${employeeId}`);
-  await prisma.document.create({ data: { employeeId, name, url, expiresAt } });
+  const doc = await prisma.document.create({ data: { employeeId, name, url, expiresAt } });
+  await logAudit({ companyId: actor.companyId, userId: actor.id, action: "DOCUMENT_ADD", target: "Document", targetId: doc.id, meta: { name, employeeId } });
   redirect(`/employees/${employeeId}?toast=Document+added`);
 }
 
@@ -67,11 +76,12 @@ async function deleteDocument(formData: FormData) {
   const docId      = String(formData.get("docId")).trim();
   const employeeId = String(formData.get("employeeId")).trim();
   if (!docId || !employeeId) redirect("/employees");
-  const companyId = await getActorCompanyId(session.user!.email!);
-  if (!companyId) redirect("/dashboard");
-  const doc = await prisma.document.findFirst({ where: { id: docId, employee: { companyId } } });
+  const actor = await getActor(session.user!.email!);
+  if (!actor.companyId) redirect("/dashboard");
+  const doc = await prisma.document.findFirst({ where: { id: docId, employee: { companyId: actor.companyId } } });
   if (!doc) redirect("/employees");
   await prisma.document.delete({ where: { id: docId } });
+  await logAudit({ companyId: actor.companyId, userId: actor.id, action: "DOCUMENT_DELETE", target: "Document", targetId: docId, meta: { employeeId } });
   redirect(`/employees/${employeeId}?toast=Document+removed`);
 }
 
@@ -107,9 +117,9 @@ async function separateEmployee(formData: FormData) {
   if (!employeeId) redirect("/employees");
   if (!(SEPARATION_TYPES as readonly string[]).includes(separationType)) redirect(`/employees/${employeeId}`);
   if (isNaN(separationDate.getTime())) redirect(`/employees/${employeeId}`);
-  const companyId = await getActorCompanyId(session.user!.email!);
-  if (!companyId) redirect("/dashboard");
-  const emp = await prisma.employee.findFirst({ where: { id: employeeId, companyId } });
+  const actor = await getActor(session.user!.email!);
+  if (!actor.companyId) redirect("/dashboard");
+  const emp = await prisma.employee.findFirst({ where: { id: employeeId, companyId: actor.companyId } });
   if (!emp) redirect("/employees");
   await prisma.employee.update({
     where: { id: employeeId },
@@ -124,6 +134,8 @@ async function separateEmployee(formData: FormData) {
       notes: separationNotes ?? undefined,
     },
   });
+  await logAudit({ companyId: actor.companyId, userId: actor.id, action: "EMPLOYEE_SEPARATE", target: "Employee", targetId: employeeId, meta: { separationType, separationDate: separationDate.toISOString() } });
+  revalidateTag(CACHE_TAGS.EMPLOYEES);
   redirect("/employees?toast=Employee+separated+and+archived");
 }
 

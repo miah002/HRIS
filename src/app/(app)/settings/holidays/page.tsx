@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
+import { revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -43,6 +45,7 @@ async function addHoliday(formData: FormData) {
     update: { name, type },
     create: { companyId: user.companyId, name, date, type },
   });
+  revalidateTag(CACHE_TAGS.HOLIDAYS);
   redirect("/settings/holidays?toast=Holiday+added");
 }
 
@@ -52,6 +55,7 @@ async function deleteHoliday(formData: FormData) {
   if (!session) redirect("/login");
   const id = String(formData.get("id"));
   await prisma.holiday.delete({ where: { id } });
+  revalidateTag(CACHE_TAGS.HOLIDAYS);
   redirect("/settings/holidays?toast=Holiday+removed");
 }
 

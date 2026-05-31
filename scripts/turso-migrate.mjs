@@ -62,6 +62,10 @@ async function main() {
   await addColumnIfMissing("User", "canCheckOT",   "INTEGER NOT NULL DEFAULT 0");
   await addColumnIfMissing("User", "canApproveOT", "INTEGER NOT NULL DEFAULT 0");
 
+  // User rate-limiting fields
+  await addColumnIfMissing("User", "loginAttempts", "INTEGER NOT NULL DEFAULT 0");
+  await addColumnIfMissing("User", "lockedUntil",   "DATETIME");
+
   // Employee additions
   await addColumnIfMissing("Employee", "hdmfMp2Monthly",   "REAL NOT NULL DEFAULT 0");
   await addColumnIfMissing("Employee", "addressStreet",    "TEXT");
@@ -268,6 +272,24 @@ async function main() {
     console.log("  created Document table");
   } else {
     console.log("  skip Document table (exists)");
+  }
+
+  // AuditLog table
+  if (!(await tableExists("AuditLog"))) {
+    await db.execute(`CREATE TABLE "AuditLog" (
+      "id"        TEXT NOT NULL PRIMARY KEY,
+      "companyId" TEXT,
+      "userId"    TEXT,
+      "action"    TEXT NOT NULL,
+      "target"    TEXT,
+      "targetId"  TEXT,
+      "meta"      TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await db.execute(`CREATE INDEX "idx_audit_company_time" ON "AuditLog" ("companyId", "createdAt" DESC)`);
+    console.log("  created AuditLog table");
+  } else {
+    console.log("  skip AuditLog table (exists)");
   }
 
   // Holiday table

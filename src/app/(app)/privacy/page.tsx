@@ -146,6 +146,9 @@ export default function PrivacyPage() {
             "Server actions validate ownership before any write operation",
             "All form inputs validated server-side before DB write",
             "Database hosted on Turso (libSQL) — data at rest encrypted by provider",
+            "Rate limiting — DB-backed lockout after 5 failed login attempts (15-minute lock)",
+            "Audit log — all login, payroll, leave approval, and separation events recorded with timestamp and actor",
+            "Health check endpoint at /api/health — DB connectivity monitoring",
           ].map((item) => (
             <div key={item} className="flex items-start gap-2">
               <span className="text-[var(--brand)] mt-0.5">•</span>
@@ -195,15 +198,15 @@ export default function PrivacyPage() {
         </CardHeader>
         <CardContent className="pt-3 space-y-2 text-sm text-[var(--text-secondary)]">
           {[
-            { item: "Audit logging — no per-action audit trail yet", status: "Planned" },
-            { item: "Rate limiting on authentication endpoint — no brute-force protection", status: "Planned (requires Redis/Upstash)" },
+            { item: "Audit logging — per-action trail stored in AuditLog table; visible in Settings", status: "Implemented" },
+            { item: "Rate limiting — DB-backed attempt tracking: 5 failures = 15-minute account lockout", status: "Implemented" },
             { item: "NPC registration — system not yet registered with National Privacy Commission", status: "Action required" },
             { item: "Data breach notification procedure — not documented", status: "Action required" },
             { item: "Formal DPA / consent from employees re: HRIS processing", status: "Action required" },
           ].map(({ item, status }) => (
             <div key={item} className="flex items-start justify-between gap-3 py-1.5 border-b border-[var(--border)] last:border-0">
               <span className="text-xs">{item}</span>
-              <span className={`text-xs whitespace-nowrap font-medium ${status === "Action required" ? "text-[var(--error)]" : "text-[var(--text-tertiary)]"}`}>
+              <span className={`text-xs whitespace-nowrap font-medium ${status === "Action required" ? "text-[var(--error)]" : status === "Implemented" ? "text-[var(--success)]" : "text-[var(--text-tertiary)]"}`}>
                 {status}
               </span>
             </div>

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, STATUS_BADGE } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,7 @@ async function approveLeave(id: string) {
   "use server";
   const session = await auth();
   if (!session) redirect("/login");
-  const user = await prisma.user.findUnique({ where: { email: session.user!.email! }, select: { companyId: true } });
+  const user = await prisma.user.findUnique({ where: { email: session.user!.email! }, select: { id: true, companyId: true } });
   if (!user?.companyId) redirect("/dashboard");
 
   const req = await getLeaveForCompany(id, user.companyId);
@@ -46,6 +47,7 @@ async function approveLeave(id: string) {
     where: { id },
     data: { status: "APPROVED", isWithPay, approvedBy: session.user?.name ?? session.user?.email ?? "Admin", approvedAt: new Date() },
   });
+  await logAudit({ companyId: user.companyId, userId: user.id, action: "LEAVE_APPROVE", target: "LeaveRequest", targetId: id, meta: { isWithPay } });
   redirect(`/leave?toast=Leave+approved+(${isWithPay ? "With+Pay" : "Without+Pay"})`);
 }
 
@@ -53,11 +55,12 @@ async function rejectLeave(id: string) {
   "use server";
   const session = await auth();
   if (!session) redirect("/login");
-  const user = await prisma.user.findUnique({ where: { email: session.user!.email! }, select: { companyId: true } });
+  const user = await prisma.user.findUnique({ where: { email: session.user!.email! }, select: { id: true, companyId: true } });
   if (!user?.companyId) redirect("/dashboard");
   const req = await prisma.leaveRequest.findFirst({ where: { id, employee: { companyId: user.companyId } } });
   if (!req) redirect("/leave");
   await prisma.leaveRequest.update({ where: { id }, data: { status: "REJECTED" } });
+  await logAudit({ companyId: user.companyId, userId: user.id, action: "LEAVE_REJECT", target: "LeaveRequest", targetId: id });
   redirect("/leave?toast=Leave+rejected");
 }
 
@@ -65,11 +68,12 @@ async function revokeLeave(id: string) {
   "use server";
   const session = await auth();
   if (!session) redirect("/login");
-  const user = await prisma.user.findUnique({ where: { email: session.user!.email! }, select: { companyId: true } });
+  const user = await prisma.user.findUnique({ where: { email: session.user!.email! }, select: { id: true, companyId: true } });
   if (!user?.companyId) redirect("/dashboard");
   const req = await prisma.leaveRequest.findFirst({ where: { id, employee: { companyId: user.companyId } } });
   if (!req) redirect("/leave");
   await prisma.leaveRequest.update({ where: { id }, data: { status: "PENDING", isWithPay: true, approvedBy: null, approvedAt: null } });
+  await logAudit({ companyId: user.companyId, userId: user.id, action: "LEAVE_REVOKE", target: "LeaveRequest", targetId: id });
   redirect("/leave?toast=Leave+revoked+to+pending");
 }
 

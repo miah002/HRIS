@@ -33,16 +33,29 @@ const HISTORY_BADGE: Record<string, "success" | "brand" | "warning" | "error" | 
   SEPARATION:          "error",
 };
 
+const SEPARATION_TYPES = ["RESIGNED","RETIRED","END_OF_CONTRACT","TERMINATED","REDUNDANCY","RETRENCHMENT","DEATH"] as const;
+const LOAN_STATUSES    = ["ACTIVE","PAID","CANCELLED"] as const;
+
+async function getActorCompanyId(email: string): Promise<string | null> {
+  const user = await prisma.user.findUnique({ where: { email }, select: { companyId: true } });
+  return user?.companyId ?? null;
+}
+
 async function addDocument(formData: FormData) {
   "use server";
   const session = await auth();
   if (!session) redirect("/login");
-  const employeeId = String(formData.get("employeeId"));
+  const employeeId = String(formData.get("employeeId")).trim();
   const name       = String(formData.get("name")).trim();
   const url        = String(formData.get("url")).trim();
   const expiresRaw = formData.get("expiresAt") as string | null;
-  if (!name || !url) redirect(`/employees/${employeeId}`);
+  if (!employeeId || !name || !url) redirect(`/employees/${employeeId}`);
+  const companyId = await getActorCompanyId(session.user!.email!);
+  if (!companyId) redirect("/dashboard");
+  const emp = await prisma.employee.findFirst({ where: { id: employeeId, companyId } });
+  if (!emp) redirect("/employees");
   const expiresAt = expiresRaw ? new Date(expiresRaw) : null;
+  if (expiresAt && isNaN(expiresAt.getTime())) redirect(`/employees/${employeeId}`);
   await prisma.document.create({ data: { employeeId, name, url, expiresAt } });
   redirect(`/employees/${employeeId}?toast=Document+added`);
 }
@@ -51,8 +64,13 @@ async function deleteDocument(formData: FormData) {
   "use server";
   const session = await auth();
   if (!session) redirect("/login");
-  const docId      = String(formData.get("docId"));
-  const employeeId = String(formData.get("employeeId"));
+  const docId      = String(formData.get("docId")).trim();
+  const employeeId = String(formData.get("employeeId")).trim();
+  if (!docId || !employeeId) redirect("/employees");
+  const companyId = await getActorCompanyId(session.user!.email!);
+  if (!companyId) redirect("/dashboard");
+  const doc = await prisma.document.findFirst({ where: { id: docId, employee: { companyId } } });
+  if (!doc) redirect("/employees");
   await prisma.document.delete({ where: { id: docId } });
   redirect(`/employees/${employeeId}?toast=Document+removed`);
 }
@@ -61,11 +79,19 @@ async function editLoan(formData: FormData) {
   "use server";
   const session = await auth();
   if (!session) redirect("/login");
-  const loanId           = String(formData.get("loanId"));
-  const empId            = String(formData.get("empId"));
+  const loanId           = String(formData.get("loanId")).trim();
+  const empId            = String(formData.get("empId")).trim();
   const balance          = Number(formData.get("balance"));
   const monthlyDeduction = Number(formData.get("monthlyDeduction"));
   const status           = String(formData.get("status"));
+  if (!loanId || !empId) redirect("/employees");
+  if (isNaN(balance) || balance < 0) redirect(`/employees/${empId}`);
+  if (isNaN(monthlyDeduction) || monthlyDeduction < 0) redirect(`/employees/${empId}`);
+  if (!(LOAN_STATUSES as readonly string[]).includes(status)) redirect(`/employees/${empId}`);
+  const companyId = await getActorCompanyId(session.user!.email!);
+  if (!companyId) redirect("/dashboard");
+  const loan = await prisma.loan.findFirst({ where: { id: loanId, employee: { companyId } } });
+  if (!loan) redirect("/employees");
   await prisma.loan.update({ where: { id: loanId }, data: { balance, monthlyDeduction, status } });
   redirect(`/employees/${empId}`);
 }
@@ -74,10 +100,17 @@ async function separateEmployee(formData: FormData) {
   "use server";
   const session = await auth();
   if (!session) redirect("/login");
-  const employeeId      = String(formData.get("employeeId"));
+  const employeeId      = String(formData.get("employeeId")).trim();
   const separationType  = String(formData.get("separationType"));
   const separationDate  = new Date(String(formData.get("separationDate")));
   const separationNotes = (formData.get("separationNotes") as string) || null;
+  if (!employeeId) redirect("/employees");
+  if (!(SEPARATION_TYPES as readonly string[]).includes(separationType)) redirect(`/employees/${employeeId}`);
+  if (isNaN(separationDate.getTime())) redirect(`/employees/${employeeId}`);
+  const companyId = await getActorCompanyId(session.user!.email!);
+  if (!companyId) redirect("/dashboard");
+  const emp = await prisma.employee.findFirst({ where: { id: employeeId, companyId } });
+  if (!emp) redirect("/employees");
   await prisma.employee.update({
     where: { id: employeeId },
     data: { archived: true, archivedAt: new Date(), separationDate, separationType, separationNotes },
@@ -96,8 +129,12 @@ async function separateEmployee(formData: FormData) {
 
 export default async function EmployeeDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const e = await prisma.employee.findUnique({
-    where: { id },
+  const session = await auth();
+  if (!session) redirect("/login");
+  const companyId = await getActorCompanyId(session.user!.email!);
+  if (!companyId) redirect("/dashboard");
+  const e = await prisma.employee.findFirst({
+    where: { id, companyId },
     include: {
       payrolls: {
         orderBy: { periodStart: "desc" },

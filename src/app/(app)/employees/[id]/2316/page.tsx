@@ -18,8 +18,11 @@ export default async function BIR2316Page({
   const session = await auth();
   if (!session) redirect("/login");
 
-  const e = await prisma.employee.findUnique({
-    where: { id },
+  const actor = await prisma.user.findUnique({ where: { email: session.user!.email! }, select: { companyId: true } });
+  if (!actor?.companyId) redirect("/dashboard");
+
+  const e = await prisma.employee.findFirst({
+    where: { id, companyId: actor.companyId },
     include: { company: true },
   });
   if (!e || !e.company) notFound();

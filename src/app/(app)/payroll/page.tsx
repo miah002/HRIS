@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -38,12 +41,15 @@ async function releaseAllPayroll(formData: FormData) {
   "use server";
   const session = await auth();
   if (!session) redirect("/login");
+  const user  = await prisma.user.findUnique({ where: { email: session.user!.email! }, select: { id: true, companyId: true } });
   const start = new Date(String(formData.get("start")));
   const end   = new Date(String(formData.get("end")));
   await prisma.payroll.updateMany({
     where: { periodStart: start, periodEnd: end, status: "DRAFT" },
     data: { status: "RELEASED" },
   });
+  await logAudit({ companyId: user?.companyId, userId: user?.id, action: "PAYROLL_RELEASE_ALL", target: "Payroll", meta: { start: start.toISOString(), end: end.toISOString() } });
+  revalidateTag(CACHE_TAGS.PAYROLL);
   redirect(`/payroll?toast=All+payslips+released`);
 }
 
@@ -229,6 +235,8 @@ async function runPayroll(formData: FormData) {
       create: { employeeId: e.id, periodStart: start, periodEnd: end, status: "DRAFT", ...data },
     });
   }
+  await logAudit({ companyId, userId: user?.id, action: "PAYROLL_RUN", target: "Payroll", meta: { start: start.toISOString(), end: end.toISOString(), count: employees.length } });
+  revalidateTag(CACHE_TAGS.PAYROLL);
   redirect(`/payroll?toast=Payroll+computed+successfully`);
 }
 

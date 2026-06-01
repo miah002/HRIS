@@ -59,10 +59,23 @@ async function recalcPayroll(payroll: PayrollWithIncludes) {
 
 // ── Server actions ──────────────────────────────────────────────────────────
 
+const ADJ_TYPES = ["TAXABLE", "NON_TAXABLE"] as const;
+
+async function getPayrollForCompany(id: string, companyId: string) {
+  return prisma.payroll.findFirst({
+    where: { id, employee: { companyId } },
+    include: { employee: true, adjustments: true },
+  });
+}
+
 async function releasePayroll(id: string) {
   "use server";
   const session = await auth();
   if (!session) redirect("/login");
+  const user = await prisma.user.findUnique({ where: { email: session.user!.email! }, select: { companyId: true } });
+  if (!user?.companyId) redirect("/dashboard");
+  const payroll = await getPayrollForCompany(id, user.companyId);
+  if (!payroll) redirect("/payroll");
   await prisma.payroll.update({ where: { id }, data: { status: "RELEASED" } });
   redirect(`/payroll/${id}`);
 }
@@ -71,18 +84,23 @@ async function addAdjustment(id: string, formData: FormData) {
   "use server";
   const session = await auth();
   if (!session) redirect("/login");
+  const user = await prisma.user.findUnique({ where: { email: session.user!.email! }, select: { companyId: true } });
+  if (!user?.companyId) redirect("/dashboard");
 
   const type        = String(formData.get("type"));
   const description = String(formData.get("description")).trim();
-  const amount      = parseFloat(String(formData.get("amount"))) || 0;
-  if (!description || amount === 0) redirect(`/payroll/${id}`);
+  const amount      = parseFloat(String(formData.get("amount")));
+  if (!(ADJ_TYPES as readonly string[]).includes(type)) redirect(`/payroll/${id}`);
+  if (!description || isNaN(amount) || amount === 0) redirect(`/payroll/${id}`);
+
+  const payroll = await getPayrollForCompany(id, user.companyId);
+  if (!payroll) redirect("/payroll");
 
   await prisma.payrollAdjustment.create({ data: { payrollId: id, type, description, amount } });
 
-  const payroll = await prisma.payroll.findUnique({ where: { id }, include: { employee: true, adjustments: true } });
-  if (!payroll) redirect("/payroll");
-
-  const { calc, loanDeductions, totalDeductions, netPay } = await recalcPayroll(payroll);
+  const updated = await prisma.payroll.findUnique({ where: { id }, include: { employee: true, adjustments: true } });
+  if (!updated) redirect("/payroll");
+  const { calc, loanDeductions, totalDeductions, netPay } = await recalcPayroll(updated);
   await prisma.payroll.update({ where: { id }, data: { ...calc, loanDeductions, totalDeductions, netPay } });
   redirect(`/payroll/${id}`);
 }
@@ -91,12 +109,18 @@ async function removeAdjustment(adjustmentId: string, payrollId: string) {
   "use server";
   const session = await auth();
   if (!session) redirect("/login");
+  const user = await prisma.user.findUnique({ where: { email: session.user!.email! }, select: { companyId: true } });
+  if (!user?.companyId) redirect("/dashboard");
+
+  const adj = await prisma.payrollAdjustment.findFirst({
+    where: { id: adjustmentId, payroll: { employee: { companyId: user.companyId } } },
+  });
+  if (!adj) redirect("/payroll");
 
   await prisma.payrollAdjustment.delete({ where: { id: adjustmentId } });
 
   const payroll = await prisma.payroll.findUnique({ where: { id: payrollId }, include: { employee: true, adjustments: true } });
   if (!payroll) redirect("/payroll");
-
   const { calc, loanDeductions, totalDeductions, netPay } = await recalcPayroll(payroll);
   await prisma.payroll.update({ where: { id: payrollId }, data: { ...calc, loanDeductions, totalDeductions, netPay } });
   redirect(`/payroll/${payrollId}`);
@@ -107,8 +131,11 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
   const session = await auth();
   if (!session) redirect("/login");
 
-  const payroll = await prisma.payroll.findUnique({
-    where: { id },
+  const user = await prisma.user.findUnique({ where: { email: session.user!.email! }, select: { companyId: true } });
+  if (!user?.companyId) redirect("/dashboard");
+
+  const payroll = await prisma.payroll.findFirst({
+    where: { id, employee: { companyId: user.companyId } },
     include: {
       employee: { include: { company: true } },
       adjustments: { orderBy: { createdAt: "asc" } },

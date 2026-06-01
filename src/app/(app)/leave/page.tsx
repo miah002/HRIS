@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, STATUS_BADGE } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,51 +13,41 @@ import { CalendarCheck, PlusCircle, ShieldCheck, BarChart2 } from "lucide-react"
 import { Table, TableHeader, TableBody, TableRow, Th, Td } from "@/components/ui/table";
 import { StandardLeaveForm, SpecialLeaveForm } from "./leave-form";
 
+async function getLeaveForCompany(id: string, companyId: string) {
+  return prisma.leaveRequest.findFirst({
+    where: { id, employee: { companyId } },
+    include: { employee: { select: { id: true, employmentStatus: true } } },
+  });
+}
+
 async function approveLeave(id: string) {
   "use server";
   const session = await auth();
   if (!session) redirect("/login");
+  const user = await prisma.user.findUnique({ where: { email: session.user!.email! }, select: { id: true, companyId: true } });
+  if (!user?.companyId) redirect("/dashboard");
 
-  const req = await prisma.leaveRequest.findUnique({
-    where: { id },
-    include: { employee: { select: { id: true, employmentStatus: true } } },
-  });
+  const req = await getLeaveForCompany(id, user.companyId);
   if (!req) redirect("/leave?toast=Request+not+found&toastType=error");
 
   let isWithPay = true;
-
-  // CONTRACTUAL always without pay
   if (req.employee.employmentStatus === "CONTRACTUAL") {
     isWithPay = false;
   } else if (["VL", "SL"].includes(req.leaveType)) {
-    // Check remaining credits (VL/SL = 15 days per year)
     const yearStart = new Date(req.startDate.getFullYear(), 0, 1);
     const used = await prisma.leaveRequest.aggregate({
-      where: {
-        employeeId: req.employee.id,
-        leaveType: req.leaveType,
-        status: "APPROVED",
-        isWithPay: true,
-        startDate: { gte: yearStart },
-        NOT: { id: req.id },
-      },
+      where: { employeeId: req.employee.id, leaveType: req.leaveType, status: "APPROVED", isWithPay: true, startDate: { gte: yearStart }, NOT: { id: req.id } },
       _sum: { days: true },
     });
     const usedDays = used._sum.days ?? 0;
-    const remaining = Math.max(0, 15 - usedDays);
-    isWithPay = remaining >= req.days;
+    isWithPay = Math.max(0, 15 - usedDays) >= req.days;
   }
-  // MATERNITY / PATERNITY always with pay (statutory)
 
   await prisma.leaveRequest.update({
     where: { id },
-    data: {
-      status: "APPROVED",
-      isWithPay,
-      approvedBy: session.user?.name ?? session.user?.email ?? "Admin",
-      approvedAt: new Date(),
-    },
+    data: { status: "APPROVED", isWithPay, approvedBy: session.user?.name ?? session.user?.email ?? "Admin", approvedAt: new Date() },
   });
+  await logAudit({ companyId: user.companyId, userId: user.id, action: "LEAVE_APPROVE", target: "LeaveRequest", targetId: id, meta: { isWithPay } });
   redirect(`/leave?toast=Leave+approved+(${isWithPay ? "With+Pay" : "Without+Pay"})`);
 }
 
@@ -64,7 +55,12 @@ async function rejectLeave(id: string) {
   "use server";
   const session = await auth();
   if (!session) redirect("/login");
+  const user = await prisma.user.findUnique({ where: { email: session.user!.email! }, select: { id: true, companyId: true } });
+  if (!user?.companyId) redirect("/dashboard");
+  const req = await prisma.leaveRequest.findFirst({ where: { id, employee: { companyId: user.companyId } } });
+  if (!req) redirect("/leave");
   await prisma.leaveRequest.update({ where: { id }, data: { status: "REJECTED" } });
+  await logAudit({ companyId: user.companyId, userId: user.id, action: "LEAVE_REJECT", target: "LeaveRequest", targetId: id });
   redirect("/leave?toast=Leave+rejected");
 }
 
@@ -72,7 +68,12 @@ async function revokeLeave(id: string) {
   "use server";
   const session = await auth();
   if (!session) redirect("/login");
+  const user = await prisma.user.findUnique({ where: { email: session.user!.email! }, select: { id: true, companyId: true } });
+  if (!user?.companyId) redirect("/dashboard");
+  const req = await prisma.leaveRequest.findFirst({ where: { id, employee: { companyId: user.companyId } } });
+  if (!req) redirect("/leave");
   await prisma.leaveRequest.update({ where: { id }, data: { status: "PENDING", isWithPay: true, approvedBy: null, approvedAt: null } });
+  await logAudit({ companyId: user.companyId, userId: user.id, action: "LEAVE_REVOKE", target: "LeaveRequest", targetId: id });
   redirect("/leave?toast=Leave+revoked+to+pending");
 }
 
@@ -80,7 +81,9 @@ async function togglePay(id: string) {
   "use server";
   const session = await auth();
   if (!session) redirect("/login");
-  const req = await prisma.leaveRequest.findUnique({ where: { id }, select: { isWithPay: true } });
+  const user = await prisma.user.findUnique({ where: { email: session.user!.email! }, select: { companyId: true } });
+  if (!user?.companyId) redirect("/dashboard");
+  const req = await prisma.leaveRequest.findFirst({ where: { id, employee: { companyId: user.companyId } }, select: { isWithPay: true } });
   if (!req) redirect("/leave");
   await prisma.leaveRequest.update({ where: { id }, data: { isWithPay: !req.isWithPay } });
   redirect(`/leave?toast=Changed+to+${!req.isWithPay ? "With+Pay" : "Without+Pay"}`);
@@ -90,8 +93,13 @@ async function updateLeave(id: string, formData: FormData) {
   "use server";
   const session = await auth();
   if (!session) redirect("/login");
+  const user = await prisma.user.findUnique({ where: { email: session.user!.email! }, select: { companyId: true } });
+  if (!user?.companyId) redirect("/dashboard");
+  const req = await prisma.leaveRequest.findFirst({ where: { id, employee: { companyId: user.companyId } } });
+  if (!req) redirect("/leave");
   const startDate = new Date(String(formData.get("startDate")));
   const endDate   = new Date(String(formData.get("endDate")));
+  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime()) || endDate < startDate) redirect("/leave");
   const isWithPay = formData.get("isWithPay") === "true";
   const days = Math.max(1, Math.ceil((+endDate - +startDate) / 86400000) + 1);
   await prisma.leaveRequest.update({ where: { id }, data: { startDate, endDate, days, isWithPay } });
@@ -102,16 +110,19 @@ async function submitLeave(formData: FormData) {
   "use server";
   const session = await auth();
   if (!session) redirect("/login");
-  const user = await prisma.user.findUnique({ where: { email: session.user!.email! } });
+  const user = await prisma.user.findUnique({ where: { email: session.user!.email! }, select: { companyId: true } });
   if (!user?.companyId) redirect("/dashboard");
 
-  const employeeId = String(formData.get("employeeId"));
+  const employeeId = String(formData.get("employeeId")).trim();
   const leaveType  = String(formData.get("leaveType"));
   const startDate  = new Date(String(formData.get("startDate")));
   const endDate    = new Date(String(formData.get("endDate")));
 
-  // VL / SL only in standard form
   if (!["VL", "SL"].includes(leaveType)) redirect("/leave?toast=Invalid+leave+type&toastType=error");
+  if (!employeeId || isNaN(startDate.getTime()) || isNaN(endDate.getTime()) || endDate < startDate)
+    redirect("/leave?toast=Invalid+dates&toastType=error");
+  const emp = await prisma.employee.findFirst({ where: { id: employeeId, companyId: user.companyId } });
+  if (!emp) redirect("/leave?toast=Employee+not+found&toastType=error");
 
   const days = Math.max(1, Math.ceil((+endDate - +startDate) / 86400000) + 1);
   await prisma.leaveRequest.create({ data: { employeeId, leaveType, startDate, endDate, days, status: "PENDING" } });
@@ -122,19 +133,20 @@ async function submitSpecialLeave(formData: FormData) {
   "use server";
   const session = await auth();
   if (!session) redirect("/login");
-  const user = await prisma.user.findUnique({ where: { email: session.user!.email! } });
+  const user = await prisma.user.findUnique({ where: { email: session.user!.email! }, select: { companyId: true } });
   if (!user?.companyId) redirect("/dashboard");
 
-  const employeeId = String(formData.get("employeeId"));
+  const employeeId = String(formData.get("employeeId")).trim();
   const leaveType  = String(formData.get("leaveType"));
   const startDate  = new Date(String(formData.get("startDate")));
   const endDate    = new Date(String(formData.get("endDate")));
 
   if (!["MATERNITY", "PATERNITY"].includes(leaveType)) redirect("/leave?toast=Invalid+special+leave+type&toastType=error");
+  if (!employeeId || isNaN(startDate.getTime()) || isNaN(endDate.getTime()) || endDate < startDate)
+    redirect("/leave?toast=Invalid+dates&toastType=error");
 
-  const emp = await prisma.employee.findUnique({ where: { id: employeeId }, select: { sex: true } });
+  const emp = await prisma.employee.findFirst({ where: { id: employeeId, companyId: user.companyId }, select: { sex: true } });
   if (!emp) redirect("/leave?toast=Employee+not+found&toastType=error");
-
   if (leaveType === "MATERNITY" && emp.sex !== "FEMALE")
     redirect("/leave?toast=Maternity+leave+is+for+female+employees+only&toastType=error");
   if (leaveType === "PATERNITY" && emp.sex !== "MALE")

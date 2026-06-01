@@ -501,7 +501,7 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
           <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
             <div className="text-sm font-semibold mb-1">Re-run payroll</div>
             <p className="text-xs text-[var(--text-secondary)] mb-3">
-              To recalculate from attendance records, go to the payroll page and click "Re-run payroll".
+              To recalculate from attendance records, go to the payroll page and click &ldquo;Re-run payroll&rdquo;.
             </p>
             <Link href="/payroll">
               <Button variant="secondary" size="sm">

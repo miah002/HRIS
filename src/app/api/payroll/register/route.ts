@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { isFirstCutoff } from "@/lib/cutoff";
 
 // GET /api/payroll/register?start=ISO&end=ISO
 export async function GET(request: NextRequest) {
@@ -34,9 +35,8 @@ export async function GET(request: NextRequest) {
   const fmt = (d: Date) =>
     d.toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric", timeZone: "Asia/Manila" });
 
-  // Paydate: 11-25 → 30th same month; 26-10 → 15th next month
-  const startDay = start.getUTCDate();
-  const paydate = startDay === 11
+  // Paydate: 11-25 → 30th same month; 26-10 → 15th end month
+  const paydate = isFirstCutoff(start)
     ? new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 30))
     : new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 15));
 

@@ -12,8 +12,9 @@ import { Badge, STATUS_BADGE } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Table, TableHeader, TableBody, TableRow, Th, Td, TableFooter } from "@/components/ui/table";
 import { php, phDate } from "@/lib/format";
-import { computeSemiMonthlyPayroll, OT_RATES, hourlyRate } from "@/lib/ph-payroll";
+import { computeSemiMonthlyPayroll, hourlyRate, computeAttendancePay } from "@/lib/ph-payroll";
 import { activeCutoff, closeCutoff, ensureOpenPeriod } from "@/lib/payroll-period";
+import { isFirstCutoff } from "@/lib/cutoff";
 import { PlayCircle, Wallet, FileText, Clock, ClipboardCheck, CheckCheck, Lock } from "lucide-react";
 import { ExportButton } from "./ExportButton";
 
@@ -75,8 +76,6 @@ async function runPayroll(formData: FormData) {
   if (!companyId) redirect("/dashboard");
   const start = new Date(String(formData.get("start")));
   const end   = new Date(String(formData.get("end")));
-  const isFirstCutoff = start.getDate() === 11; // 11–25 gets PHIC+HDMF; 26–10 gets SSS
-
   // OT pay only counted when the period's OT Approval is APPROVED
   const otApprovalRec = await prisma.oTApproval.findUnique({
     where: { companyId_periodStart_periodEnd: { companyId, periodStart: start, periodEnd: end } },
@@ -87,11 +86,6 @@ async function runPayroll(formData: FormData) {
   const employees = await prisma.employee.findMany({ where: { companyId, archived: false } });
 
   const GRACE_MINUTES = 5;
-  const REG_PREMIUM: Record<string, number> = {
-    RD: 0.30,    RD_OT: 0.30,
-    SH: 0.30,    SH_OT: 0.30,  SH_RD: 0.50,   SH_RD_OT: 0.50,
-    RH: 1.00,    RH_OT: 1.00,  RH_RD: 1.60,   RH_RD_OT: 1.60,
-  };
 
   // Daily rate basis: monthlyRate / 21.75 working days
   const DAYS_PER_MONTH = 21.75;
@@ -126,9 +120,10 @@ async function runPayroll(formData: FormData) {
     const unpaidLeaveDeduction = Math.round(unpaidLeaveDays * dailyRate * 100) / 100;
 
     const hr = hourlyRate(e.basicMonthlyRate);
-    let overtimePayIn = 0;
-    let nightDiffPayIn = 0;
-    let holidayPayIn   = 0;
+    const attPay = computeAttendancePay(attendance, hr, otApproved);
+    const overtimePayIn  = attPay.overtimePay;
+    const nightDiffPayIn = attPay.nightDiffPay;
+    const holidayPayIn   = attPay.holidayPay;
 
     // Late / undertime from attendance timeIn and hoursWorked
     let totalLateMinutes = 0;
@@ -136,26 +131,7 @@ async function runPayroll(formData: FormData) {
     const SCHEDULE_START_MIN = 8 * 60; // 08:00
 
     for (const row of attendance) {
-      const code   = row.otRateCode;
-      const regHrs = Math.min(row.hoursWorked, 8);
-      const otHrs  = otApproved ? (row.otHours ?? 0) : 0;   // zero out OT if not APPROVED
-      const ndHrs  = row.ndHours ?? 0;
-      if (!code) {
-        if (otHrs > 0) overtimePayIn += Math.round(otHrs * hr * 1.25 * 100) / 100;
-      } else {
-        const baseCode = code.replace(/_OT$/, "");
-        const regPrem  = (REG_PREMIUM[code] ?? 0) * regHrs * hr;
-        const otPay    = otHrs > 0 ? otHrs * hr * (OT_RATES[code] ?? 1.25) : 0;
-        const total    = Math.round((regPrem + otPay) * 100) / 100;
-        if (baseCode.startsWith("RH"))      holidayPayIn   += total;
-        else if (baseCode.startsWith("ND")) nightDiffPayIn += total;
-        else                                overtimePayIn  += total;
-      }
-      if (ndHrs > 0) nightDiffPayIn += Math.round(ndHrs * hr * 0.10 * 100) / 100;
-
-      // Compute late / undertime only for present days
-      // timeIn is stored as UTC midnight of the PH work date (date + clock offset).
-      // getUTCHours/getUTCMinutes read the stored clock time correctly regardless of server TZ.
+      // timeIn stored as UTC; getUTCHours/Minutes read clock time correctly regardless of server TZ.
       if (row.hoursWorked > 0) {
         let rowLate = 0;
         if (row.timeIn) {
@@ -192,7 +168,7 @@ async function runPayroll(formData: FormData) {
       monthlyRate: e.basicMonthlyRate,
       periodStart: start,
       periodEnd: end,
-      isFirstCutoff,
+      isFirstCutoff: isFirstCutoff(start),
       sssEarningsMonthly,
       daysWorked: daysWorked > 0 ? daysWorked : undefined,
       regularHours,
@@ -305,17 +281,11 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
     const days = rows.filter((r) => r.hoursWorked > 0).length;
     const regHrs = rows.reduce((s, r) => s + Math.min(r.hoursWorked, 8), 0);
     const hr = hourlyRate(emp.basicMonthlyRate);
-    let estOtPay = 0;
-    const codeSet = new Set<string>();
-    for (const row of rows) {
-      const hours = row.otHours ?? 0;
-      if (!hours) continue;
-      const code = row.otRateCode ?? "R_OT";
-      codeSet.add(code);
-      estOtPay += Math.round(hours * hr * (OT_RATES[code] ?? 1.25) * 100) / 100;
-    }
+    const attPay = computeAttendancePay(rows, hr, otApprovedForPayroll);
+    const estOtPay = attPay.overtimePay + attPay.nightDiffPay + attPay.holidayPay;
+    const codes = [...new Set(attPay.breakdown.map((b) => b.code))];
     const otHrs = rows.reduce((s, r) => s + (r.otHours ?? 0), 0);
-    return { emp, days, regHrs, otHrs, estOtPay, codes: [...codeSet] };
+    return { emp, days, regHrs, otHrs, estOtPay, codes };
   });
 
   // RD/Holiday stats for current cutoff

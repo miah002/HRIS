@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, PlayCircle } from "lucide-react";
 import { PrintButton } from "@/components/print-button";
-import { computeSemiMonthlyPayroll, OT_RATES, hourlyRate } from "@/lib/ph-payroll";
+import { computeSemiMonthlyPayroll, hourlyRate, computeAttendancePay } from "@/lib/ph-payroll";
+import { isFirstCutoff } from "@/lib/cutoff";
 import { Table, TableHeader, TableBody, TableRow, Th, Td, TableFooter } from "@/components/ui/table";
 
 // ── Shared helpers ─────────────────────────────────────────────────────────
@@ -24,14 +25,13 @@ function sumAdj(adjustments: { type: string; amount: number }[], type: string): 
 async function recalcPayroll(payroll: PayrollWithIncludes) {
   const taxableAdj    = sumAdj(payroll.adjustments, "TAXABLE");
   const nonTaxableAdj = sumAdj(payroll.adjustments, "NON_TAXABLE");
-  const isFirstCutoff = payroll.periodStart.getDate() <= 15;
   const sssEarningsMonthly = payroll.employee.basicMonthlyRate + (payroll.overtimePay + nonTaxableAdj) * 2;
 
   const calc = computeSemiMonthlyPayroll({
     monthlyRate:           payroll.employee.basicMonthlyRate,
     periodStart:           payroll.periodStart,
     periodEnd:             payroll.periodEnd,
-    isFirstCutoff,
+    isFirstCutoff:         isFirstCutoff(payroll.periodStart),
     sssEarningsMonthly,
     daysWorked:            payroll.daysWorked > 0 ? payroll.daysWorked : undefined,
     regularHours:          payroll.regularHours,
@@ -158,29 +158,39 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
   const attTotalRegHrs = attendanceRows.reduce((s, r) => s + Math.min(r.hoursWorked, 8), 0);
   const attTotalOtHrs  = attendanceRows.reduce((s, r) => s + (r.otHours ?? 0), 0);
   const attTotalDays   = attendanceRows.filter((r) => r.hoursWorked > 0).length;
-  const attTotalOtPay  = attendanceRows.reduce((s, r) => {
-    const hours = r.otHours ?? 0;
-    if (!hours) return s;
-    const code = r.otRateCode ?? "R_OT";
-    return s + Math.round(hours * hr * (OT_RATES[code] ?? 1.25) * 100) / 100;
-  }, 0);
 
-  // OT breakdown by rate code from attendance records
-  const otMap = new Map<string, { hours: number; pay: number }>();
+  // OT approval for this period — needed to reconstruct breakdown matching what was stored
+  const slipOtRec = await prisma.oTApproval.findUnique({
+    where: { companyId_periodStart_periodEnd: { companyId: user.companyId, periodStart: payroll.periodStart, periodEnd: payroll.periodEnd } },
+    select: { status: true },
+  });
+  const slipOtApproved = slipOtRec?.status === "APPROVED";
+
+  const slipAttPay = computeAttendancePay(attendanceRows, hr, slipOtApproved);
+  const attTotalPremiumPay = slipAttPay.overtimePay + slipAttPay.holidayPay + slipAttPay.nightDiffPay;
+
+  // Pre-compute per-row premium pay for the attendance table
+  const rowPayMap = new Map<string, number>();
   for (const row of attendanceRows) {
-    const hours = row.otHours ?? 0;
-    if (!hours) continue;
-    const code = row.otRateCode ?? "R_OT";
-    const pay  = Math.round(hours * hr * (OT_RATES[code] ?? 1.25) * 100) / 100;
-    const prev = otMap.get(code);
-    otMap.set(code, prev ? { hours: prev.hours + hours, pay: prev.pay + pay } : { hours, pay });
+    const rp = computeAttendancePay([row], hr, slipOtApproved);
+    rowPayMap.set(row.id, rp.overtimePay + rp.holidayPay + rp.nightDiffPay);
   }
-  const otBreakdown = [...otMap.entries()].map(([code, { hours, pay }]) => ({
-    code, hours, rate: OT_RATES[code] ?? 1.25, pay,
-  }));
+
+  // Earnings line items from breakdown (includes rest-day full rate, OT, and holiday premium)
+  const premiumLines = slipAttPay.breakdown
+    .filter((b) => !b.code.startsWith("ND")) // ND shown as aggregate nightDiffPay line below
+    .map(({ code, regHrs, regPay, otHrs, otPay }) => {
+      const total = Math.round((regPay + otPay) * 100) / 100;
+      if (total === 0) return null;
+      const parts: string[] = [];
+      if (regHrs > 0 && regPay > 0) parts.push(`${regHrs.toFixed(1)}h`);
+      if (otHrs > 0 && otPay > 0) parts.push(`${otHrs.toFixed(1)}h OT`);
+      return { label: `${code.replace(/_/g, " ")} — ${parts.join(", ")}`, amount: total };
+    })
+    .filter((x): x is { label: string; amount: number } => x !== null);
 
   // Pay date: 11-25 cutoff → 30th (or last day) of end month; 26-10 cutoff → 15th of end month
-  const isFirstCutoffSlip = payroll.periodStart.getDate() <= 15;
+  const isFirstCutoffSlip = isFirstCutoff(payroll.periodStart);
   const payYear = payroll.periodEnd.getFullYear();
   const payMonth = payroll.periodEnd.getMonth();
   // Clamp to last day of month — prevents Feb overflow (day 30 → Mar 2)
@@ -224,18 +234,15 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
         : "Basic pay (½ month)",
       amount: payroll.basicPay,
     },
-    // OT breakdown per rate code (from attendance); fall back to stored amount if no attendance detail
-    ...(otBreakdown.length > 0
-      ? otBreakdown.map(({ code, hours, rate, pay }) => ({
-          label: `${code.replace(/_/g, " ")} — ${hours.toFixed(1)}h × ×${rate}`,
-          amount: pay,
-        }))
-      : payroll.overtimePay > 0
-        ? [{ label: "Overtime pay", amount: payroll.overtimePay }]
-        : []
+    // Premium pay lines from attendance breakdown (rest day, OT, holiday) — fall back to stored buckets
+    ...(premiumLines.length > 0
+      ? premiumLines
+      : [
+          ...(payroll.overtimePay > 0 ? [{ label: "Overtime / rest-day pay", amount: payroll.overtimePay }] : []),
+          ...(payroll.holidayPay > 0 ? [{ label: "Holiday pay", amount: payroll.holidayPay }] : []),
+        ]
     ),
     payroll.nightDiffPay > 0 && { label: "Night differential (+10%)", amount: payroll.nightDiffPay },
-    payroll.holidayPay > 0 && { label: "Holiday pay", amount: payroll.holidayPay },
     payroll.allowances > 0 && { label: "Allowances", amount: payroll.allowances },
     ...payroll.adjustments
       .filter(a => a.type === "TAXABLE")
@@ -384,14 +391,63 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
 
-        {/* Employer counterpart */}
+        {/* Statutory contributions — EE | ER side by side */}
         <div className="px-8 py-4 border-t border-dashed border-[var(--border)]">
-          <div className="text-2xs uppercase tracking-wide text-[var(--text-tertiary)] mb-2">Employer counterpart (for remittance)</div>
-          <div className="flex flex-wrap gap-x-8 gap-y-1 text-xs">
-            <div><span className="text-[var(--text-tertiary)]">SSS (ER): </span><span className="tabular font-medium">{php(payroll.sssER)}</span></div>
-            <div><span className="text-[var(--text-tertiary)]">PhilHealth (ER): </span><span className="tabular font-medium">{php(payroll.philHealthER)}</span></div>
-            <div><span className="text-[var(--text-tertiary)]">Pag-IBIG (ER): </span><span className="tabular font-medium">{php(payroll.pagIbigER)}</span></div>
-          </div>
+          <div className="text-2xs uppercase tracking-wide text-[var(--text-tertiary)] mb-3">Statutory contributions</div>
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-[var(--text-tertiary)] border-b border-[var(--border)]">
+                <th className="text-left pb-1.5 font-medium w-24">Fund</th>
+                <th className="text-right pb-1.5 font-medium">Employee</th>
+                <th className="text-right pb-1.5 font-medium">Employer</th>
+                <th className="text-left pb-1.5 pl-3 font-medium"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                {
+                  label: "SSS",
+                  ee: payroll.sssEE,
+                  er: payroll.sssER,
+                  // SSS collected on 26–10 cutoff; zero on 11–25
+                  zeroNote: isFirstCutoff(payroll.periodStart) ? "on 26–10" : undefined,
+                  ref: "RA 11199",
+                },
+                {
+                  label: "PhilHealth",
+                  ee: payroll.philHealthEE,
+                  er: payroll.philHealthER,
+                  // PHIC collected on 11–25 cutoff; zero on 26–10
+                  zeroNote: !isFirstCutoff(payroll.periodStart) ? "on 11–25" : undefined,
+                  ref: "RA 11223",
+                },
+                {
+                  label: "Pag-IBIG",
+                  ee: payroll.pagIbigEE,
+                  er: payroll.pagIbigER,
+                  zeroNote: !isFirstCutoff(payroll.periodStart) ? "on 11–25" : undefined,
+                  ref: "Circ. 460",
+                },
+              ].map(({ label, ee, er, zeroNote, ref }) => (
+                <tr key={label} className="border-b border-[var(--border)] last:border-0">
+                  <td className="py-1.5 font-medium">{label}</td>
+                  <td className="py-1.5 text-right tabular">
+                    {ee > 0
+                      ? <span className="text-[var(--error)]">−{php(ee)}</span>
+                      : <span className="text-[var(--text-tertiary)] text-[10px]">{zeroNote ? `collected ${zeroNote}` : "—"}</span>
+                    }
+                  </td>
+                  <td className="py-1.5 text-right tabular">
+                    {er > 0
+                      ? <span className="font-medium">{php(er)}</span>
+                      : <span className="text-[var(--text-tertiary)] text-[10px]">{zeroNote ? `collected ${zeroNote}` : "—"}</span>
+                    }
+                  </td>
+                  <td className="py-1.5 pl-3 text-[var(--text-tertiary)] text-[10px]">{ref}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         {/* Footer note */}
@@ -430,16 +486,13 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
                 <Th className="text-right">Reg hrs</Th>
                 <Th className="text-right">OT hrs</Th>
                 <Th>Rate code</Th>
-                <Th className="text-right">OT pay</Th>
+                <Th className="text-right">Premium pay</Th>
               </TableRow>
             </TableHeader>
             <TableBody>
               {attendanceRows.map((row) => {
                 const hours = row.otHours ?? 0;
-                const code  = row.otRateCode ?? "R_OT";
-                const rowOtPay = hours > 0
-                  ? Math.round(hours * hr * (OT_RATES[code] ?? 1.25) * 100) / 100
-                  : 0;
+                const rowPremiumPay = rowPayMap.get(row.id) ?? 0;
                 return (
                   <TableRow key={row.id}>
                     <Td className="text-[var(--text-secondary)]">
@@ -467,8 +520,8 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
                       }
                     </Td>
                     <Td numeric>
-                      {rowOtPay > 0
-                        ? <span className="font-medium text-[var(--brand)]">{php(rowOtPay)}</span>
+                      {rowPremiumPay > 0
+                        ? <span className="font-medium text-[var(--brand)]">{php(rowPremiumPay)}</span>
                         : <span className="text-[var(--text-tertiary)]">—</span>
                       }
                     </Td>
@@ -485,7 +538,7 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
                 <Td numeric className="font-semibold">{attTotalOtHrs > 0 ? `${attTotalOtHrs.toFixed(1)}h` : "—"}</Td>
                 <Td />
                 <Td numeric className="font-semibold text-[var(--brand)]">
-                  {attTotalOtPay > 0 ? php(attTotalOtPay) : "—"}
+                  {attTotalPremiumPay > 0 ? php(attTotalPremiumPay) : "—"}
                 </Td>
               </TableRow>
             </TableFooter>

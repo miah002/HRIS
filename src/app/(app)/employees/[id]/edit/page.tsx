@@ -225,7 +225,7 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--text-secondary)]">₱</span>
                   <Input
                     id="basicMonthlyRate" name="basicMonthlyRate" type="number"
-                    min="0" step="100" required className="pl-7 tabular"
+                    min="0" step="50" required className="pl-7 tabular"
                     defaultValue={e.basicMonthlyRate}
                   />
                 </div>

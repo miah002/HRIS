@@ -76,6 +76,7 @@ model Company {
   loans             Loan[]
   complianceRecords ComplianceRecord[]
   otApprovals       OTApproval[]
+  payrollPeriods    PayrollPeriod[]
   holidays          Holiday[]
   createdAt         DateTime           @default(now())
 }
@@ -295,6 +296,20 @@ model OTApproval {
   approvedBy  String?
   approvedAt  DateTime?
   notes       String?
+  createdAt   DateTime  @default(now())
+  @@unique([companyId, periodStart, periodEnd])
+}
+
+model PayrollPeriod {
+  id          String    @id @default(cuid())
+  companyId   String
+  company     Company   @relation(fields: [companyId], references: [id])
+  periodStart DateTime
+  periodEnd   DateTime
+  label       String
+  status      String    @default("OPEN") // OPEN | CLOSED
+  closedBy    String?
+  closedAt    DateTime?
   createdAt   DateTime  @default(now())
   @@unique([companyId, periodStart, periodEnd])
 }

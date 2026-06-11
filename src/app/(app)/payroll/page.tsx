@@ -11,24 +11,11 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { Badge, STATUS_BADGE } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Table, TableHeader, TableBody, TableRow, Th, Td, TableFooter } from "@/components/ui/table";
-import { php, phDate, nowPH } from "@/lib/format";
+import { php, phDate } from "@/lib/format";
 import { computeSemiMonthlyPayroll, OT_RATES, hourlyRate } from "@/lib/ph-payroll";
-import { PlayCircle, Wallet, FileText, Clock, ClipboardCheck, CheckCheck } from "lucide-react";
+import { activeCutoff, closeCutoff, ensureOpenPeriod } from "@/lib/payroll-period";
+import { PlayCircle, Wallet, FileText, Clock, ClipboardCheck, CheckCheck, Lock } from "lucide-react";
 import { ExportButton } from "./ExportButton";
-
-function currentCutoff(now = nowPH()) {
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  const day = now.getDate();
-  if (day >= 11 && day <= 25) {
-    return { start: new Date(year, month, 11), end: new Date(year, month, 25), label: "11–25" };
-  } else if (day >= 26) {
-    return { start: new Date(year, month, 26), end: new Date(year, month + 1, 10), label: "26–10" };
-  } else {
-    // day 1–10: we are inside the 26–10 cutoff that started last month
-    return { start: new Date(year, month - 1, 26), end: new Date(year, month, 10), label: "26–10" };
-  }
-}
 
 const OT_STATUS_BADGE: Record<string, "neutral" | "warning" | "success" | "brand"> = {
   PENDING:  "neutral",
@@ -51,6 +38,32 @@ async function releaseAllPayroll(formData: FormData) {
   await logAudit({ companyId: user?.companyId, userId: user?.id, action: "PAYROLL_RELEASE_ALL", target: "Payroll", meta: { start: start.toISOString(), end: end.toISOString() } });
   revalidateTag(CACHE_TAGS.PAYROLL);
   redirect(`/payroll?toast=All+payslips+released`);
+}
+
+async function closeCutoffAction(formData: FormData) {
+  "use server";
+  const session = await auth();
+  if (!session) redirect("/login");
+  const user = await prisma.user.findUnique({
+    where: { email: session.user!.email! },
+    select: { id: true, companyId: true },
+  });
+  if (!user?.companyId) redirect("/dashboard");
+  const start = new Date(String(formData.get("start")));
+  const end   = new Date(String(formData.get("end")));
+  const label = start.getDate() === 11 ? "11–25" : "26–10";
+
+  const result = await closeCutoff(user.companyId, { start, end, label }, user.id);
+  if (!result.ok) {
+    redirect(`/payroll?toast=${encodeURIComponent("Release all payslips before closing this cutoff")}`);
+  }
+  await logAudit({
+    companyId: user.companyId, userId: user.id,
+    action: "PAYROLL_CUTOFF_CLOSE", target: "PayrollPeriod",
+    meta: { start: start.toISOString(), end: end.toISOString() },
+  });
+  revalidateTag(CACHE_TAGS.PAYROLL);
+  redirect(`/payroll?toast=${encodeURIComponent("Cutoff closed — advanced to next period")}`);
 }
 
 async function runPayroll(formData: FormData) {
@@ -235,6 +248,8 @@ async function runPayroll(formData: FormData) {
       create: { employeeId: e.id, periodStart: start, periodEnd: end, status: "DRAFT", ...data },
     });
   }
+  const runLabel = start.getDate() === 11 ? "11–25" : "26–10";
+  await ensureOpenPeriod(companyId, { start, end, label: runLabel });
   await logAudit({ companyId, userId: user?.id, action: "PAYROLL_RUN", target: "Payroll", meta: { start: start.toISOString(), end: end.toISOString(), count: employees.length } });
   revalidateTag(CACHE_TAGS.PAYROLL);
   redirect(`/payroll?toast=Payroll+computed+successfully`);
@@ -242,12 +257,13 @@ async function runPayroll(formData: FormData) {
 
 export default async function PayrollPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
   const { period } = await searchParams;
-  const cutoff = currentCutoff();
 
   const session = await auth();
   if (!session) redirect("/login");
   const pageUser = await prisma.user.findUnique({ where: { email: session.user!.email! } });
   const pageCompanyId = pageUser?.companyId ?? "";
+
+  const cutoff = await activeCutoff(pageCompanyId);
 
   // OT approval status for current cutoff — affects OT pay in runPayroll()
   const otApprovalRecord = pageCompanyId
@@ -414,6 +430,20 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
                   </Button>
                 </form>
               )}
+              <form action={closeCutoffAction}>
+                <input type="hidden" name="start" value={cutoff.start.toISOString()} />
+                <input type="hidden" name="end"   value={cutoff.end.toISOString()} />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="submit"
+                  disabled={draftCount > 0}
+                  title={draftCount > 0 ? "Release all payslips before closing" : "Close this cutoff and advance to the next"}
+                >
+                  <Lock className="h-4 w-4" />
+                  Close cutoff
+                </Button>
+              </form>
             </>
           )}
         </div>

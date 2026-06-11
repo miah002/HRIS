@@ -310,6 +310,34 @@ async function main() {
     console.log("  skip Holiday table (exists)");
   }
 
+  // PayrollPeriod table — OPEN/CLOSED cutoff lifecycle
+  if (!(await tableExists("PayrollPeriod"))) {
+    await db.execute(`
+      CREATE TABLE "PayrollPeriod" (
+        "id"          TEXT NOT NULL PRIMARY KEY,
+        "companyId"   TEXT NOT NULL,
+        "periodStart" DATETIME NOT NULL,
+        "periodEnd"   DATETIME NOT NULL,
+        "label"       TEXT NOT NULL,
+        "status"      TEXT NOT NULL DEFAULT 'OPEN',
+        "closedBy"    TEXT,
+        "closedAt"    DATETIME,
+        "createdAt"   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "PayrollPeriod_companyId_fkey"
+          FOREIGN KEY ("companyId") REFERENCES "Company" ("id")
+          ON DELETE RESTRICT ON UPDATE CASCADE
+      )
+    `);
+    await db.execute(`
+      CREATE UNIQUE INDEX "PayrollPeriod_companyId_periodStart_periodEnd_key"
+        ON "PayrollPeriod" ("companyId", "periodStart", "periodEnd")
+    `);
+    console.log("  created PayrollPeriod table");
+    await backfillPayrollPeriods();
+  } else {
+    console.log("  skip PayrollPeriod table (exists)");
+  }
+
   console.log("Turso migration: done.");
   process.exit(0);
 }
@@ -406,6 +434,41 @@ async function fixPayrollPeriodDates() {
     );
     console.log(`  OTApproval: fixed ${row.periodStart.slice(0,10)} → ${ns.slice(0,10)}`);
   }
+}
+
+async function backfillPayrollPeriods() {
+  console.log("  backfilling PayrollPeriod from existing Payroll...");
+  // Payroll has no companyId — resolve it through Employee.
+  const periods = await db.execute(`
+    SELECT DISTINCT e."companyId" AS companyId, p."periodStart" AS periodStart, p."periodEnd" AS periodEnd
+    FROM "Payroll" p
+    JOIN "Employee" e ON e."id" = p."employeeId"
+  `);
+  let open = 0, closed = 0;
+  for (const row of periods.rows) {
+    const companyId   = row.companyId;
+    const periodStart = row.periodStart;
+    const periodEnd   = row.periodEnd;
+    const draftRes = await db.execute(
+      `SELECT COUNT(*) AS n FROM "Payroll" p
+       JOIN "Employee" e ON e."id" = p."employeeId"
+       WHERE e."companyId"=? AND p."periodStart"=? AND p."periodEnd"=? AND p."status"='DRAFT'`,
+      [companyId, periodStart, periodEnd]
+    );
+    const hasDrafts = Number(draftRes.rows[0]?.n ?? 0) > 0;
+    const status = hasDrafts ? "OPEN" : "CLOSED";
+    const day = new Date(periodStart).getUTCDate();
+    const label = day === 11 ? "11–25" : "26–10";
+    const id = `pp-${companyId}-${String(periodStart).slice(0, 10)}`;
+    await db.execute(
+      `INSERT OR IGNORE INTO "PayrollPeriod"
+         ("id","companyId","periodStart","periodEnd","label","status","createdAt")
+       VALUES (?,?,?,?,?,?,CURRENT_TIMESTAMP)`,
+      [id, companyId, periodStart, periodEnd, label, status]
+    );
+    if (status === "OPEN") open++; else closed++;
+  }
+  console.log(`  PayrollPeriod backfill done — ${open} OPEN, ${closed} CLOSED.`);
 }
 
 main().catch((err) => {

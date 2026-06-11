@@ -115,6 +115,107 @@ export function hourlyRate(monthlyRate: number) {
   return (monthlyRate / 21.75) / 8;
 }
 
+// ---------- Attendance → premium pay (single source of truth) ----------
+//
+// The fixed half-month basic (monthlyRate / 2) already pays 100% for every
+// REGULAR WORKDAY in the cutoff. Therefore:
+//   - Holiday on a workday (RH / SH, no "RD"): base is already in the salary,
+//     so working it adds only the PREMIUM above 100% (REG_PREMIUM).
+//   - Rest day (any code containing "RD"): NOT a regular workday, so the fixed
+//     salary pays 0 for it — working it pays the FULL DOLE multiplier (OT_RATES).
+//
+// Premium portions above are paid from attendance regardless of OT approval
+// (they are recorded worked days, like holiday premiums). Only hours BEYOND 8
+// (true overtime) are gated behind the period's OT approval.
+
+// Premium ABOVE the 100% base already covered by the fixed salary, keyed by base code.
+const REG_PREMIUM: Record<string, number> = {
+  RD: 0.30,        // rest day — full handling uses OT_RATES, not this; kept for completeness
+  SH: 0.30,        // special holiday on a workday: +30%
+  SH_RD: 0.50,
+  RH: 1.00,        // regular holiday on a workday: +100% (→ 200% total)
+  RH_RD: 1.60,
+};
+
+export interface AttendanceRowLite {
+  hoursWorked: number;
+  otHours: number | null;
+  ndHours: number | null;
+  otRateCode: string | null;
+}
+
+export interface AttendancePay {
+  overtimePay: number;
+  nightDiffPay: number;
+  holidayPay: number;
+  /** Per-code line items so payslips reconcile with the stored totals. */
+  breakdown: { code: string; regHrs: number; regPay: number; otHrs: number; otPay: number }[];
+}
+
+/**
+ * Compute premium/OT/ND pay from a set of attendance rows for one employee+period.
+ * Used by runPayroll (to store), the payroll preview card, and the payslip (to display)
+ * so the numbers always reconcile.
+ *
+ * @param otApproved  when false, hours beyond 8 (true OT) are not paid; premium
+ *                    pay for the first 8h of premium days is still counted.
+ */
+export function computeAttendancePay(
+  rows: AttendanceRowLite[],
+  hr: number,
+  otApproved: boolean,
+): AttendancePay {
+  let overtimePay = 0;
+  let nightDiffPay = 0;
+  let holidayPay = 0;
+  const breakdown: AttendancePay["breakdown"] = [];
+
+  for (const row of rows) {
+    const regHrs = Math.min(row.hoursWorked, 8);
+    const otHrs  = otApproved ? (row.otHours ?? 0) : 0;
+    const ndHrs  = row.ndHours ?? 0;
+    const code   = row.otRateCode;
+
+    if (!code) {
+      // Plain workday OT (no special rate code): only the >8h portion is premium.
+      const otPay = otHrs > 0 ? round2(otHrs * hr * OT_RATES.R_OT) : 0;
+      if (otPay > 0) {
+        overtimePay += otPay;
+        breakdown.push({ code: "R_OT", regHrs: 0, regPay: 0, otHrs, otPay });
+      }
+    } else {
+      const base = code.replace(/_OT$/, "");
+      const isRestDay = code.includes("RD");
+
+      // Regular hours: rest day pays the FULL multiplier (not in fixed salary);
+      // holiday-on-a-workday pays only the premium above the salary base.
+      const regMult = isRestDay ? (OT_RATES[base] ?? 1) : (REG_PREMIUM[base] ?? 0);
+      const regPay  = round2(regMult * regHrs * hr);
+
+      // Overtime hours (>8) always use the full _OT multiplier for the code.
+      const otMult = OT_RATES[base + "_OT"] ?? OT_RATES[base] ?? OT_RATES.R_OT;
+      const otPay  = otHrs > 0 ? round2(otHrs * hr * otMult) : 0;
+
+      const total = round2(regPay + otPay);
+      if (base.startsWith("RH") || base.startsWith("SH")) holidayPay   += total;
+      else if (base.startsWith("ND"))                     nightDiffPay += total;
+      else                                                overtimePay  += total;
+
+      if (total > 0) breakdown.push({ code, regHrs, regPay, otHrs, otPay });
+    }
+
+    // Night-differential premium: flat +10% on ND hours (independent of code).
+    if (ndHrs > 0) nightDiffPay += round2(ndHrs * hr * OT_MULTIPLIERS.ndPremium);
+  }
+
+  return {
+    overtimePay: round2(overtimePay),
+    nightDiffPay: round2(nightDiffPay),
+    holidayPay: round2(holidayPay),
+    breakdown,
+  };
+}
+
 // ---------- Late / undertime computation ----------
 // Uses hoursWorked as authoritative figure; splits shortfall into late (from timeIn) and undertime.
 export function lateUndertimeMinutes(

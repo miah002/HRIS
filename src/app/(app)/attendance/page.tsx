@@ -13,6 +13,7 @@ import { getPHHoliday } from "@/lib/ph-holidays";
 import { Clock, LogIn, LogOut, PlusCircle } from "lucide-react";
 import { nowPH, toPhDate } from "@/lib/format";
 import { cutoffForDate, monthCutoffLabel } from "@/lib/cutoff";
+import { activeCutoff } from "@/lib/payroll-period";
 
 const OT_RATE_OPTIONS: { value: string; label: string; group: string }[] = [
   { value: "R_OT",     label: "R OT — Regular OT (×1.25)",                      group: "Regular OT" },
@@ -300,7 +301,7 @@ export default async function AttendancePage({
     histTo   = new Date(params.to   + "T23:59:59");
     histLabel = `${params.from} – ${params.to}`;
   } else {
-    const cc = cutoffForDate(now);
+    const cc = companyId ? await activeCutoff(companyId) : cutoffForDate(now);
     histFrom = cc.start; histTo = cc.end;
     histLabel = `Current cutoff (${monthCutoffLabel(cc)})`;
   }

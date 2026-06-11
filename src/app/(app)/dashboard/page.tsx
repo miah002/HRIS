@@ -4,6 +4,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { php, phDate } from "@/lib/format";
 import { computeSemiMonthlyPayroll, OT_RATES, hourlyRate } from "@/lib/ph-payroll";
+import { activeCutoff } from "@/lib/payroll-period";
+import { monthCutoffLabel } from "@/lib/cutoff";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,16 +14,6 @@ import { KpiCard } from "./kpi-card";
 import { Greeting } from "./greeting";
 import { PlayCircle, UserPlus, CheckCheck, AlertTriangle, Clock } from "lucide-react";
 import { ReportsCharts } from "../reports/charts";
-
-function currentCutoff(now = new Date()) {
-  const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
-  const mn = now.toLocaleString("en-PH", { month: "long" });
-  if (d >= 11 && d <= 25) return { start: new Date(y, m, 11), end: new Date(y, m, 25), label: `${mn} 11–25` };
-  if (d > 25)             return { start: new Date(y, m, 26), end: new Date(y, m + 1, 10), label: `${mn} 26–10` };
-  // day 1–10: inside the 26–10 cutoff that started last month
-  const prev = new Date(y, m - 1, 1).toLocaleString("en-PH", { month: "long" });
-  return { start: new Date(y, m - 1, 26), end: new Date(y, m, 10), label: `${prev} 26–10` };
-}
 
 function upcomingDeadlines(now: Date) {
   const m = now.getMonth(); const y = now.getFullYear();
@@ -104,7 +96,7 @@ export default async function DashboardPage() {
   const recentHires = [...employees].sort((a, b) => +b.dateHired - +a.dateHired).slice(0, 5);
 
   // OT summary for current cutoff
-  const cutoff = currentCutoff(now);
+  const cutoff = await activeCutoff(companyId);
   const cutoffAttendance = await prisma.attendance.findMany({
     where: { date: { gte: cutoff.start, lte: cutoff.end } },
     include: { employee: true },
@@ -205,7 +197,7 @@ export default async function DashboardPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-sm">
             <Clock className="h-4 w-4 text-[var(--brand)]" />
-            Premium hours — {cutoff.label}
+            Premium hours — {monthCutoffLabel(cutoff)}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-3 space-y-5">

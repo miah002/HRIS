@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { php, phDate } from "@/lib/format";
 import { OT_RATES, hourlyRate } from "@/lib/ph-payroll";
+import { activeCutoff } from "@/lib/payroll-period";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,13 +13,6 @@ import { ClipboardCheck, Check, Clock, RotateCcw } from "lucide-react";
 
 // OT stage access is driven by per-user boolean flags (canPrepareOT/canCheckOT/canApproveOT)
 // set in Settings → User accounts. OWNER always has all access as fallback.
-
-function currentCutoff(now = new Date()) {
-  const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
-  if (d >= 11 && d <= 25) return { start: new Date(y, m, 11), end: new Date(y, m, 25) };
-  if (d > 25)             return { start: new Date(y, m, 26), end: new Date(y, m + 1, 10) };
-  return { start: new Date(y, m - 1, 26), end: new Date(y, m, 10) };
-}
 
 async function prepareOT(formData: FormData) {
   "use server";
@@ -118,7 +112,7 @@ export default async function OTApprovalPage() {
   const user = await prisma.user.findUnique({ where: { email: session.user!.email! } });
   if (!user?.companyId) redirect("/dashboard");
 
-  const cutoff = currentCutoff();
+  const cutoff = await activeCutoff(user.companyId);
 
   const attendance = await prisma.attendance.findMany({
     where: { date: { gte: cutoff.start, lte: cutoff.end }, employee: { companyId: user.companyId } },

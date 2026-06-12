@@ -174,6 +174,9 @@ async function main() {
   await db.execute(`CREATE INDEX IF NOT EXISTS "idx_employee_company" ON "Employee"("companyId","archived")`);
   await db.execute(`CREATE INDEX IF NOT EXISTS "idx_payroll_period" ON "Payroll"("periodStart","periodEnd")`);
   await db.execute(`CREATE INDEX IF NOT EXISTS "idx_attendance_emp" ON "Attendance"("employeeId")`);
+  // Date-range scans across all employees (payroll preview, OT approval) had no index.
+  await db.execute(`CREATE INDEX IF NOT EXISTS "idx_attendance_date" ON "Attendance"("date")`);
+  await db.execute(`CREATE INDEX IF NOT EXISTS "idx_attendance_emp_date" ON "Attendance"("employeeId","date")`);
   console.log("  performance indexes ensured");
 
   // EmergencyContact table
@@ -194,6 +197,13 @@ async function main() {
     console.log("  created EmergencyContact table");
   } else {
     console.log("  skip EmergencyContact table (exists)");
+  }
+  // Prisma declares @@unique([employeeId, isPrimary]); ensure parity in prod.
+  // Guarded: if pre-existing duplicate rows violate it, log and continue (never break a deploy).
+  try {
+    await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS "EmergencyContact_employeeId_isPrimary_key" ON "EmergencyContact"("employeeId","isPrimary")`);
+  } catch (e) {
+    console.log(`  WARN EmergencyContact unique index skipped (duplicate rows?): ${e.message}`);
   }
 
   // EmployeeHistory table

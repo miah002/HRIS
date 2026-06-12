@@ -85,17 +85,43 @@ async function runPayroll(formData: FormData) {
   const otApproved = otApprovalRec?.status === "APPROVED";
 
   const employees = await prisma.employee.findMany({ where: { companyId, archived: false } });
+  const empIds = employees.map((e) => e.id);
 
   const GRACE_MINUTES = 5;
 
   // Daily rate basis: monthlyRate / 21.75 working days
   const DAYS_PER_MONTH = 21.75;
 
+  // ── Bulk-fetch every read up front: 4 queries total instead of ~4 per employee.
+  // On Turso (remote) this collapses dozens of network round-trips into a handful.
+  const [allAttendance, allLeaves, existingPayrolls, activeLoans] = await Promise.all([
+    prisma.attendance.findMany({ where: { employeeId: { in: empIds }, date: { gte: start, lte: end } } }),
+    prisma.leaveRequest.findMany({
+      where: { employeeId: { in: empIds }, status: "APPROVED", startDate: { lte: end }, endDate: { gte: start } },
+      select: { employeeId: true, startDate: true, endDate: true, isWithPay: true },
+    }),
+    prisma.payroll.findMany({
+      where: { employeeId: { in: empIds }, periodStart: start, periodEnd: end },
+      include: { adjustments: true },
+    }),
+    prisma.loan.findMany({ where: { employeeId: { in: empIds }, status: "ACTIVE" } }),
+  ]);
+
+  // Group by employeeId for O(1) per-employee lookup inside the loop.
+  const attByEmp = new Map<string, typeof allAttendance>();
+  for (const a of allAttendance) { const l = attByEmp.get(a.employeeId) ?? []; l.push(a); attByEmp.set(a.employeeId, l); }
+  const leavesByEmp = new Map<string, typeof allLeaves>();
+  for (const lv of allLeaves) { const l = leavesByEmp.get(lv.employeeId) ?? []; l.push(lv); leavesByEmp.set(lv.employeeId, l); }
+  const loansByEmp = new Map<string, typeof activeLoans>();
+  for (const ln of activeLoans) { const l = loansByEmp.get(ln.employeeId) ?? []; l.push(ln); loansByEmp.set(ln.employeeId, l); }
+  const existingByEmp = new Map(existingPayrolls.map((p) => [p.employeeId, p]));
+
+  // Collect upserts and commit them in a single batched transaction at the end.
+  const writes: ReturnType<typeof prisma.payroll.upsert>[] = [];
+
   for (const e of employees) {
-    // Fetch attendance for this pay period
-    const attendance = await prisma.attendance.findMany({
-      where: { employeeId: e.id, date: { gte: start, lte: end } },
-    });
+    // Attendance for this pay period (from the bulk fetch)
+    const attendance = attByEmp.get(e.id) ?? [];
     const daysWorked = attendance.filter((a) => a.hoursWorked > 0).length;
     const regularHours = attendance.reduce((sum, a) => sum + Math.min(a.hoursWorked, 8), 0);
 
@@ -108,15 +134,7 @@ async function runPayroll(formData: FormData) {
     const presentDays = new Set(
       attendance.filter((a) => a.hoursWorked > 0).map((a) => phDayKey(a.date)),
     );
-    const approvedLeaves = await prisma.leaveRequest.findMany({
-      where: {
-        employeeId: e.id,
-        status: "APPROVED",
-        startDate: { lte: end },
-        endDate:   { gte: start },
-      },
-      select: { startDate: true, endDate: true, isWithPay: true },
-    });
+    const approvedLeaves = leavesByEmp.get(e.id) ?? [];
     const paidLeaveDays = new Set<string>();
     for (const lv of approvedLeaves) {
       if (!lv.isWithPay) continue; // unpaid leave falls through to the absence count
@@ -165,11 +183,8 @@ async function runPayroll(formData: FormData) {
     // HDMF MP2 voluntary savings (semi-monthly: monthly / 2)
     const hdmfMp2In = Math.round(((e.hdmfMp2Monthly ?? 0) / 2) * 100) / 100;
 
-    // Preserve existing adjustments if payroll already ran for this period
-    const existing = await prisma.payroll.findUnique({
-      where: { employeeId_periodStart_periodEnd: { employeeId: e.id, periodStart: start, periodEnd: end } },
-      include: { adjustments: true },
-    });
+    // Preserve existing adjustments if payroll already ran for this period (bulk fetch)
+    const existing = existingByEmp.get(e.id);
     const adjs = existing?.adjustments ?? [];
     const taxableAdj    = adjs.filter(a => a.type === "TAXABLE").reduce((s, a) => s + a.amount, 0);
     const nonTaxableAdj = adjs.filter(a => a.type === "NON_TAXABLE").reduce((s, a) => s + a.amount, 0);
@@ -197,8 +212,8 @@ async function runPayroll(formData: FormData) {
       hdmfMp2In,
     });
 
-    // Active loan deductions, split semi-monthly (monthly deduction / 2), capped at balance
-    const loans = await prisma.loan.findMany({ where: { employeeId: e.id, status: "ACTIVE" } });
+    // Active loan deductions, split semi-monthly (monthly deduction / 2), capped at balance (bulk fetch)
+    const loans = loansByEmp.get(e.id) ?? [];
     let loanDeductions = 0;
     let sssLoanDeduction = 0;
     let hdmfLoanDeduction = 0;
@@ -221,15 +236,20 @@ async function runPayroll(formData: FormData) {
     };
 
     // Skip employees whose payroll for this period is already RELEASED — never overwrite released records
-    const existingStatus = existing?.status;
-    if (existingStatus === "RELEASED") continue;
+    if (existing?.status === "RELEASED") continue;
 
-    await prisma.payroll.upsert({
-      where: { employeeId_periodStart_periodEnd: { employeeId: e.id, periodStart: start, periodEnd: end } },
-      update: { ...data, status: "DRAFT" },
-      create: { employeeId: e.id, periodStart: start, periodEnd: end, status: "DRAFT", ...data },
-    });
+    writes.push(
+      prisma.payroll.upsert({
+        where: { employeeId_periodStart_periodEnd: { employeeId: e.id, periodStart: start, periodEnd: end } },
+        update: { ...data, status: "DRAFT" },
+        create: { employeeId: e.id, periodStart: start, periodEnd: end, status: "DRAFT", ...data },
+      }),
+    );
   }
+
+  // One batched transaction instead of N sequential upserts.
+  if (writes.length > 0) await prisma.$transaction(writes);
+
   const runLabel = start.getDate() === 11 ? "11–25" : "26–10";
   await ensureOpenPeriod(companyId, { start, end, label: runLabel });
   await logAudit({ companyId, userId: user?.id, action: "PAYROLL_RUN", target: "Payroll", meta: { start: start.toISOString(), end: end.toISOString(), count: employees.length } });
@@ -245,34 +265,43 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
   const pageUser = await prisma.user.findUnique({ where: { email: session.user!.email! } });
   const pageCompanyId = pageUser?.companyId ?? "";
 
-  const cutoff = await activeCutoff(pageCompanyId);
-
-  // OT approval status for current cutoff — affects OT pay in runPayroll()
-  const otApprovalRecord = pageCompanyId
-    ? await prisma.oTApproval.findUnique({
-        where: { companyId_periodStart_periodEnd: { companyId: pageCompanyId, periodStart: cutoff.start, periodEnd: cutoff.end } },
-        select: { status: true },
-      })
-    : null;
-  const otStatus = otApprovalRecord?.status ?? null;
-  const otApprovedForPayroll = otStatus === "APPROVED";
+  // ── Reads in two parallel waves (Turso = one network round-trip per query) ──
+  // Wave 1: everything that needs only companyId — run concurrently.
+  const [cutoff, previewEmployees, allPeriods, periodEndRow] = await Promise.all([
+    activeCutoff(pageCompanyId),
+    prisma.employee.findMany({ where: { archived: false }, orderBy: { lastName: "asc" } }),
+    prisma.payroll.findMany({
+      select: { periodStart: true, periodEnd: true, grossPay: true, netPay: true, id: true },
+      orderBy: { periodStart: "desc" },
+    }),
+    period
+      ? prisma.payroll.findFirst({ where: { periodStart: new Date(period) }, select: { periodEnd: true } })
+      : Promise.resolve(null),
+  ]);
 
   // Resolve which period to display in the main table
   const viewStart = period ? new Date(period) : cutoff.start;
-  const viewEnd = period
-    ? (await prisma.payroll.findFirst({ where: { periodStart: new Date(period) }, select: { periodEnd: true } }))?.periodEnd ?? cutoff.end
-    : cutoff.end;
+  const viewEnd = period ? (periodEndRow?.periodEnd ?? cutoff.end) : cutoff.end;
   const isCurrentCutoff = !period;
 
-  // Fetch data for the hours preview card
-  const previewEmployees = await prisma.employee.findMany({
-    where: { archived: false },
-    orderBy: { lastName: "asc" },
-  });
-
-  const previewAttendance = await prisma.attendance.findMany({
-    where: { date: { gte: cutoff.start, lte: cutoff.end } },
-  });
+  // Wave 2: everything that needs the resolved cutoff / view window — concurrently.
+  const [otApprovalRecord, previewAttendance, runs] = await Promise.all([
+    pageCompanyId
+      ? prisma.oTApproval.findUnique({
+          where: { companyId_periodStart_periodEnd: { companyId: pageCompanyId, periodStart: cutoff.start, periodEnd: cutoff.end } },
+          select: { status: true },
+        })
+      : Promise.resolve(null),
+    prisma.attendance.findMany({ where: { date: { gte: cutoff.start, lte: cutoff.end } } }),
+    prisma.payroll.findMany({
+      where: { periodStart: viewStart, periodEnd: viewEnd },
+      include: { employee: true },
+      orderBy: { employee: { lastName: "asc" } },
+    }),
+  ]);
+  // OT approval status for current cutoff — affects OT pay in runPayroll()
+  const otStatus = otApprovalRecord?.status ?? null;
+  const otApprovedForPayroll = otStatus === "APPROVED";
 
   // Group attendance rows by employeeId for the preview card
   const attByEmployee = new Map<string, typeof previewAttendance>();
@@ -305,12 +334,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
     if (isHol) { holEmpIds.add(row.employeeId); holHrs += row.hoursWorked; }
   }
 
-  // All distinct periods for the history section
-  const allPeriods = await prisma.payroll.findMany({
-    select: { periodStart: true, periodEnd: true, grossPay: true, netPay: true, id: true },
-    orderBy: { periodStart: "desc" },
-  });
-  // Deduplicate periods and compute per-period totals
+  // Deduplicate the pre-fetched periods (allPeriods, wave 1) and compute per-period totals
   const periodMap = new Map<string, { periodStart: Date; periodEnd: Date; grossPay: number; netPay: number; count: number }>();
   for (const r of allPeriods) {
     const key = r.periodStart.toISOString();
@@ -326,12 +350,6 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
   const pastPeriods = [...periodMap.values()].filter(
     (p) => p.periodStart.toISOString() !== cutoff.start.toISOString()
   );
-
-  const runs = await prisma.payroll.findMany({
-    where: { periodStart: viewStart, periodEnd: viewEnd },
-    include: { employee: true },
-    orderBy: { employee: { lastName: "asc" } },
-  });
 
   const draftCount    = runs.filter(r => r.status === "DRAFT").length;
   const releasedCount = runs.filter(r => r.status === "RELEASED").length;

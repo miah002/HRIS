@@ -124,9 +124,12 @@ export function hourlyRate(monthlyRate: number) {
 //   - Rest day (any code containing "RD"): NOT a regular workday, so the fixed
 //     salary pays 0 for it — working it pays the FULL DOLE multiplier (OT_RATES).
 //
-// Premium portions above are paid from attendance regardless of OT approval
-// (they are recorded worked days, like holiday premiums). Only hours BEYOND 8
-// (true overtime) are gated behind the period's OT approval.
+// OT-approval gating (operator rule): working a rest day or a holiday IS
+// premium ("OT") work, so the ENTIRE premium — both the first-8h portion and
+// the hours-beyond-8 tier — is withheld until the period's OT Approval is
+// APPROVED. Plain workday OT (>8h, no rate code) is likewise gated. The only
+// premium paid regardless of approval is the flat night-differential (+10% on
+// ND hours), which is a shift premium, not overtime.
 
 // Premium ABOVE the 100% base already covered by the fixed salary, keyed by base code.
 const REG_PREMIUM: Record<string, number> = {
@@ -186,13 +189,21 @@ export function computeAttendancePay(
     } else {
       const base = code.replace(/_OT$/, "");
       const isRestDay = code.includes("RD");
+      const isHoliday = base.startsWith("RH") || base.startsWith("SH");
+
+      // Rest-day / holiday work is premium ("OT") work: the whole day's premium
+      // (first-8h portion AND the >8h tier) is gated behind OT approval. When
+      // not approved, this row pays nothing.
+      const premiumGated = isRestDay || isHoliday;
+      const payPremium = otApproved || !premiumGated;
 
       // Regular hours: rest day pays the FULL multiplier (not in fixed salary);
       // holiday-on-a-workday pays only the premium above the salary base.
       const regMult = isRestDay ? (OT_RATES[base] ?? 1) : (REG_PREMIUM[base] ?? 0);
-      const regPay  = round2(regMult * regHrs * hr);
+      const regPay  = payPremium ? round2(regMult * regHrs * hr) : 0;
 
       // Overtime hours (>8) always use the full _OT multiplier for the code.
+      // otHrs is already 0 when OT is unapproved, so otPay is gated too.
       const otMult = OT_RATES[base + "_OT"] ?? OT_RATES[base] ?? OT_RATES.R_OT;
       const otPay  = otHrs > 0 ? round2(otHrs * hr * otMult) : 0;
 
@@ -238,6 +249,51 @@ export function lateUndertimeMinutes(
   const undertimeMin = Math.max(0, shortageMin - lateMin);
 
   return { lateMinutes: lateMin, undertimeMinutes: undertimeMin };
+}
+
+// ---------- Absence detection ----------
+//
+// Fixed semi-monthly pay always credits a full half-month. Absences only bite
+// for TIMEKEPT employees (the caller passes presentDays derived from actual
+// attendance). An expected workday (Mon–Fri, excluding holidays which are paid
+// or observed when unworked) on which the employee neither rendered hours nor
+// was on PAID leave is an unpaid absence. This captures BOTH approved unpaid
+// leave and pure no-call/no-show days in one figure, with no double counting.
+
+/** Local calendar day-key (YYYY-MM-DD) — matches how attendance/cutoff dates are built. */
+export function phDayKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export interface AbsenceInput {
+  periodStart: Date;
+  periodEnd: Date;
+  /** Day-keys (phDayKey) on which the employee rendered hours. */
+  presentDays: Set<string>;
+  /** Day-keys covered by APPROVED with-pay leave — never deducted. */
+  paidLeaveDays: Set<string>;
+  /** True when the date is a holiday (RH/SH) — paid or observed when unworked. */
+  isHoliday?: (d: Date) => boolean;
+}
+
+/** Count unpaid-absence workdays in the period (see section comment above). */
+export function countUnpaidAbsenceDays(i: AbsenceInput): number {
+  const isHoliday = i.isHoliday ?? (() => false);
+  let count = 0;
+  const d = new Date(i.periodStart.getFullYear(), i.periodStart.getMonth(), i.periodStart.getDate());
+  const end = new Date(i.periodEnd.getFullYear(), i.periodEnd.getMonth(), i.periodEnd.getDate()).getTime();
+  while (d.getTime() <= end) {
+    const dow = d.getDay();
+    if (dow >= 1 && dow <= 5 && !isHoliday(d)) {            // Mon–Fri, not a holiday
+      const key = phDayKey(d);
+      if (!i.presentDays.has(key) && !i.paidLeaveDays.has(key)) count++;
+    }
+    d.setDate(d.getDate() + 1);
+  }
+  return count;
 }
 
 // ---------- Semi-monthly payroll (cutoffs 1–15 and 16–end) ----------
@@ -324,9 +380,12 @@ export function computeSemiMonthlyPayroll(i: PayrollInput) {
   const phicERVal = isFirstCutoff ? round2(phic.employer) : 0;
   const hdmfERVal = isFirstCutoff ? round2(hdmf.employer) : 0;
 
-  // WHT always monthly ÷ 2 (use full statutory as monthly deduction basis for tax computation)
+  // WHT always monthly ÷ 2 (use full statutory as monthly deduction basis for tax computation).
+  // Taxable compensation includes basic + ALL premium pay (OT, holiday, night diff) plus
+  // taxable adjustments. Holiday/OT/ND premiums are taxable for regular employees (only
+  // statutory-minimum-wage earners are exempt). De minimis / non-taxable adjustments are excluded.
   const monthlyStatutory = sss.employee + phic.employee + hdmf.employee;
-  const taxableSemi = basicPay + otPay + taxableAdj;
+  const taxableSemi = basicPay + otPay + ndPay + holidayPay + taxableAdj;
   const taxableMonthly = Math.max(0, taxableSemi * 2 - monthlyStatutory);
   const monthlyWHT = withholdingTaxMonthly(taxableMonthly);
   const whtSemi = round2(monthlyWHT / 2);

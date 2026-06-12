@@ -2,11 +2,10 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { php, phDate } from "@/lib/format";
-import { OT_RATES, hourlyRate } from "@/lib/ph-payroll";
+import { computeAttendancePay, hourlyRate } from "@/lib/ph-payroll";
 import { activeCutoff } from "@/lib/payroll-period";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Table, TableHeader, TableBody, TableRow, Th, Td } from "@/components/ui/table";
 import { ClipboardCheck, Check, Clock, RotateCcw } from "lucide-react";
@@ -124,31 +123,38 @@ export default async function OTApprovalPage() {
     where: { companyId_periodStart_periodEnd: { companyId: user.companyId, periodStart: cutoff.start, periodEnd: cutoff.end } },
   });
 
-  // Build per-employee OT summary
+  // Premium work gated behind OT approval: any hours-beyond-8 OT, PLUS any
+  // rest-day / holiday worked day (its whole premium needs approval). Pay shown
+  // is what WILL be paid once approved, computed with the same engine as payroll.
+  const isGatedPremium = (r: (typeof attendance)[number]) =>
+    (r.otHours ?? 0) > 0 ||
+    !!r.otRateCode?.includes("RD") ||
+    !!r.otRateCode?.startsWith("RH") ||
+    !!r.otRateCode?.startsWith("SH");
+
+  const rowsByEmp = new Map<string, typeof attendance>();
+  for (const row of attendance) {
+    if (row.hoursWorked <= 0 || !isGatedPremium(row)) continue;
+    const list = rowsByEmp.get(row.employeeId) ?? [];
+    list.push(row);
+    rowsByEmp.set(row.employeeId, list);
+  }
+
   type EmpRow = { name: string; employeeId: string; otHours: number; otPay: number; codes: Set<string> };
   const empMap = new Map<string, EmpRow>();
-  for (const row of attendance) {
-    const hours = row.otHours ?? 0;
-    if (hours <= 0) continue;
-    const hr  = hourlyRate(row.employee.basicMonthlyRate);
-    const code = row.otRateCode ?? "R_OT";
-    const pay  = Math.round(hours * hr * (OT_RATES[code] ?? 1.25) * 100) / 100;
-    const prev = empMap.get(row.employeeId);
-    if (prev) {
-      prev.otHours += hours;
-      prev.otPay   += pay;
-      prev.codes.add(code);
-    } else {
-      empMap.set(row.employeeId, {
-        name: `${row.employee.lastName}, ${row.employee.firstName}`,
-        employeeId: row.employeeId,
-        otHours: hours,
-        otPay: pay,
-        codes: new Set([code]),
-      });
-    }
+  for (const [employeeId, rows] of rowsByEmp) {
+    const emp = rows[0].employee;
+    const hr  = hourlyRate(emp.basicMonthlyRate);
+    const pay = computeAttendancePay(rows, hr, /* approved */ true);
+    empMap.set(employeeId, {
+      name: `${emp.lastName}, ${emp.firstName}`,
+      employeeId,
+      otHours: rows.reduce((s, r) => s + (r.otHours ?? 0), 0),
+      otPay: Math.round((pay.overtimePay + pay.holidayPay + pay.nightDiffPay) * 100) / 100,
+      codes: new Set(rows.map((r) => r.otRateCode ?? "R_OT")),
+    });
   }
-  const otRows = [...empMap.values()].sort((a, b) => b.otHours - a.otHours);
+  const otRows = [...empMap.values()].sort((a, b) => b.otPay - a.otPay);
   const totalOtHours = otRows.reduce((s, r) => s + r.otHours, 0);
   const totalOtPay   = otRows.reduce((s, r) => s + r.otPay, 0);
 
@@ -175,7 +181,7 @@ export default async function OTApprovalPage() {
             <h1 className="text-2xl font-semibold tracking-tight">OT Approval</h1>
           </div>
           <p className="text-sm text-[var(--text-secondary)] mt-0.5">
-            {cutoffLabel} · {otRows.length} employee{otRows.length !== 1 ? "s" : ""} with OT
+            {cutoffLabel} · {otRows.length} employee{otRows.length !== 1 ? "s" : ""} with OT / rest-day / holiday premium
           </p>
         </div>
         <Badge variant={STATUS_COLORS[status] ?? "neutral"} className="text-sm px-3 py-1">

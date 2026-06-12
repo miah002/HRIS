@@ -12,9 +12,10 @@ import { Badge, STATUS_BADGE } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Table, TableHeader, TableBody, TableRow, Th, Td, TableFooter } from "@/components/ui/table";
 import { php, phDate } from "@/lib/format";
-import { computeSemiMonthlyPayroll, hourlyRate, computeAttendancePay } from "@/lib/ph-payroll";
+import { computeSemiMonthlyPayroll, hourlyRate, computeAttendancePay, countUnpaidAbsenceDays, phDayKey } from "@/lib/ph-payroll";
 import { activeCutoff, closeCutoff, ensureOpenPeriod } from "@/lib/payroll-period";
 import { isFirstCutoff } from "@/lib/cutoff";
+import { getPHHoliday } from "@/lib/ph-holidays";
 import { PlayCircle, Wallet, FileText, Clock, ClipboardCheck, CheckCheck, Lock } from "lucide-react";
 import { ExportButton } from "./ExportButton";
 
@@ -98,26 +99,38 @@ async function runPayroll(formData: FormData) {
     const daysWorked = attendance.filter((a) => a.hoursWorked > 0).length;
     const regularHours = attendance.reduce((sum, a) => sum + Math.min(a.hoursWorked, 8), 0);
 
-    // Unpaid leave deduction — APPROVED leaves with isWithPay=false overlapping the cutoff
-    const unpaidLeaves = await prisma.leaveRequest.findMany({
+    // Absence deduction (fixed-salary model): only TIMEKEPT employees (≥1 record
+    // this cutoff) are docked. For them, every expected workday (Mon–Fri, non-
+    // holiday) with no rendered hours and no PAID leave is unpaid — covering both
+    // approved unpaid leave and pure no-shows. Employees with no attendance at all
+    // keep the fixed half-month (salaried fallback).
+    const isTimekept = attendance.length > 0;
+    const presentDays = new Set(
+      attendance.filter((a) => a.hoursWorked > 0).map((a) => phDayKey(a.date)),
+    );
+    const approvedLeaves = await prisma.leaveRequest.findMany({
       where: {
         employeeId: e.id,
         status: "APPROVED",
-        isWithPay: false,
         startDate: { lte: end },
         endDate:   { gte: start },
       },
-      select: { startDate: true, endDate: true },
+      select: { startDate: true, endDate: true, isWithPay: true },
     });
-    let unpaidLeaveDays = 0;
-    for (const lv of unpaidLeaves) {
-      const lvStart = lv.startDate < start ? start : lv.startDate;
-      const lvEnd   = lv.endDate   > end   ? end   : lv.endDate;
-      const days = Math.floor((+lvEnd - +lvStart) / 86400000) + 1;
-      if (days > 0) unpaidLeaveDays += days;
+    const paidLeaveDays = new Set<string>();
+    for (const lv of approvedLeaves) {
+      if (!lv.isWithPay) continue; // unpaid leave falls through to the absence count
+      const from = lv.startDate < start ? start : lv.startDate;
+      const to   = lv.endDate   > end   ? end   : lv.endDate;
+      const d = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+      const last = new Date(to.getFullYear(), to.getMonth(), to.getDate()).getTime();
+      while (d.getTime() <= last) { paidLeaveDays.add(phDayKey(d)); d.setDate(d.getDate() + 1); }
     }
+    const absentDays = isTimekept
+      ? countUnpaidAbsenceDays({ periodStart: start, periodEnd: end, presentDays, paidLeaveDays, isHoliday: (d) => getPHHoliday(d) !== null })
+      : 0;
     const dailyRate = e.basicMonthlyRate / DAYS_PER_MONTH;
-    const unpaidLeaveDeduction = Math.round(unpaidLeaveDays * dailyRate * 100) / 100;
+    const absenceDeduction = Math.round(absentDays * dailyRate * 100) / 100;
 
     const hr = hourlyRate(e.basicMonthlyRate);
     const attPay = computeAttendancePay(attendance, hr, otApproved);
@@ -198,13 +211,6 @@ async function runPayroll(formData: FormData) {
       else if (loan.type === "CASH_ADVANCE") cashAdvanceDeduction += semi;
     }
     loanDeductions = Math.round(loanDeductions * 100) / 100;
-
-    // Absence deduction:
-    //   1. Pre-existing fixed-half-month gap (if calc.basicPay < half-month base)
-    //   2. Unpaid approved leave days × daily rate
-    const expectedBasic = Math.round((e.basicMonthlyRate / 2) * 100) / 100;
-    const fixedGap = Math.max(0, expectedBasic - calc.basicPay);
-    const absenceDeduction = Math.round((fixedGap + unpaidLeaveDeduction) * 100) / 100;
 
     const totalDeductions = Math.round((calc.totalDeductions + loanDeductions + absenceDeduction) * 100) / 100;
     const netPay = Math.round((calc.grossPay - totalDeductions) * 100) / 100;

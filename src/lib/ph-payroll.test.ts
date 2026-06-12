@@ -12,12 +12,17 @@ const row = (partial: Partial<AttendanceRowLite> = {}): AttendanceRowLite => ({
   ...partial,
 });
 
-describe("computeAttendancePay — rest day full rate", () => {
-  it("8h RD → overtimePay = 8 × hr × 1.30 (full rate, NOT 30% premium)", () => {
-    const result = computeAttendancePay([row({ otRateCode: "RD" })], HR, false);
+describe("computeAttendancePay — rest day full rate (approval-gated)", () => {
+  it("8h RD approved → overtimePay = 8 × hr × 1.30 (full rate, NOT 30% premium)", () => {
+    const result = computeAttendancePay([row({ otRateCode: "RD" })], HR, true);
     expect(result.overtimePay).toBe(8 * HR * OT_RATES.RD); // 1040, not 240
     expect(result.holidayPay).toBe(0);
     expect(result.nightDiffPay).toBe(0);
+  });
+
+  it("8h RD UNAPPROVED → 0 (rest-day premium withheld until OT approved)", () => {
+    const result = computeAttendancePay([row({ otRateCode: "RD" })], HR, false);
+    expect(result.overtimePay).toBe(0);
   });
 
   it("10h RD + approved → 8h×1.30 + 2h×1.69", () => {
@@ -30,27 +35,37 @@ describe("computeAttendancePay — rest day full rate", () => {
     expect(result.overtimePay).toBe(expected); // 1040 + 338 = 1378
   });
 
-  it("10h RD + unapproved → 8h×1.30 only (OT gated)", () => {
+  it("10h RD + unapproved → 0 (entire rest-day premium gated, not just >8h)", () => {
     const result = computeAttendancePay(
       [row({ hoursWorked: 10, otHours: 2, otRateCode: "RD" })],
       HR,
       false,
     );
-    expect(result.overtimePay).toBe(8 * HR * OT_RATES.RD); // 1040
+    expect(result.overtimePay).toBe(0);
   });
 });
 
-describe("computeAttendancePay — regular holiday on weekday (RH)", () => {
-  it("8h RH → holidayPay = 8 × hr × 1.00 (premium only; base already in salary)", () => {
-    const result = computeAttendancePay([row({ otRateCode: "RH" })], HR, false);
+describe("computeAttendancePay — regular holiday on weekday (RH, approval-gated)", () => {
+  it("8h RH approved → holidayPay = 8 × hr × 1.00 (premium only; base already in salary)", () => {
+    const result = computeAttendancePay([row({ otRateCode: "RH" })], HR, true);
     expect(result.holidayPay).toBe(8 * HR * 1.0); // 800
     expect(result.overtimePay).toBe(0);
   });
 
-  it("8h SH → holidayPay = 8 × hr × 0.30", () => {
-    const result = computeAttendancePay([row({ otRateCode: "SH" })], HR, false);
+  it("8h RH UNAPPROVED → 0 (holiday premium withheld until OT approved)", () => {
+    const result = computeAttendancePay([row({ otRateCode: "RH" })], HR, false);
+    expect(result.holidayPay).toBe(0);
+  });
+
+  it("8h SH approved → holidayPay = 8 × hr × 0.30", () => {
+    const result = computeAttendancePay([row({ otRateCode: "SH" })], HR, true);
     expect(result.holidayPay).toBe(8 * HR * 0.3); // 240
     expect(result.overtimePay).toBe(0);
+  });
+
+  it("8h SH UNAPPROVED → 0", () => {
+    const result = computeAttendancePay([row({ otRateCode: "SH" })], HR, false);
+    expect(result.holidayPay).toBe(0);
   });
 });
 

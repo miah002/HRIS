@@ -15,20 +15,23 @@ import { cn } from "@/lib/format";
 import { Avatar } from "@/components/ui/avatar";
 
 const OWNER_NAV = [
-  { href: "/dashboard",   label: "Dashboard",   sub: "Overview",               icon: LayoutDashboard, ownerOnly: false },
-  { href: "/employees",   label: "Employees",   sub: "Mga Empleyado",          icon: Users,           ownerOnly: false },
-  { href: "/attendance",  label: "Attendance",  sub: "DTR",                    icon: Clock,           ownerOnly: false },
-  { href: "/payroll",     label: "Payroll",     sub: "Sweldo",                 icon: Wallet,          ownerOnly: false },
-  { href: "/ot-approval", label: "OT Approval", sub: "Prepare · Check · Approve", icon: ClipboardCheck, ownerOnly: false },
-  { href: "/leave",       label: "Leave",       sub: "Bakasyon",               icon: CalendarCheck,   ownerOnly: false },
-  { href: "/loans",       label: "Loans",       sub: "Salary loans",           icon: CreditCard,      ownerOnly: false },
-  { href: "/compliance",  label: "Compliance",  sub: "DOLE/BIR",               icon: ShieldCheck,     ownerOnly: false },
-  { href: "/reports",     label: "Reports",     sub: "Analytics",              icon: BarChart3,       ownerOnly: false },
-  { href: "/settings",    label: "Settings",    sub: "Roles & access",         icon: Settings,        ownerOnly: true  },
+  { href: "/dashboard",   label: "Dashboard",   icon: LayoutDashboard, section: "Overview",   ownerOnly: false },
+  { href: "/employees",   label: "Employees",   icon: Users,           section: "People",     ownerOnly: false },
+  { href: "/attendance",  label: "Attendance",  icon: Clock,           section: "People",     ownerOnly: false },
+  { href: "/payroll",     label: "Payroll",     icon: Wallet,          section: "Payroll",    ownerOnly: false },
+  { href: "/ot-approval", label: "OT Approval", icon: ClipboardCheck,  section: "Payroll",    ownerOnly: false },
+  { href: "/leave",       label: "Leave",       icon: CalendarCheck,   section: "People",     ownerOnly: false },
+  { href: "/loans",       label: "Loans",       icon: CreditCard,      section: "Payroll",    ownerOnly: false },
+  { href: "/compliance",  label: "Compliance",  icon: ShieldCheck,     section: "Governance", ownerOnly: false },
+  { href: "/reports",     label: "Reports",     icon: BarChart3,       section: "Governance", ownerOnly: false },
+  { href: "/settings",    label: "Settings",    icon: Settings,        section: "Governance", ownerOnly: true  },
 ];
 
+// Desktop sidebar groups (decoupled from array order so mobile BottomNav slices stay sensible)
+const SECTIONS = ["Overview", "People", "Payroll", "Governance"] as const;
+
 const EMPLOYEE_NAV = [
-  { href: "/my", label: "My Portal", sub: "Self-service", icon: User },
+  { href: "/my", label: "My Portal", icon: User, section: "Overview", ownerOnly: false },
 ];
 
 function ThemeCycle() {
@@ -54,100 +57,117 @@ export function Sidebar({ userName = "Demo Owner", role = "OWNER" }: { userName?
     : OWNER_NAV.filter((item) => !item.ownerOnly || role === "OWNER");
   const homeHref = role === "EMPLOYEE" ? "/my" : "/dashboard";
 
+  const renderItem = (item: { href: string; label: string; icon: typeof Users }) => {
+    const Icon = item.icon;
+    const active = pathname === item.href || pathname.startsWith(item.href + "/");
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        title={collapsed ? item.label : undefined}
+        className={cn(
+          "relative flex items-center gap-3 rounded-[var(--radius)] h-9 transition-colors duration-fast text-sm",
+          collapsed ? "justify-center px-0" : "px-2.5",
+          active
+            ? "text-[var(--text-primary)] font-medium"
+            : "text-[var(--text-secondary)] hover:bg-[var(--neutral-bg)] hover:text-[var(--text-primary)]"
+        )}
+      >
+        {active && (
+          <motion.div
+            layoutId="nav-pill"
+            className="absolute inset-0 rounded-[var(--radius)] bg-[var(--brand-subtle)] ring-1 ring-inset ring-[color-mix(in_srgb,var(--brand)_20%,transparent)]"
+            transition={{ type: "spring", stiffness: 500, damping: 40 }}
+          />
+        )}
+        {active && !collapsed && (
+          <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full bg-[var(--brand)]" />
+        )}
+        <Icon className={cn("relative h-[18px] w-[18px] flex-shrink-0", active && "text-[var(--brand)]")} />
+        {!collapsed && <span className="relative truncate">{item.label}</span>}
+      </Link>
+    );
+  };
+
   return (
     <motion.aside
-      animate={{ width: collapsed ? 64 : 240 }}
+      animate={{ width: collapsed ? 68 : 248 }}
       transition={{ type: "spring", stiffness: 400, damping: 35, mass: 0.8 }}
       className={cn(
         "hidden md:flex flex-col h-screen sticky top-0 z-30 overflow-hidden",
-        "bg-[var(--bg-elevated)] border-r border-[var(--border)] flex-shrink-0"
+        "surface-chrome border-r border-[var(--border)] flex-shrink-0"
       )}
     >
       {/* Logo */}
-      <div className="flex h-14 items-center px-4 gap-3 border-b border-[var(--border)] flex-shrink-0">
-        <Link href={homeHref} className="flex items-center gap-3 flex-shrink-0">
+      <div className={cn("flex h-16 items-center gap-2.5 flex-shrink-0", collapsed ? "px-0 justify-center" : "px-4")}>
+        <Link href={homeHref} className="flex items-center gap-2.5 min-w-0">
           <img src="/mmtsi-logo.png" alt="MMTSI" className="h-7 w-auto object-contain flex-shrink-0" />
           {!collapsed && (
-            <motion.span
-              initial={false}
-              animate={{ opacity: 1 }}
-              className="font-semibold text-sm text-[var(--text-primary)] whitespace-nowrap"
-            >
-              MMTSI
-            </motion.span>
+            <span className="flex flex-col leading-none min-w-0">
+              <span className="font-semibold text-sm tracking-tight text-[var(--text-primary)] truncate">MMTSI</span>
+              <span className="text-[10px] tracking-[0.12em] text-[var(--text-tertiary)] uppercase mt-0.5">HRIS</span>
+            </span>
           )}
         </Link>
-        <div className="ml-auto flex items-center gap-1">
-          {!collapsed && <ThemeCycle />}
-          <button
-            onClick={() => setCollapsed((c) => !c)}
-            className="h-7 w-7 flex items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-[var(--neutral-bg)] hover:text-[var(--text-primary)] transition-colors duration-fast"
-            title={collapsed ? "Expand" : "Collapse"}
-          >
-            {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Nav items */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
-        {NAV.map(({ href, label, sub, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(href + "/");
-          return (
-            <Link
-              key={href}
-              href={href}
-              title={collapsed ? label : undefined}
-              className={cn(
-                "flex items-center gap-3 rounded-[var(--radius-sm)] px-2.5 h-9 transition-colors duration-fast",
-                "text-sm group relative overflow-hidden",
-                active
-                  ? "bg-[var(--brand-subtle)] text-[var(--text-brand)]"
-                  : "text-[var(--text-secondary)] hover:bg-[var(--neutral-bg)] hover:text-[var(--text-primary)]"
-              )}
+        {!collapsed && (
+          <div className="ml-auto flex items-center gap-1">
+            <ThemeCycle />
+            <button
+              onClick={() => setCollapsed(true)}
+              className="h-7 w-7 flex items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-[var(--neutral-bg)] hover:text-[var(--text-primary)] transition-colors duration-fast"
+              title="Collapse"
             >
-              {active && (
-                <motion.div
-                  layoutId="nav-pill"
-                  className="absolute inset-0 rounded-[var(--radius-sm)] bg-[var(--brand-subtle)]"
-                  transition={{ type: "spring", stiffness: 500, damping: 40 }}
-                />
-              )}
-              {active && !collapsed && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[var(--brand)] rounded-r-full" />
-              )}
-              <Icon className={cn("h-4 w-4 flex-shrink-0 relative", active && "text-[var(--brand)]")} />
-              {!collapsed && (
-                <span className="relative flex flex-col min-w-0">
-                  <span className="truncate leading-none">{label}</span>
-                  {!active && (
-                    <span className="text-[10px] text-[var(--text-tertiary)] leading-none mt-0.5">{sub}</span>
-                  )}
-                </span>
-              )}
-            </Link>
-          );
-        })}
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+      </div>
+      {collapsed && (
+        <button
+          onClick={() => setCollapsed(false)}
+          className="mx-auto mb-1 h-7 w-7 flex items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-[var(--neutral-bg)] hover:text-[var(--text-primary)] transition-colors duration-fast"
+          title="Expand"
+        >
+          <ChevronRight className="h-3.5 w-3.5" />
+        </button>
+      )}
+
+      {/* Nav — grouped into sections when expanded, flat when collapsed */}
+      <nav className="flex-1 overflow-y-auto py-2 px-3 space-y-4">
+        {collapsed
+          ? <div className="space-y-1">{NAV.map(renderItem)}</div>
+          : SECTIONS.map((sec) => {
+              const items = NAV.filter((i) => i.section === sec);
+              if (items.length === 0) return null;
+              return (
+                <div key={sec} className="space-y-0.5">
+                  <div className="px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-tertiary)]">
+                    {sec}
+                  </div>
+                  {items.map(renderItem)}
+                </div>
+              );
+            })}
       </nav>
 
-      {/* Footer */}
-      <div className="flex-shrink-0 border-t border-[var(--border)] p-3">
-        <div className="flex items-center gap-2.5">
+      {/* Footer — user card */}
+      <div className="flex-shrink-0 p-3">
+        <div className={cn("flex items-center gap-2.5", !collapsed && "rounded-[var(--radius)] bg-[var(--bg-subtle)] ring-1 ring-inset ring-[var(--border)] p-2")}>
           <Avatar name={userName} size="sm" className="flex-shrink-0" />
           {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <div className="text-xs font-medium text-[var(--text-primary)] truncate">{userName}</div>
-              <div className="text-[10px] text-[var(--text-tertiary)] capitalize">{role.charAt(0) + role.slice(1).toLowerCase()}</div>
-            </div>
-          )}
-          {!collapsed && (
-            <Link
-              href="/api/auth/signout"
-              title="Sign out"
-              className="h-7 w-7 flex items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-[var(--neutral-bg)] hover:text-[var(--text-primary)] transition-colors duration-fast"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-            </Link>
+            <>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-medium text-[var(--text-primary)] truncate">{userName}</div>
+                <div className="text-[10px] text-[var(--text-tertiary)] capitalize">{role.charAt(0) + role.slice(1).toLowerCase()}</div>
+              </div>
+              <Link
+                href="/api/auth/signout"
+                title="Sign out"
+                className="h-7 w-7 flex items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-[var(--neutral-bg)] hover:text-[var(--text-primary)] transition-colors duration-fast"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+              </Link>
+            </>
           )}
         </div>
       </div>

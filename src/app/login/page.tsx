@@ -19,7 +19,13 @@ export default function LoginPage({ searchParams }: { searchParams: Promise<{ er
   }
 
   return (
-    <main className="min-h-screen gradient-mesh grid place-items-center p-4">
+    <main className="relative isolate min-h-screen gradient-mesh grid place-items-center p-4">
+      {/* Soft brand glow behind the card for depth */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[460px] w-[460px] -translate-x-1/2 -translate-y-1/2 rounded-full
+          bg-[radial-gradient(circle,color-mix(in_srgb,var(--brand)_18%,transparent)_0%,transparent_68%)]"
+      />
       <div className="w-full max-w-sm space-y-4">
         {/* Logo */}
         <div className="flex flex-col items-center gap-3 mb-8">
@@ -32,7 +38,7 @@ export default function LoginPage({ searchParams }: { searchParams: Promise<{ er
           </Link>
         </div>
 
-        <Card variant="raised" className="overflow-hidden">
+        <Card variant="raised" className="overflow-hidden shadow-[var(--shadow-lg)]">
           {/* Brand accent bar */}
           <div className="h-1 bg-gradient-to-r from-[var(--brand)] via-[var(--brand-bright)] to-[var(--brand-dim)]" />
           <CardHeader>

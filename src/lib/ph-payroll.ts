@@ -18,19 +18,22 @@
  * without code changes. Comments below tag each numeric source for auditability.
  */
 
-// ---------- SSS contributions (2025 schedule, ₱1,000–₱35,000 MSC, ₱500 brackets) ----------
-// Rate: 15% total (4.5% EE / 10% ER + 1% EC employer-only). We compute EE and ER shares.
-const SSS_EE_RATE = 0.045;
+// ---------- SSS contributions (2025 schedule, ₱5,000–₱35,000 MSC, ₱500 brackets) ----------
+// 2025/2026 rate: 15% total = 5% EE / 10% ER (EC is a small employer-only fixed amount,
+// tracked separately, not modeled here). The employer share is by law larger than the
+// employee's — SSS is NOT a 50/50 match (unlike PhilHealth and Pag-IBIG).
+const SSS_EE_RATE = 0.05;
 const SSS_ER_RATE = 0.1;
 const SSS_MSC_MIN = 5000;   // 2025 floor
 const SSS_MSC_MAX = 35000;  // 2025 ceiling
 const SSS_MSC_STEP = 500;
 
 export function sssContribution(monthlyEarnings: number) {
-  // Round monthly earnings to nearest MSC bracket (round down to step within floor/ceiling).
+  // Snap earnings to the NEAREST ₱500 MSC bracket (matches the official SSS table, whose
+  // ranges are centred on each MSC, e.g. 25,250–25,749.99 → 25,500), within floor/ceiling.
   const msc = Math.max(
     SSS_MSC_MIN,
-    Math.min(SSS_MSC_MAX, Math.floor(monthlyEarnings / SSS_MSC_STEP) * SSS_MSC_STEP)
+    Math.min(SSS_MSC_MAX, Math.round(monthlyEarnings / SSS_MSC_STEP) * SSS_MSC_STEP)
   );
   return {
     msc,

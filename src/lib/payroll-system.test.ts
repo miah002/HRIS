@@ -102,7 +102,7 @@ describe("REQ-3: holiday premium (whole day) requires OT approval", () => {
 // ── 4. Employer counterpart only for government-mandated ─────────────────────
 describe("REQ-4: employer counterpart exists for SSS/PHIC/HDMF only", () => {
   const rate = 20000;
-  it("SSS has an employer share (ER 10% > EE 4.5%, both > 0)", () => {
+  it("SSS has an employer share (ER 10% > EE 5%, both > 0)", () => {
     const s = sssContribution(rate);
     expect(s.employee).toBeGreaterThan(0);
     expect(s.employer).toBeGreaterThan(0);
@@ -267,16 +267,16 @@ describe("REQ-6: a full cutoff reconciles gross − deductions = net", () => {
 
     expect(calc.basicPay).toBe(10875);                 // 21750 / 2
     expect(calc.grossPay).toBe(13597.5);               // 10875 + 1722.5 + 1000
-    expect(calc.sssEE).toBe(1125);                     // MSC 25000 × 4.5%
+    expect(calc.sssEE).toBe(1250);                     // MSC 25000 × 5% (2025/26 employee rate)
     expect(calc.sssER).toBe(2500);                     // MSC 25000 × 10% (gov-mandated ER)
     expect(calc.philHealthEE).toBe(0);                 // not on 2nd cutoff
     expect(calc.pagIbigEE).toBe(0);                    // not on 2nd cutoff
-    // WHT: taxable = (basic 10875 + OT 1722.5 + holiday 1000) × 2 − monthlyStatutory(1125+543.75+200)
-    //      = 27195 − 1868.75 = 25326.25 → (25326.25−20833)×15% = 673.99/mo → 337.00/cutoff
+    // WHT: taxable = (basic 10875 + OT 1722.5 + holiday 1000) × 2 − monthlyStatutory(1250+543.75+200)
+    //      = 27195 − 1993.75 = 25201.25 → (25201.25−20833)×15% = 655.24/mo → 327.62/cutoff
     //      Holiday pay IS in the taxable base (taxable for regular employees).
-    expect(calc.withholdingTax).toBe(337);
-    expect(calc.totalDeductions).toBe(1462);           // SSS 1125 + WHT 337
-    expect(calc.netPay).toBe(12135.5);                 // 13597.5 − 1462
+    expect(calc.withholdingTax).toBe(327.62);
+    expect(calc.totalDeductions).toBe(1577.62);        // SSS 1250 + WHT 327.62
+    expect(calc.netPay).toBe(12019.88);                // 13597.5 − 1577.62
   });
 
   it("payslip reconstruction uses the same engine → breakdown sums to buckets", () => {

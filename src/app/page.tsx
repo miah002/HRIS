@@ -9,14 +9,14 @@ import {
 
 function NavBar() {
   return (
-    <header className="fixed top-0 inset-x-0 z-50 h-14 flex items-center border-b border-[rgba(0,0,0,0.06)] bg-[rgba(250,250,249,0.85)] backdrop-blur-md">
+    <header className="fixed top-0 inset-x-0 z-50 h-14 flex items-center border-b border-[var(--border)] bg-[var(--bg-overlay)] backdrop-blur-xl supports-[backdrop-filter]:bg-[var(--bg-overlay)]">
       <div className="container flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2 group">
           <img src="/mmtsi-logo.png" alt="MMTSI" className="h-7 w-auto object-contain" />
-          <span className="font-semibold text-sm text-[var(--text-primary)]">MMTSI HRIS</span>
+          <span className="font-semibold text-sm tracking-tight text-[var(--text-primary)]">MMTSI <span className="text-[var(--text-tertiary)] font-normal">HRIS</span></span>
         </Link>
         <Link href="/login">
-          <Button size="sm">Sign in <ArrowRight className="h-3.5 w-3.5 ml-1" /></Button>
+          <Button size="sm" className="gap-1">Sign in <ArrowRight className="h-3.5 w-3.5" /></Button>
         </Link>
       </div>
     </header>
@@ -87,8 +87,19 @@ export default function LandingPage() {
       <NavBar />
 
       {/* Hero */}
-      <section className="pt-32 pb-16 md:pt-40 md:pb-24">
-        <div className="container max-w-3xl mx-auto text-center">
+      <section className="relative overflow-hidden pt-32 pb-16 md:pt-40 md:pb-28">
+        {/* Ambient depth — on-brand glow + soft grid, behind content */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[640px]
+            bg-[radial-gradient(60%_55%_at_50%_-5%,color-mix(in_srgb,var(--brand)_22%,transparent)_0%,transparent_70%)]"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 z-0 h-px
+            bg-[linear-gradient(90deg,transparent,color-mix(in_srgb,var(--brand)_45%,transparent),transparent)]"
+        />
+        <div className="container max-w-3xl mx-auto text-center relative z-10">
           <Badge variant="brand" className="mb-5">Philippine HRIS Demo 🇵🇭</Badge>
           <h1 className="font-serif text-4xl md:text-5xl font-normal tracking-tight text-[var(--text-primary)] text-balance leading-[1.1]">
             HR software built for{" "}

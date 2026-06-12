@@ -13,3 +13,7 @@ next-env.d.ts
 *.tsbuildinfo
 .playwright-mcp/
 test-results/
+
+# Python bytecode (skill scripts)
+__pycache__/
+*.pyc

@@ -87,23 +87,24 @@ export default async function LoansPage({ searchParams }: { searchParams: Promis
   const user = await prisma.user.findUnique({ where: { email: session.user!.email! } });
   const companyId = user?.companyId ?? "";
 
-  const employees = await prisma.employee.findMany({
-    where: { companyId, archived: false },
-    orderBy: { firstName: "asc" },
-  });
-
-  const activeLoans = await prisma.loan.findMany({
-    where: { companyId, status: "ACTIVE" },
-    include: { employee: true },
-    orderBy: { createdAt: "desc" },
-  });
-
-  const closedLoans = await prisma.loan.findMany({
-    where: { companyId, status: { in: ["PAID", "CANCELLED"] } },
-    include: { employee: true },
-    orderBy: { updatedAt: "desc" },
-    take: 10,
-  });
+  // All three reads depend only on companyId — run concurrently.
+  const [employees, activeLoans, closedLoans] = await Promise.all([
+    prisma.employee.findMany({
+      where: { companyId, archived: false },
+      orderBy: { firstName: "asc" },
+    }),
+    prisma.loan.findMany({
+      where: { companyId, status: "ACTIVE" },
+      include: { employee: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.loan.findMany({
+      where: { companyId, status: { in: ["PAID", "CANCELLED"] } },
+      include: { employee: true },
+      orderBy: { updatedAt: "desc" },
+      take: 10,
+    }),
+  ]);
 
   return (
     <div className="space-y-6">

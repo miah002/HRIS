@@ -32,18 +32,32 @@ export default async function DashboardPage() {
   if (!session) redirect("/login");
 
   // Employees have their own portal — redirect them away from the owner dashboard
-  const { prisma: db } = await import("@/lib/prisma");
-  const user = await db.user.findUnique({ where: { email: session.user!.email! } });
+  const user = await prisma.user.findUnique({ where: { email: session.user!.email! } });
   if (user?.role === "EMPLOYEE") redirect("/my");
 
   const name = session?.user?.name?.split(" ")[0] ?? "Owner";
-
-  const employees = await prisma.employee.findMany({ where: { archived: false } });
-  const pendingLeaves = await prisma.leaveRequest.count({ where: { status: "PENDING" } });
+  const companyId = user?.companyId ?? "";
 
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), 1);
   const end   = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+  // Wave 1: independent / companyId-only reads run concurrently.
+  const [employees, pendingLeaves, payrollHistory, cutoff] = await Promise.all([
+    prisma.employee.findMany({ where: { archived: false } }),
+    prisma.leaveRequest.count({ where: { status: "PENDING" } }),
+    prisma.payroll.findMany({
+      where: { employee: { companyId }, periodStart: { gte: sixMonthsAgo } },
+      select: { periodStart: true, grossPay: true },
+    }),
+    activeCutoff(companyId),
+  ]);
+  // Wave 2: needs the resolved cutoff.
+  const cutoffAttendance = await prisma.attendance.findMany({
+    where: { date: { gte: cutoff.start, lte: cutoff.end } },
+    include: { employee: true },
+  });
 
   const monthlyPayroll = employees.reduce((s, e) => {
     const half = computeSemiMonthlyPayroll({ monthlyRate: e.basicMonthlyRate, periodStart: start, periodEnd: end });
@@ -52,13 +66,7 @@ export default async function DashboardPage() {
 
   const deadlines = upcomingDeadlines(now);
 
-  // Real 6-month payroll trend from DB
-  const companyId = user?.companyId ?? "";
-  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-  const payrollHistory = await prisma.payroll.findMany({
-    where: { employee: { companyId }, periodStart: { gte: sixMonthsAgo } },
-    select: { periodStart: true, grossPay: true },
-  });
+  // Real 6-month payroll trend from DB (payrollHistory fetched above, wave 1)
   const MONTH_LABELS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   const monthMap = new Map<string, number>();
   for (const p of payrollHistory) {
@@ -95,13 +103,7 @@ export default async function DashboardPage() {
 
   const recentHires = [...employees].sort((a, b) => +b.dateHired - +a.dateHired).slice(0, 5);
 
-  // OT summary for current cutoff
-  const cutoff = await activeCutoff(companyId);
-  const cutoffAttendance = await prisma.attendance.findMany({
-    where: { date: { gte: cutoff.start, lte: cutoff.end } },
-    include: { employee: true },
-  });
-
+  // OT summary for current cutoff (cutoff + cutoffAttendance fetched above)
   const otByEmployee = new Map<string, { name: string; otHrs: number; otPay: number }>();
   for (const row of cutoffAttendance) {
     if ((row.otHours ?? 0) <= 0) continue;

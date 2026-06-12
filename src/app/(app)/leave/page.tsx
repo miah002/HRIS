@@ -5,7 +5,6 @@ import { auth } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, STATUS_BADGE } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Avatar } from "@/components/ui/avatar";
 import { phDate } from "@/lib/format";
@@ -162,31 +161,35 @@ export default async function LeavePage() {
   if (!session) redirect("/login");
 
   const user = await prisma.user.findUnique({ where: { email: session.user!.email! } });
-  const employees = await prisma.employee.findMany({
-    where: { companyId: user?.companyId ?? "", archived: false },
-    orderBy: { firstName: "asc" },
-    select: { id: true, firstName: true, lastName: true, sex: true },
-  });
-
-  const requests = await prisma.leaveRequest.findMany({
-    where: { employee: { companyId: user?.companyId ?? "" } },
-    include: { employee: true },
-    orderBy: { startDate: "desc" },
-    take: 50,
-  });
+  const companyId = user?.companyId ?? "";
 
   // Leave balance: approved paid VL/SL days used this calendar year
   const yearStart = new Date(new Date().getFullYear(), 0, 1);
-  const ytdLeaves = await prisma.leaveRequest.findMany({
-    where: {
-      employee: { companyId: user?.companyId ?? "" },
-      status: "APPROVED",
-      isWithPay: true,
-      leaveType: { in: ["VL", "SL"] },
-      startDate: { gte: yearStart },
-    },
-    select: { employeeId: true, leaveType: true, days: true },
-  });
+
+  // All three reads depend only on companyId — run concurrently.
+  const [employees, requests, ytdLeaves] = await Promise.all([
+    prisma.employee.findMany({
+      where: { companyId, archived: false },
+      orderBy: { firstName: "asc" },
+      select: { id: true, firstName: true, lastName: true, sex: true },
+    }),
+    prisma.leaveRequest.findMany({
+      where: { employee: { companyId } },
+      include: { employee: true },
+      orderBy: { startDate: "desc" },
+      take: 50,
+    }),
+    prisma.leaveRequest.findMany({
+      where: {
+        employee: { companyId },
+        status: "APPROVED",
+        isWithPay: true,
+        leaveType: { in: ["VL", "SL"] },
+        startDate: { gte: yearStart },
+      },
+      select: { employeeId: true, leaveType: true, days: true },
+    }),
+  ]);
   const ENTITLEMENT = 15;
   const balanceByEmp: Record<string, { vlUsed: number; slUsed: number }> = {};
   for (const lv of ytdLeaves) {

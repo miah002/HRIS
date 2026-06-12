@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Avatar } from "@/components/ui/avatar";
 import { Settings, ShieldAlert, ClipboardCheck, CalendarDays, Activity } from "lucide-react";
@@ -80,19 +79,22 @@ export default async function SettingsPage() {
   const actor = await prisma.user.findUnique({ where: { email: session.user!.email! } });
   if (actor?.role !== "OWNER") redirect("/dashboard");
 
-  const company = await prisma.company.findUnique({ where: { id: actor.companyId ?? "" } });
+  const companyId = actor.companyId ?? "";
 
-  const users = await prisma.user.findMany({
-    where: { companyId: actor.companyId ?? "" },
-    orderBy: { name: "asc" },
-    select: { id: true, name: true, email: true, role: true, canPrepareOT: true, canCheckOT: true, canApproveOT: true },
-  });
-
-  const auditLogs = await prisma.auditLog.findMany({
-    where: { companyId: actor.companyId ?? "" },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  // Independent reads keyed on companyId — run concurrently.
+  const [company, users, auditLogs] = await Promise.all([
+    prisma.company.findUnique({ where: { id: companyId } }),
+    prisma.user.findMany({
+      where: { companyId },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, email: true, role: true, canPrepareOT: true, canCheckOT: true, canApproveOT: true },
+    }),
+    prisma.auditLog.findMany({
+      where: { companyId },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+  ]);
 
   return (
     <div className="space-y-6">

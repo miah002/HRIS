@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Avatar } from "@/components/ui/avatar";
 import { Table, TableHeader, TableBody, TableRow, Th, Td, TableFooter } from "@/components/ui/table";
@@ -306,8 +305,9 @@ export default async function AttendancePage({
     histLabel = `Current cutoff (${monthCutoffLabel(cc)})`;
   }
 
-  const histRecords = tab === "history"
-    ? await prisma.attendance.findMany({
+  // Started here, awaited with the rest below so all reads run concurrently.
+  const histP = tab === "history"
+    ? prisma.attendance.findMany({
         where: {
           employee: { companyId },
           date: { gte: histFrom, lte: histTo },
@@ -316,7 +316,7 @@ export default async function AttendancePage({
         include: { employee: true },
         orderBy: [{ employee: { lastName: "asc" } }, { date: "asc" }],
       })
-    : [];
+    : undefined;
 
   // Bulk entry: resolve week to Monday
   const rawWeek    = params.week ?? toLocalDateStr(nowPH());
@@ -347,26 +347,24 @@ export default async function AttendancePage({
 
   const bulkWeekEnd = new Date(bulkMonday);
   bulkWeekEnd.setDate(bulkMonday.getDate() + 6);
-  const bulkExisting = (tab === "bulk" && bulkEmployeeId)
-    ? await prisma.attendance.findMany({
+  const bulkP = (tab === "bulk" && bulkEmployeeId)
+    ? prisma.attendance.findMany({
         where: { employeeId: bulkEmployeeId, date: { gte: bulkMonday, lte: bulkWeekEnd } },
       })
-    : [];
-  const bulkExistingMap = new Map(bulkExisting.map((r) => [toLocalDateStr(r.date), r]));
-
-  const employees = await prisma.employee.findMany({
-    where: { companyId, archived: false },
-    orderBy: { firstName: "asc" },
-  });
+    : undefined;
 
   const today = todayPH();
-  const todayRecords = await prisma.attendance.findMany({
-    where: {
-      date: today,
-      employee: { companyId },
-    },
-    include: { employee: true },
-  });
+
+  // Run the page's reads concurrently — each is a Turso round-trip.
+  const [employees, todayRecords, histRes, bulkRes] = await Promise.all([
+    prisma.employee.findMany({ where: { companyId, archived: false }, orderBy: { firstName: "asc" } }),
+    prisma.attendance.findMany({ where: { date: today, employee: { companyId } }, include: { employee: true } }),
+    histP,
+    bulkP,
+  ]);
+  const histRecords = histRes ?? [];
+  const bulkExisting = bulkRes ?? [];
+  const bulkExistingMap = new Map(bulkExisting.map((r) => [toLocalDateStr(r.date), r]));
 
   const recordMap = new Map(todayRecords.map((r) => [r.employeeId, r]));
 

@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { php, phDate } from "@/lib/format";
 import { redirect } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
@@ -27,7 +27,8 @@ async function generate13thMonth() {
     where: { companyId, archived: false },
   });
 
-  for (const e of employees) {
+  // Build all upserts, then commit them in one batched transaction (not N round-trips).
+  const writes = employees.map((e) => {
     const hiredDate = e.dateHired;
     const yearStart = new Date(year, 0, 1);
     const effectiveStart = hiredDate > yearStart ? hiredDate : yearStart;
@@ -42,41 +43,24 @@ async function generate13thMonth() {
     );
     const amount = (e.basicMonthlyRate * monthsWorked) / 12;
 
-    await prisma.payroll.upsert({
+    return prisma.payroll.upsert({
       where: {
-        employeeId_periodStart_periodEnd: {
-          employeeId: e.id,
-          periodStart,
-          periodEnd,
-        },
+        employeeId_periodStart_periodEnd: { employeeId: e.id, periodStart, periodEnd },
       },
       update: {
-        basicPay: amount,
-        grossPay: amount,
-        sssEE: 0,
-        philHealthEE: 0,
-        pagIbigEE: 0,
-        withholdingTax: 0,
-        totalDeductions: 0,
-        netPay: amount,
-        status: "DRAFT",
+        basicPay: amount, grossPay: amount,
+        sssEE: 0, philHealthEE: 0, pagIbigEE: 0, withholdingTax: 0,
+        totalDeductions: 0, netPay: amount, status: "DRAFT",
       },
       create: {
-        employeeId: e.id,
-        periodStart,
-        periodEnd,
-        basicPay: amount,
-        grossPay: amount,
-        sssEE: 0,
-        philHealthEE: 0,
-        pagIbigEE: 0,
-        withholdingTax: 0,
-        totalDeductions: 0,
-        netPay: amount,
-        status: "DRAFT",
+        employeeId: e.id, periodStart, periodEnd,
+        basicPay: amount, grossPay: amount,
+        sssEE: 0, philHealthEE: 0, pagIbigEE: 0, withholdingTax: 0,
+        totalDeductions: 0, netPay: amount, status: "DRAFT",
       },
     });
-  }
+  });
+  if (writes.length > 0) await prisma.$transaction(writes);
 
   redirect("/payroll/13th-month?generated=1");
 }
@@ -100,18 +84,15 @@ export default async function ThirteenthMonthPage({
   const periodEnd = new Date(year, 11, 24);
   const dueDate = new Date(year, 11, 24);
 
-  const employees = await prisma.employee.findMany({
-    where: { companyId, archived: false },
-    orderBy: { lastName: "asc" },
-  });
-
-  const existingPayrolls = await prisma.payroll.findMany({
-    where: {
-      periodStart,
-      periodEnd,
-      employee: { companyId },
-    },
-  });
+  const [employees, existingPayrolls] = await Promise.all([
+    prisma.employee.findMany({
+      where: { companyId, archived: false },
+      orderBy: { lastName: "asc" },
+    }),
+    prisma.payroll.findMany({
+      where: { periodStart, periodEnd, employee: { companyId } },
+    }),
+  ]);
 
   const payrollMap = new Map(existingPayrolls.map((p) => [p.employeeId, p]));
 

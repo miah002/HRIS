@@ -145,7 +145,8 @@ export default async function EmployeeDetail({ params }: { params: Promise<{ id:
   if (!session) redirect("/login");
   const companyId = await getActorCompanyId(session.user!.email!);
   if (!companyId) redirect("/dashboard");
-  const e = await prisma.employee.findFirst({
+  const [e, activeLoans] = await Promise.all([
+    prisma.employee.findFirst({
     where: { id, companyId },
     include: {
       payrolls: {
@@ -167,7 +168,9 @@ export default async function EmployeeDetail({ params }: { params: Promise<{ id:
       history: { orderBy: { effectiveDate: "desc" } },
       documents: { orderBy: { uploadedAt: "desc" } },
     },
-  });
+    }),
+    prisma.loan.findMany({ where: { employeeId: id, status: "ACTIVE" } }),
+  ]);
   if (!e) notFound();
 
   const projected = computeSemiMonthlyPayroll({ monthlyRate: e.basicMonthlyRate, periodStart: new Date(), periodEnd: new Date() });
@@ -179,7 +182,7 @@ export default async function EmployeeDetail({ params }: { params: Promise<{ id:
   const leaveUsedMap: Record<string, number> = {};
   for (const l of usedLeaves) leaveUsedMap[l.leaveType] = (leaveUsedMap[l.leaveType] ?? 0) + l.days;
 
-  const activeLoans = await prisma.loan.findMany({ where: { employeeId: id, status: "ACTIVE" } });
+  // activeLoans fetched above (parallel with the employee record)
 
   // YTD from payrolls (current calendar year)
   const ytdPayrolls = e.payrolls.filter(p => p.periodStart >= yearStart);

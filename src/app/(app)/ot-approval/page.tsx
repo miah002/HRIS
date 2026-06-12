@@ -113,15 +113,17 @@ export default async function OTApprovalPage() {
 
   const cutoff = await activeCutoff(user.companyId);
 
-  const attendance = await prisma.attendance.findMany({
-    where: { date: { gte: cutoff.start, lte: cutoff.end }, employee: { companyId: user.companyId } },
-    include: { employee: true },
-    orderBy: { date: "asc" },
-  });
-
-  const approval = await prisma.oTApproval.findUnique({
-    where: { companyId_periodStart_periodEnd: { companyId: user.companyId, periodStart: cutoff.start, periodEnd: cutoff.end } },
-  });
+  // Both reads need only the resolved cutoff — run concurrently.
+  const [attendance, approval] = await Promise.all([
+    prisma.attendance.findMany({
+      where: { date: { gte: cutoff.start, lte: cutoff.end }, employee: { companyId: user.companyId } },
+      include: { employee: true },
+      orderBy: { date: "asc" },
+    }),
+    prisma.oTApproval.findUnique({
+      where: { companyId_periodStart_periodEnd: { companyId: user.companyId, periodStart: cutoff.start, periodEnd: cutoff.end } },
+    }),
+  ]);
 
   // Premium work gated behind OT approval: any hours-beyond-8 OT, PLUS any
   // rest-day / holiday worked day (its whole premium needs approval). Pay shown

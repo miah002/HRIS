@@ -384,13 +384,17 @@ export function computeSemiMonthlyPayroll(i: PayrollInput) {
   const phicERVal = isFirstCutoff ? 0 : round2(phic.employer);
   const hdmfERVal = isFirstCutoff ? 0 : round2(hdmf.employer);
 
-  // WHT always monthly ÷ 2 (use full statutory as monthly deduction basis for tax computation).
-  // Taxable compensation includes basic + ALL premium pay (OT, holiday, night diff) plus
-  // taxable adjustments. Holiday/OT/ND premiums are taxable for regular employees (only
-  // statutory-minimum-wage earners are exempt). De minimis / non-taxable adjustments are excluded.
-  const monthlyStatutory = sss.employee + phic.employee + hdmf.employee;
+  // WHT (BIR semi-monthly): the taxable base is reduced ONLY by the statutory
+  // contributions actually deducted THIS cutoff (client policy) — SSS on 11–25,
+  // PHIC+HDMF on 26–10 — not the full monthly figure on both cutoffs. Implemented
+  // via the monthly table on a doubled base then halved, which is exactly the
+  // semi-monthly TRAIN table (thresholds + fixed amounts both scale by ½).
+  // Taxable compensation = basic + ALL premium pay (OT, holiday, night diff) +
+  // taxable adjustments. Holiday/OT/ND premiums are taxable for regular employees
+  // (only statutory-minimum-wage earners are exempt). De minimis / non-taxable excluded.
+  const cutoffStatutory = sssEE + phicEE + hdmfEE;
   const taxableSemi = basicPay + otPay + ndPay + holidayPay + taxableAdj;
-  const taxableMonthly = Math.max(0, taxableSemi * 2 - monthlyStatutory);
+  const taxableMonthly = Math.max(0, (taxableSemi - cutoffStatutory) * 2);
   const monthlyWHT = withholdingTaxMonthly(taxableMonthly);
   const whtSemi = round2(monthlyWHT / 2);
 

@@ -138,25 +138,25 @@ describe("REQ-5: deductions land on the right cutoff, ER follows EE", () => {
     monthlyRate: rate, periodStart: new Date(2026, 5, 26), periodEnd: new Date(2026, 6, 10),
   });
 
-  it("1st cutoff (11–25): PHIC + HDMF deducted, SSS = 0", () => {
-    expect(first.philHealthEE).toBeGreaterThan(0);
-    expect(first.pagIbigEE).toBeGreaterThan(0);
-    expect(first.sssEE).toBe(0);
+  it("1st cutoff (11–25): SSS deducted, PHIC + HDMF = 0", () => {
+    expect(first.sssEE).toBeGreaterThan(0);
+    expect(first.philHealthEE).toBe(0);
+    expect(first.pagIbigEE).toBe(0);
   });
-  it("1st cutoff: employer PHIC + HDMF present, employer SSS = 0", () => {
-    expect(first.philHealthER).toBeGreaterThan(0);
-    expect(first.pagIbigER).toBeGreaterThan(0);
-    expect(first.sssER).toBe(0);
+  it("1st cutoff: employer SSS present, employer PHIC + HDMF = 0", () => {
+    expect(first.sssER).toBeGreaterThan(0);
+    expect(first.philHealthER).toBe(0);
+    expect(first.pagIbigER).toBe(0);
   });
-  it("2nd cutoff (26–10): SSS deducted, PHIC + HDMF = 0", () => {
-    expect(second.sssEE).toBeGreaterThan(0);
-    expect(second.philHealthEE).toBe(0);
-    expect(second.pagIbigEE).toBe(0);
+  it("2nd cutoff (26–10): PHIC + HDMF deducted, SSS = 0", () => {
+    expect(second.philHealthEE).toBeGreaterThan(0);
+    expect(second.pagIbigEE).toBeGreaterThan(0);
+    expect(second.sssEE).toBe(0);
   });
-  it("2nd cutoff: employer SSS present, employer PHIC + HDMF = 0", () => {
-    expect(second.sssER).toBeGreaterThan(0);
-    expect(second.philHealthER).toBe(0);
-    expect(second.pagIbigER).toBe(0);
+  it("2nd cutoff: employer PHIC + HDMF present, employer SSS = 0", () => {
+    expect(second.philHealthER).toBeGreaterThan(0);
+    expect(second.pagIbigER).toBeGreaterThan(0);
+    expect(second.sssER).toBe(0);
   });
   it("WHT is split every cutoff (monthly ÷ 2), independent of fund assignment", () => {
     expect(first.withholdingTax).toBeGreaterThanOrEqual(0);
@@ -257,8 +257,8 @@ describe("REQ-6: a full cutoff reconciles gross − deductions = net", () => {
 
     const calc = computeSemiMonthlyPayroll({
       monthlyRate,
-      periodStart: new Date(2026, 5, 26), periodEnd: new Date(2026, 6, 10), // 2nd cutoff → SSS
-      isFirstCutoff: false,
+      periodStart: new Date(2026, 5, 11), periodEnd: new Date(2026, 5, 25), // 1st cutoff → SSS
+      isFirstCutoff: true,
       sssEarningsMonthly: monthlyRate + att.overtimePay * 2, // 21750 + 3445 = 25195 → MSC 25000
       overtimePayIn: att.overtimePay,
       holidayPayIn: att.holidayPay,
@@ -269,8 +269,8 @@ describe("REQ-6: a full cutoff reconciles gross − deductions = net", () => {
     expect(calc.grossPay).toBe(13597.5);               // 10875 + 1722.5 + 1000
     expect(calc.sssEE).toBe(1250);                     // MSC 25000 × 5% (2025/26 employee rate)
     expect(calc.sssER).toBe(2500);                     // MSC 25000 × 10% (gov-mandated ER)
-    expect(calc.philHealthEE).toBe(0);                 // not on 2nd cutoff
-    expect(calc.pagIbigEE).toBe(0);                    // not on 2nd cutoff
+    expect(calc.philHealthEE).toBe(0);                 // not on 1st cutoff
+    expect(calc.pagIbigEE).toBe(0);                    // not on 1st cutoff
     // WHT: taxable = (basic 10875 + OT 1722.5 + holiday 1000) × 2 − monthlyStatutory(1250+543.75+200)
     //      = 27195 − 1993.75 = 25201.25 → (25201.25−20833)×15% = 655.24/mo → 327.62/cutoff
     //      Holiday pay IS in the taxable base (taxable for regular employees).

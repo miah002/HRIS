@@ -84,7 +84,7 @@ async function runPayroll(formData: FormData) {
   });
   const otApproved = otApprovalRec?.status === "APPROVED";
 
-  const employees = await prisma.employee.findMany({ where: { companyId, archived: false } });
+  const employees = await prisma.employee.findMany({ where: { companyId, archived: false, employmentStatus: { not: "CONTRACTUAL" } } });
   const empIds = employees.map((e) => e.id);
 
   const GRACE_MINUTES = 5;
@@ -167,8 +167,9 @@ async function runPayroll(formData: FormData) {
         let rowLate = 0;
         if (row.timeIn) {
           const t = new Date(row.timeIn);
-          const tinMin = t.getUTCHours() * 60 + t.getUTCMinutes();
-          rowLate = Math.max(0, tinMin - SCHEDULE_START_MIN - GRACE_MINUTES);
+          // Convert stored UTC to PHT (UTC+8) for comparison against PHT schedule
+          const phMin = ((t.getUTCHours() + 8) % 24) * 60 + t.getUTCMinutes();
+          rowLate = Math.max(0, phMin - SCHEDULE_START_MIN - GRACE_MINUTES);
         }
         totalLateMinutes += rowLate;
         const shortageMin = Math.max(0, 480 - row.hoursWorked * 60);
@@ -269,7 +270,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
   // Wave 1: everything that needs only companyId — run concurrently.
   const [cutoff, previewEmployees, allPeriods, periodEndRow] = await Promise.all([
     activeCutoff(pageCompanyId),
-    prisma.employee.findMany({ where: { archived: false }, orderBy: { lastName: "asc" } }),
+    prisma.employee.findMany({ where: { archived: false, employmentStatus: { not: "CONTRACTUAL" } }, orderBy: { lastName: "asc" } }),
     prisma.payroll.findMany({
       select: { periodStart: true, periodEnd: true, grossPay: true, netPay: true, id: true },
       orderBy: { periodStart: "desc" },

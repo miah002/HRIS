@@ -9,8 +9,8 @@
  *  - TRAIN Law (RA 10963) — revised withholding tax tables (effective Jan 1, 2023 onwards)
  *
  * Cutoff deduction assignment (client preference):
- *  - 1st cutoff (1–15): PHIC + HDMF full monthly amounts
- *  - 2nd cutoff (16–end): SSS full monthly amount
+ *  - 1st cutoff (11–25): SSS full monthly amount
+ *  - 2nd cutoff (26–10): PHIC + HDMF full monthly amounts
  *  - WHT: always monthly amount ÷ 2 per cutoff
  *
  * IMPORTANT: Contribution tables move periodically. Values here are accurate as of build time;
@@ -302,8 +302,8 @@ export function countUnpaidAbsenceDays(i: AbsenceInput): number {
 // ---------- Semi-monthly payroll (cutoffs 1–15 and 16–end) ----------
 //
 // Deduction cutoff assignment (client preference):
-//   1st cutoff (day ≤ 15 = isFirstCutoff true):  PHIC + HDMF full
-//   2nd cutoff (day > 15 = isFirstCutoff false):  SSS full
+//   1st cutoff (11–25 = isFirstCutoff true):  SSS full
+//   2nd cutoff (26–10 = isFirstCutoff false): PHIC + HDMF full
 //   WHT: always monthly WHT ÷ 2 regardless of cutoff
 //
 // SSS MSC basis: sssEarningsMonthly (basic + OT × 2 + de minimis × 2 if provided)
@@ -328,7 +328,7 @@ export interface PayrollInput {
   nightDiffPayIn?: number;
   holidayPayIn?: number;
   // Cutoff and SSS basis
-  isFirstCutoff?: boolean;       // true = 1–15 (PHIC+HDMF), false = 16–end (SSS). Auto-derived from periodStart if omitted.
+  isFirstCutoff?: boolean;       // true = 11–25 (SSS), false = 26–10 (PHIC+HDMF). Auto-derived from periodStart if omitted.
   sssEarningsMonthly?: number;   // total monthly earnings for SSS MSC (basic + OT + de minimis projection)
   // Late / undertime (pre-computed from attendance)
   lateMinutesIn?: number;
@@ -375,13 +375,14 @@ export function computeSemiMonthlyPayroll(i: PayrollInput) {
   const hdmf = pagIbigContribution(i.monthlyRate);
 
   // Assign statutory deductions to the appropriate cutoff (full amount, not split)
-  const sssEE  = isFirstCutoff ? 0 : round2(sss.employee);
-  const phicEE = isFirstCutoff ? round2(phic.employee) : 0;
-  const hdmfEE = isFirstCutoff ? round2(hdmf.employee) : 0;
+  // 1st cutoff (11-25) → SSS; 2nd cutoff (26-10) → PHIC + HDMF
+  const sssEE  = isFirstCutoff ? round2(sss.employee) : 0;
+  const phicEE = isFirstCutoff ? 0 : round2(phic.employee);
+  const hdmfEE = isFirstCutoff ? 0 : round2(hdmf.employee);
 
-  const sssERVal  = isFirstCutoff ? 0 : round2(sss.employer);
-  const phicERVal = isFirstCutoff ? round2(phic.employer) : 0;
-  const hdmfERVal = isFirstCutoff ? round2(hdmf.employer) : 0;
+  const sssERVal  = isFirstCutoff ? round2(sss.employer) : 0;
+  const phicERVal = isFirstCutoff ? 0 : round2(phic.employer);
+  const hdmfERVal = isFirstCutoff ? 0 : round2(hdmf.employer);
 
   // WHT always monthly ÷ 2 (use full statutory as monthly deduction basis for tax computation).
   // Taxable compensation includes basic + ALL premium pay (OT, holiday, night diff) plus

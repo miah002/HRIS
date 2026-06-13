@@ -147,12 +147,10 @@ async function logManual(formData: FormData) {
   const timeInStr = String(formData.get("timeIn"));
   const timeOutStr = String(formData.get("timeOut"));
 
-  const date = new Date(dateStr + "T00:00:00");
-  const [inH, inM] = timeInStr.split(":").map(Number);
-  const [outH, outM] = timeOutStr.split(":").map(Number);
-
-  const timeInDt = new Date(date); timeInDt.setHours(inH, inM, 0, 0);
-  const timeOutDt = new Date(date); timeOutDt.setHours(outH, outM, 0, 0);
+  const date = new Date(dateStr + "T00:00:00+08:00");
+  // Parse as PHT (UTC+8) so Vercel's UTC server doesn't shift the hours by 8
+  const timeInDt  = new Date(`${dateStr}T${timeInStr}:00+08:00`);
+  const timeOutDt = new Date(`${dateStr}T${timeOutStr}:00+08:00`);
   const rawHours = Math.max(0, (timeOutDt.getTime() - timeInDt.getTime()) / (1000 * 60 * 60));
   const hoursWorked = applyLunchBreak(rawHours);
   const otHours = Math.max(0, hoursWorked - 8);
@@ -197,11 +195,9 @@ async function bulkEntry(formData: FormData) {
     const timeOutStr = String(formData.get(`day_${i}_timeOut`));
     const otRateCode = (formData.get(`day_${i}_otRateCode`) as string | null) || null;
 
-    const date = new Date(dateStr + "T00:00:00");
-    const [inH, inM]   = timeInStr.split(":").map(Number);
-    const [outH, outM] = timeOutStr.split(":").map(Number);
-    const timeInDt  = new Date(date); timeInDt.setHours(inH, inM, 0, 0);
-    const timeOutDt = new Date(date); timeOutDt.setHours(outH, outM, 0, 0);
+    const date = new Date(dateStr + "T00:00:00+08:00");
+    const timeInDt  = new Date(`${dateStr}T${timeInStr}:00+08:00`);
+    const timeOutDt = new Date(`${dateStr}T${timeOutStr}:00+08:00`);
 
     const rawHours = Math.max(0, (timeOutDt.getTime() - timeInDt.getTime()) / 3600000);
     const hoursWorked = applyLunchBreak(rawHours);
@@ -235,10 +231,11 @@ async function editAttendance(formData: FormData) {
   const existing = await prisma.attendance.findUnique({ where: { id } });
   if (!existing) redirect(`/attendance?${buildFilterQs(filterPeriod, filterEmployeeId, filterFrom, filterTo)}`);
 
-  const [inH, inM]   = timeInStr.split(":").map(Number);
-  const [outH, outM] = timeOutStr.split(":").map(Number);
-  const timeInDt  = new Date(existing.date); timeInDt.setHours(inH, inM, 0, 0);
-  const timeOutDt = new Date(existing.date); timeOutDt.setHours(outH, outM, 0, 0);
+  // Extract UTC date string from the stored record (dates stored as midnight UTC = PHT day)
+  const ed = existing.date;
+  const existingDateStr = `${ed.getUTCFullYear()}-${String(ed.getUTCMonth()+1).padStart(2,"0")}-${String(ed.getUTCDate()).padStart(2,"0")}`;
+  const timeInDt  = new Date(`${existingDateStr}T${timeInStr}:00+08:00`);
+  const timeOutDt = new Date(`${existingDateStr}T${timeOutStr}:00+08:00`);
 
   const rawHours = Math.max(0, (timeOutDt.getTime() - timeInDt.getTime()) / 3600000);
   const hoursWorked = applyLunchBreak(rawHours);

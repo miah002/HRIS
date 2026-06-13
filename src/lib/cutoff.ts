@@ -49,7 +49,7 @@ export function monthCutoffLabel(c: { start: Date; label: string }): string {
 
 /**
  * Single source of truth for cutoff type:
- *   1st cutoff (11–25) collects PHIC + HDMF; 2nd cutoff (26–10) collects SSS.
+ *   1st cutoff (11–25) collects SSS; 2nd cutoff (26–10) collects PHIC + HDMF.
  * Periods always start on day 11 or 26, so the start day fully determines the type.
  * Replaces the divergent `=== 11` / `<= 15` / `getUTCDate()` checks scattered across files.
  */

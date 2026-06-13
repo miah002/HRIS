@@ -169,6 +169,14 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
   const slipAttPay = computeAttendancePay(attendanceRows, hr, slipOtApproved);
   const attTotalPremiumPay = slipAttPay.overtimePay + slipAttPay.holidayPay + slipAttPay.nightDiffPay;
 
+  // The live breakdown (recomputed from current attendance + OT-approval) can drift
+  // from what was stored when payroll last ran — e.g. OT approved AFTER the run.
+  // Only show the detailed per-code lines when they reconcile with the stored
+  // premium buckets; otherwise fall back to the stored aggregate so the earnings
+  // section ALWAYS sums to the stored gross pay. (Re-run payroll to refresh detail.)
+  const storedPremiumPay = payroll.overtimePay + payroll.holidayPay + payroll.nightDiffPay;
+  const breakdownMatchesStored = Math.abs(attTotalPremiumPay - storedPremiumPay) < 0.01;
+
   // Pre-compute per-row premium pay for the attendance table
   const rowPayMap = new Map<string, number>();
   for (const row of attendanceRows) {
@@ -177,7 +185,7 @@ export default async function PayslipPage({ params }: { params: Promise<{ id: st
   }
 
   // Earnings line items from breakdown (includes rest-day full rate, OT, and holiday premium)
-  const premiumLines = slipAttPay.breakdown
+  const premiumLines = (breakdownMatchesStored ? slipAttPay.breakdown : [])
     .filter((b) => !b.code.startsWith("ND")) // ND shown as aggregate nightDiffPay line below
     .map(({ code, regHrs, regPay, otHrs, otPay }) => {
       const total = Math.round((regPay + otPay) * 100) / 100;

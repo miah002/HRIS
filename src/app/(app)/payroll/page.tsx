@@ -87,6 +87,15 @@ async function runPayroll(formData: FormData) {
   const employees = await prisma.employee.findMany({ where: { companyId, archived: false, employmentStatus: { not: "CONTRACTUAL" } } });
   const empIds = employees.map((e) => e.id);
 
+  // Purge stale DRAFT payroll for contractual employees in this period (they're
+  // no longer paid via payroll). Never touch RELEASED records.
+  await prisma.payroll.deleteMany({
+    where: {
+      periodStart: start, periodEnd: end, status: "DRAFT",
+      employee: { companyId, employmentStatus: "CONTRACTUAL" },
+    },
+  });
+
   const GRACE_MINUTES = 5;
 
   // Daily rate basis: monthlyRate / 21.75 working days
@@ -295,7 +304,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
       : Promise.resolve(null),
     prisma.attendance.findMany({ where: { date: { gte: cutoff.start, lte: cutoff.end } } }),
     prisma.payroll.findMany({
-      where: { periodStart: viewStart, periodEnd: viewEnd },
+      where: { periodStart: viewStart, periodEnd: viewEnd, employee: { employmentStatus: { not: "CONTRACTUAL" } } },
       include: { employee: true },
       orderBy: { employee: { lastName: "asc" } },
     }),

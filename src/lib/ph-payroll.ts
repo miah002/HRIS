@@ -82,6 +82,26 @@ export function withholdingTaxMonthly(taxableMonthlyIncome: number) {
   return round2(bracket.base + (taxableMonthlyIncome - bracket.over) * bracket.rate);
 }
 
+// Semi-monthly basis = annual brackets ÷ 24 (exact, not rounded). The first
+// taxable threshold is 250,000/24 = 10,416.67 — matching the standard manual
+// computation: (basic + OT − contributions − 250,000/24) × rate.
+// base = cumulative ANNUAL tax at the bracket's lower bound, ÷ 24.
+//   annual cumulative: 0 → 22,500 → 102,500 → 402,500 → 2,202,500
+const SEMI_MONTHLY_TAX_BRACKETS = [
+  { upTo: 250000 / 24,    base: 0,              rate: 0,    over: 0 },
+  { upTo: 400000 / 24,    base: 0,              rate: 0.15, over: 250000 / 24 },
+  { upTo: 800000 / 24,    base: 22500 / 24,     rate: 0.20, over: 400000 / 24 },
+  { upTo: 2000000 / 24,   base: 102500 / 24,    rate: 0.25, over: 800000 / 24 },
+  { upTo: 8000000 / 24,   base: 402500 / 24,    rate: 0.30, over: 2000000 / 24 },
+  { upTo: Infinity,       base: 2202500 / 24,   rate: 0.35, over: 8000000 / 24 },
+];
+
+export function withholdingTaxSemiMonthly(taxableSemiIncome: number) {
+  if (taxableSemiIncome <= 250000 / 24) return 0;
+  const bracket = SEMI_MONTHLY_TAX_BRACKETS.find((b) => taxableSemiIncome <= b.upTo)!;
+  return round2(bracket.base + (taxableSemiIncome - bracket.over) * bracket.rate);
+}
+
 // ---------- Overtime / Night differential premiums (Labor Code Art. 87, 86) ----------
 // Full DOLE rate matrix keyed by attendance rate code.
 export const OT_RATES: Record<string, number> = {
@@ -394,9 +414,7 @@ export function computeSemiMonthlyPayroll(i: PayrollInput) {
   // (only statutory-minimum-wage earners are exempt). De minimis / non-taxable excluded.
   const cutoffStatutory = sssEE + phicEE + hdmfEE;
   const taxableSemi = basicPay + otPay + ndPay + holidayPay + taxableAdj;
-  const taxableMonthly = Math.max(0, (taxableSemi - cutoffStatutory) * 2);
-  const monthlyWHT = withholdingTaxMonthly(taxableMonthly);
-  const whtSemi = round2(monthlyWHT / 2);
+  const whtSemi = withholdingTaxSemiMonthly(Math.max(0, taxableSemi - cutoffStatutory));
 
   // Late / undertime
   const lateMinutes = i.lateMinutesIn ?? 0;

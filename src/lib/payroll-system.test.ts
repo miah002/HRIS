@@ -271,13 +271,13 @@ describe("REQ-6: a full cutoff reconciles gross − deductions = net", () => {
     expect(calc.sssER).toBe(2500);                     // MSC 25000 × 10% (gov-mandated ER)
     expect(calc.philHealthEE).toBe(0);                 // not on 1st cutoff
     expect(calc.pagIbigEE).toBe(0);                    // not on 1st cutoff
-    // WHT (per-cutoff base): only THIS cutoff's contribution (SSS 1250) reduces the base.
-    //   base = (basic 10875 + OT 1722.5 + holiday 1000 − SSS 1250) × 2
-    //        = 12347.5 × 2 = 24695 → (24695 − 20833) × 15% = 579.30/mo → 289.65/cutoff
+    // WHT (semi-monthly table, per-cutoff base): only THIS cutoff's contribution (SSS 1250).
+    //   base = basic 10875 + OT 1722.5 + holiday 1000 − SSS 1250 = 12347.5
+    //        → (12347.5 − 250000/24) × 15% = (12347.5 − 10416.67) × 15% = 289.63
     //   Holiday pay IS in the taxable base (taxable for regular employees).
-    expect(calc.withholdingTax).toBe(289.65);
-    expect(calc.totalDeductions).toBe(1539.65);        // SSS 1250 + WHT 289.65
-    expect(calc.netPay).toBe(12057.85);                // 13597.5 − 1539.65
+    expect(calc.withholdingTax).toBe(289.63);
+    expect(calc.totalDeductions).toBe(1539.63);        // SSS 1250 + WHT 289.63
+    expect(calc.netPay).toBe(12057.87);                // 13597.5 − 1539.63
   });
 
   it("payslip reconstruction uses the same engine → breakdown sums to buckets", () => {

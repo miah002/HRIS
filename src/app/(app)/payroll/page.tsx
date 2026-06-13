@@ -173,16 +173,21 @@ async function runPayroll(formData: FormData) {
     for (const row of attendance) {
       // timeIn stored as UTC; getUTCHours/Minutes read clock time correctly regardless of server TZ.
       if (row.hoursWorked > 0) {
-        let rowLate = 0;
+        let rawLate = 0;   // actual minutes past 08:00 (before grace)
+        let rowLate = 0;   // billable late minutes (after 5-min grace)
         if (row.timeIn) {
           const t = new Date(row.timeIn);
           // Convert stored UTC to PHT (UTC+8) for comparison against PHT schedule
           const phMin = ((t.getUTCHours() + 8) % 24) * 60 + t.getUTCMinutes();
-          rowLate = Math.max(0, phMin - SCHEDULE_START_MIN - GRACE_MINUTES);
+          rawLate = Math.max(0, phMin - SCHEDULE_START_MIN);
+          rowLate = Math.max(0, rawLate - GRACE_MINUTES);
         }
         totalLateMinutes += rowLate;
+        // Undertime = shortfall NOT already explained by the late arrival. Subtract
+        // the RAW lateness (not the grace-adjusted figure) so the 5 grace minutes
+        // stay forgiven instead of being recaptured here.
         const shortageMin = Math.max(0, 480 - row.hoursWorked * 60);
-        totalUndertimeMinutes += Math.max(0, shortageMin - rowLate);
+        totalUndertimeMinutes += Math.max(0, shortageMin - rawLate);
       }
     }
 

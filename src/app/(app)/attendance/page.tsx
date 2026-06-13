@@ -147,8 +147,9 @@ async function logManual(formData: FormData) {
   const timeInStr = String(formData.get("timeIn"));
   const timeOutStr = String(formData.get("timeOut"));
 
-  const date = new Date(dateStr + "T00:00:00+08:00");
-  // Parse as PHT (UTC+8) so Vercel's UTC server doesn't shift the hours by 8
+  // Day-key: server-local midnight (UTC-midnight on Vercel), matching mondayOf /
+  // toLocalDateStr / cutoff boundaries. Only timeIn/timeOut carry the PHT offset.
+  const date = new Date(dateStr + "T00:00:00");
   const timeInDt  = new Date(`${dateStr}T${timeInStr}:00+08:00`);
   const timeOutDt = new Date(`${dateStr}T${timeOutStr}:00+08:00`);
   const rawHours = Math.max(0, (timeOutDt.getTime() - timeInDt.getTime()) / (1000 * 60 * 60));
@@ -195,7 +196,8 @@ async function bulkEntry(formData: FormData) {
     const timeOutStr = String(formData.get(`day_${i}_timeOut`));
     const otRateCode = (formData.get(`day_${i}_otRateCode`) as string | null) || null;
 
-    const date = new Date(dateStr + "T00:00:00+08:00");
+    // Day-key: server-local midnight (UTC-midnight on Vercel). Times carry PHT offset.
+    const date = new Date(dateStr + "T00:00:00");
     const timeInDt  = new Date(`${dateStr}T${timeInStr}:00+08:00`);
     const timeOutDt = new Date(`${dateStr}T${timeOutStr}:00+08:00`);
 
@@ -231,9 +233,9 @@ async function editAttendance(formData: FormData) {
   const existing = await prisma.attendance.findUnique({ where: { id } });
   if (!existing) redirect(`/attendance?${buildFilterQs(filterPeriod, filterEmployeeId, filterFrom, filterTo)}`);
 
-  // Extract UTC date string from the stored record (dates stored as midnight UTC = PHT day)
-  const ed = existing.date;
-  const existingDateStr = `${ed.getUTCFullYear()}-${String(ed.getUTCMonth()+1).padStart(2,"0")}-${String(ed.getUTCDate()).padStart(2,"0")}`;
+  // Anchor the new times to the record's day-key (server-local components, the
+  // same basis the day-key was created with). Times carry the PHT offset.
+  const existingDateStr = toLocalDateStr(existing.date);
   const timeInDt  = new Date(`${existingDateStr}T${timeInStr}:00+08:00`);
   const timeOutDt = new Date(`${existingDateStr}T${timeOutStr}:00+08:00`);
 

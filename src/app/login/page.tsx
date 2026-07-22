@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Mail } from "lucide-react";
 import { signIn } from "@/lib/auth";
 import { Input, Field } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { SubmitButton } from "@/components/ui/submit-button";
 
@@ -45,10 +47,13 @@ export default function LoginPage({ searchParams }: { searchParams: Promise<{ er
           <CardContent>
             <form action={login} className="space-y-4">
               <Field label="Email address" name="email">
-                <Input id="email" name="email" type="email" required defaultValue="owner@demo.ph" autoComplete="email" />
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-tertiary)]" />
+                  <Input id="email" name="email" type="email" required defaultValue="owner@demo.ph" autoComplete="email" className="pl-9" />
+                </div>
               </Field>
               <Field label="Password" name="password">
-                <Input id="password" name="password" type="password" required defaultValue="demo1234" autoComplete="current-password" />
+                <PasswordInput id="password" name="password" required defaultValue="demo1234" autoComplete="current-password" />
               </Field>
               <SubmitButton className="w-full mt-2">Sign in</SubmitButton>
             </form>
